@@ -1,0 +1,19 @@
+[package]
+name        = "cw-simapp"
+version     = "0.1.0"
+authors     = ["Larry Engineer <gm@larry.engineer>"]
+edition     = "2021"
+description = "An application built using the CosmWasm SDK for testing and educational purposes"
+readme      = "./README.md"
+homepage    = "https://larry.engineer"
+repository  = "https://github.com/steak-enjoyers/cw-sdk"
+license     = "AGPL-v3-or-later"
+keywords    = ["blockchain", "cosmos", "cosmwasm"]
+
+[dependencies]
+cw-sdk = { path = "../packages/sdk" }
+structopt = "0.3"
+tendermint-abci = "0.25"
+tracing-subscriber = "0.2"
+
+[dev-dependencies]
