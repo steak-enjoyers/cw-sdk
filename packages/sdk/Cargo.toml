@@ -1,0 +1,17 @@
+[package]
+name        = "cw-sdk"
+version     = "0.1.0"
+authors     = ["Larry Engineer <gm@larry.engineer>"]
+edition     = "2021"
+description = "State machine engine based on CosmWasm"
+readme      = "./README.md"
+homepage    = "https://larry.engineer"
+repository  = "https://github.com/steak-enjoyers/cw-sdk"
+license     = "AGPL-v3-or-later"
+keywords    = ["blockchain", "cosmos", "cosmwasm"]
+
+[dependencies]
+cosmwasm-vm = "1.1"
+tendermint-abci = "0.25"
+
+[dev-dependencies]
