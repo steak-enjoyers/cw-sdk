@@ -10,7 +10,8 @@ pub fn init(deps: DepsMut, balances: Vec<Balance>) -> Result<Response, ContractE
 
         for coin in &balance.coins {
             SUPPLIES.update(deps.storage, &coin.denom, |opt| {
-                opt.unwrap_or_else(Uint128::zero)
+                opt
+                    .unwrap_or_else(Uint128::zero)
                     .checked_add(coin.amount)
                     .map_err(ContractError::from)
             })?;
