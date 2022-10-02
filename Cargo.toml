@@ -1,2 +1,10 @@
 [workspace]
-members = ["packages/*", "simapp"]
+members = ["contracts/*", "packages/*", "simapp"]
+
+[profile.release]
+rpath = false
+lto = true
+overflow-checks = true
+opt-level = 3
+debug = false
+debug-assertions = false

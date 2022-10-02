@@ -1,3 +1,6 @@
+# cosmwasm build artifacts
+artifacts/
+
 # rust
 target/
 
