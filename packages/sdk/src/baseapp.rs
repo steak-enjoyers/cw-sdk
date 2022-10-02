@@ -67,7 +67,7 @@ impl App {
             info: "".to_string(),
             index: 0,
             key: code_id.to_string().into_bytes(),
-            value: wasm_byte_code.unwrap_or_else(|| vec![]),
+            value: wasm_byte_code.unwrap_or_default(),
             proof_ops: None,
             height: 0,
             codespace: "".to_string(),
