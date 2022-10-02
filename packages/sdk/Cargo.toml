@@ -11,7 +11,16 @@ license     = "AGPL-v3-or-later"
 keywords    = ["blockchain", "cosmos", "cosmwasm"]
 
 [dependencies]
+base64 = "0.13"
+cosmwasm-schema = "1.1"
+cosmwasm-std = "1.1"
 cosmwasm-vm = "1.1"
+schemars = "0.8"
+serde = "1.0"
+serde-json-wasm = "0.4"
 tendermint-abci = "0.25"
+tendermint-proto = "0.25"
+thiserror = "1.0"
+tracing = "0.1"
 
 [dev-dependencies]

@@ -1,8 +1,10 @@
+use std::sync::mpsc::channel;
+
 use structopt::StructOpt;
 use tendermint_abci::ServerBuilder;
 use tracing_subscriber::filter::LevelFilter;
 
-use cw_sdk::BaseApp;
+use cw_sdk::{App, AppDriver, AppState};
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -30,8 +32,7 @@ struct Opt {
 fn main() {
     let opt: Opt = Opt::from_args();
 
-    let listen_addr = format!("{}:{}", opt.host, opt.port);
-
+    // parse log level
     let log_level = if opt.quiet {
         LevelFilter::OFF
     } else if opt.verbose {
@@ -41,10 +42,22 @@ fn main() {
     };
     tracing_subscriber::fmt().with_max_level(log_level).init();
 
-    let app = BaseApp::new();
+    // create the ABCI app and the driver and establish them channel between them
+    let (cmd_tx, cmd_rx) = channel();
+    let app = App {
+        cmd_tx,
+    };
+    let driver = AppDriver {
+        state: AppState::default(),
+        cmd_rx,
+    };
 
+    // spawn the driver
+    std::thread::spawn(move || driver.run());
+
+    // start the ABCI app
     ServerBuilder::new(opt.read_buf_size)
-        .bind(listen_addr, app)
+        .bind(format!("{}:{}", opt.host, opt.port), app)
         .unwrap()
         .listen()
         .unwrap();

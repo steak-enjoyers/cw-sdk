@@ -1,11 +1,9 @@
-#[derive(Clone, Debug)]
-pub struct BaseApp;
+mod baseapp;
+mod error;
+mod msg;
+mod state;
 
-impl BaseApp {
-    /// Creates a new `BaseApp` instance.
-    pub fn new() -> Self {
-        BaseApp
-    }
-}
-
-impl tendermint_abci::Application for BaseApp {}
+pub use baseapp::*;
+pub use error::*;
+pub use msg::*;
+pub use state::*;
