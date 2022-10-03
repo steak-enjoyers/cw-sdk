@@ -1,6 +1,6 @@
-# cw-sdk
+# cw-daemon
 
-State machine engine based on [CosmWasm](https://github.com/CosmWasm/cosmwasm)
+Daemon software for the [CosmWasm SDK](https://github.com/steak-enjoyers/cw-sdk) blockchain
 
 ## License
 
