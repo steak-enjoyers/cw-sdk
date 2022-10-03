@@ -35,6 +35,14 @@ impl AppDriver {
                 } => {
                     let (success, contract_addr) = self.state.instantiate_contract(code_id, msg)?;
                     channel_send(&result_tx, (success, contract_addr))?;
+                },
+                AppCommand::QueryWasmRaw {
+                    contract_addr,
+                    key,
+                    result_tx,
+                } => {
+                    let value = self.state.query_wasm_raw(contract_addr, &key)?;
+                    channel_send(&result_tx, value)?;
                 }
             }
         }

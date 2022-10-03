@@ -30,6 +30,11 @@ pub enum AppCommand {
         /// Return whether instantiation if successful, and if yes, the contract address
         result_tx: Sender<(bool, Option<u64>)>,
     },
+    QueryWasmRaw {
+        contract_addr: u64,
+        key: Vec<u8>,
+        result_tx: Sender<Option<Vec<u8>>>,
+    },
 }
 
 /// A helper function for sending the specified value through a channel.

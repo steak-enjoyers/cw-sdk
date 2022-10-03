@@ -1,21 +1,15 @@
 use std::collections::BTreeMap;
 
-use cosmwasm_std::{Empty, ContractResult, Response};
+use cosmwasm_std::{Binary, ContractResult, Empty, Response};
+use cosmwasm_vm::testing::{mock_env, mock_info};
 use cosmwasm_vm::{
-    call_instantiate,
-    testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage},
-    Backend, Instance, InstanceOptions, VmError, Storage, call_query,
+    call_instantiate, call_query, Backend, Instance, InstanceOptions, VmError,
 };
 use thiserror::Error;
 
+use crate::wasm::{self, WasmStorage};
+
 /// The application's state and state transition rules. The core of the blockchain.
-///
-/// Currently we use an in-memory state for development. For an actually usable blockchain, it is
-/// necessary to switch to a persistent database backend. Two options are Nomic's Merk tree or
-/// Penumbra's Jellyfish Merkle tree (JMT):
-/// - https://twitter.com/zmanian/status/1576643740784947200
-/// - https://developers.diem.com/papers/jellyfish-merkle-tree/2021-01-14.pdf
-/// - https://github.com/penumbra-zone/jmt
 #[derive(Debug, Default)]
 pub struct State {
     /// The total number of wasm byte codes stored
@@ -26,8 +20,8 @@ pub struct State {
     pub contract_count: u64,
     /// The code id used by each contract
     pub contract_codes: BTreeMap<u64, u64>,
-    /// Contract stores
-    pub contract_stores: BTreeMap<u64, MockStorage>,
+    /// Contract store
+    pub contract_store: WasmStorage,
 }
 
 impl State {
@@ -43,11 +37,7 @@ impl State {
         code_id: u64,
         msg: Vec<u8>,
     ) -> Result<(bool, Option<u64>), StateError> {
-        let backend = Backend {
-            api: MockApi::default(),
-            storage: MockStorage::default(),
-            querier: MockQuerier::<Empty>::new(&[]),
-        };
+        let backend = wasm::create_backend(&self.contract_store);
         let mut instance = Instance::from_code(
             &self.codes[&code_id],
             backend,
@@ -73,7 +63,7 @@ impl State {
             self.contract_count += 1;
             let contract_addr = self.contract_count;
             self.contract_codes.insert(contract_addr, code_id);
-            self.contract_stores.insert(contract_addr, storage);
+            self.contract_store = storage;
             Ok((true, Some(contract_addr)))
         } else {
             Ok((false, None))
@@ -87,24 +77,27 @@ impl State {
 
     pub fn query_wasm_raw(
         &self,
-        contract_addr: u64,
-        key: &[u8],
+        _contract_addr: u64,
+        _key: &[u8],
     ) -> Result<Option<Vec<u8>>, StateError> {
-        let store = &self.contract_stores[&contract_addr];
-        let (res, _) = store.get(key);
-        Ok(res.unwrap())
+        // for now we just dump for whole contract store
+        // need to collect into a Vec first, because serde-json-wasm can't serialize maps
+        let data = self
+            .contract_store
+            .data
+            .iter()
+            .map(|(key, value)| (Binary(key.clone()), Binary(value.clone())))
+            .collect::<Vec<_>>();
+        let bytes = serde_json_wasm::to_vec(&data).unwrap();
+        Ok(Some(bytes))
     }
 
     pub fn query_wasm_smart(
         &self,
         contract_addr: u64,
-        msg: &[u8]
+        msg: &[u8],
     ) -> Result<(bool, Option<Vec<u8>>), StateError> {
-        let backend = Backend {
-            api: MockApi::default(),
-            storage: self.contract_stores[&contract_addr].clone(), // fuck, mock storage doesn't have clone
-            querier: MockQuerier::<Empty>::new(&[]),
-        };
+        let backend = wasm::create_backend(&self.contract_store);
         let mut instance = Instance::from_code(
             &self.codes[&self.contract_codes[&contract_addr]],
             backend,

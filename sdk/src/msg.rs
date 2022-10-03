@@ -32,7 +32,7 @@ pub enum SdkQuery {
     },
     WasmRaw {
         contract_addr: u64,
-        key: Vec<u8>,
+        key: Binary,
     },
     WasmSmart {
         contract_addr: u64,

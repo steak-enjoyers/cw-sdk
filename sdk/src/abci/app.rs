@@ -128,6 +128,36 @@ impl App {
             codespace: "".to_string(),
         })
     }
+
+    pub fn query_wasm_raw(
+        &self,
+        contract_addr: u64,
+        key: Vec<u8>,
+    ) -> Result<ResponseQuery, ABCIError> {
+        let (result_tx, result_rx) = channel();
+
+        channel_send(
+            &self.cmd_tx,
+            AppCommand::QueryWasmRaw {
+                contract_addr,
+                key: key.clone(),
+                result_tx,
+            },
+        )?;
+        let value = channel_recv(&result_rx)?;
+
+        Ok(ResponseQuery {
+            code: 0,
+            log: "".to_string(),
+            info: "".to_string(),
+            index: 0,
+            key,
+            value: value.unwrap_or_default(),
+            proof_ops: None,
+            height: 0,
+            codespace: "".to_string(),
+        })
+    }
 }
 
 impl tendermint_abci::Application for App {
@@ -146,6 +176,11 @@ impl tendermint_abci::Application for App {
             SdkQuery::Code {
                 code_id,
             } => self.query_code(code_id).unwrap(),
+            SdkQuery::WasmRaw {
+                contract_addr,
+                key,
+            } => self.query_wasm_raw(contract_addr, key.0).unwrap(),
+            _ => panic!("unimplemented sdk query type!!"),
         }
     }
 
