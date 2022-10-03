@@ -4,7 +4,7 @@ use cosmwasm_std::{Empty, ContractResult, Response};
 use cosmwasm_vm::{
     call_instantiate,
     testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage},
-    Backend, Instance, InstanceOptions, VmError,
+    Backend, Instance, InstanceOptions, VmError, Storage, call_query,
 };
 use thiserror::Error;
 
@@ -24,6 +24,8 @@ pub struct State {
     pub codes: BTreeMap<u64, Vec<u8>>,
     /// The total number of contracts instantiated
     pub contract_count: u64,
+    /// The code id used by each contract
+    pub contract_codes: BTreeMap<u64, u64>,
     /// Contract stores
     pub contract_stores: BTreeMap<u64, MockStorage>,
 }
@@ -70,6 +72,7 @@ impl State {
         if result.is_ok() {
             self.contract_count += 1;
             let contract_addr = self.contract_count;
+            self.contract_codes.insert(contract_addr, code_id);
             self.contract_stores.insert(contract_addr, storage);
             Ok((true, Some(contract_addr)))
         } else {
@@ -80,6 +83,44 @@ impl State {
     pub fn query_code(&self, code_id: u64) -> Result<Option<Vec<u8>>, StateError> {
         let wasm_byte_code = self.codes.get(&code_id);
         Ok(wasm_byte_code.cloned())
+    }
+
+    pub fn query_wasm_raw(
+        &self,
+        contract_addr: u64,
+        key: &[u8],
+    ) -> Result<Option<Vec<u8>>, StateError> {
+        let store = &self.contract_stores[&contract_addr];
+        let (res, _) = store.get(key);
+        Ok(res.unwrap())
+    }
+
+    pub fn query_wasm_smart(
+        &self,
+        contract_addr: u64,
+        msg: &[u8]
+    ) -> Result<(bool, Option<Vec<u8>>), StateError> {
+        let backend = Backend {
+            api: MockApi::default(),
+            storage: self.contract_stores[&contract_addr].clone(), // fuck, mock storage doesn't have clone
+            querier: MockQuerier::<Empty>::new(&[]),
+        };
+        let mut instance = Instance::from_code(
+            &self.codes[&self.contract_codes[&contract_addr]],
+            backend,
+            InstanceOptions {
+                gas_limit: u64::MAX,
+                print_debug: true,
+            },
+            None,
+        )?;
+        let result = call_query(&mut instance, &mock_env(), msg)?;
+
+        if result.is_ok() {
+            Ok((true, Some(result.unwrap().0)))
+        } else {
+            Ok((false, None))
+        }
     }
 }
 

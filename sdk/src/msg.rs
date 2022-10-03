@@ -27,4 +27,15 @@ pub enum SdkQuery {
     Code {
         code_id: u64,
     },
+    Contract {
+        contract_addr: u64,
+    },
+    WasmRaw {
+        contract_addr: u64,
+        key: Vec<u8>,
+    },
+    WasmSmart {
+        contract_addr: u64,
+        msg: Binary,
+    },
 }
