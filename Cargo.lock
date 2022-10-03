@@ -506,19 +506,11 @@ dependencies = [
  "schemars",
  "serde",
  "serde-json-wasm",
+ "structopt",
  "tendermint-abci",
  "tendermint-proto",
  "thiserror",
  "tracing",
-]
-
-[[package]]
-name = "cw-simapp"
-version = "0.1.0"
-dependencies = [
- "cw-sdk",
- "structopt",
- "tendermint-abci",
  "tracing-subscriber",
 ]
 
