@@ -44,6 +44,60 @@ impl App {
         })
     }
 
+    pub fn instantiate_contract(
+        &self,
+        code_id: u64,
+        msg: Vec<u8>,
+    ) -> Result<ResponseDeliverTx, ABCIError> {
+        let (result_tx, result_rx) = channel();
+
+        channel_send(
+            &self.cmd_tx,
+            AppCommand::InstantiateContract {
+                code_id,
+                msg,
+                result_tx,
+            }
+        )?;
+        let (success, contract_addr) = channel_recv(&result_rx)?;
+
+        let log = if success {
+            "successfully instantiated contract!"
+        } else {
+            "failed to instantiate contract!"
+        };
+
+        Ok(ResponseDeliverTx {
+            code: 0,
+            data: vec![],
+            log: log.to_string(),
+            info: "".to_string(),
+            gas_wanted: 0,
+            gas_used: 0,
+            events: vec![Event {
+                r#type: "instantiate_contract".to_string(),
+                attributes: vec![
+                    EventAttribute {
+                        key: "code_id".as_bytes().to_owned(),
+                        value: code_id.to_string().into_bytes(),
+                        index: false,
+                    },
+                    EventAttribute {
+                        key: "success".as_bytes().to_owned(),
+                        value: success.to_string().into_bytes(),
+                        index: false,
+                    },
+                    EventAttribute {
+                        key: "contract_addr".as_bytes().to_owned(),
+                        value: contract_addr.unwrap_or(0).to_string().into_bytes(),
+                        index: false,
+                    },
+                ],
+            }],
+            codespace: "".to_string(),
+        })
+    }
+
     pub fn query_code(&self, code_id: u64) -> Result<ResponseQuery, ABCIError> {
         let (result_tx, result_rx) = channel();
 
@@ -107,6 +161,10 @@ impl tendermint_abci::Application for App {
             SdkMsg::StoreCode {
                 wasm_byte_code,
             } => self.store_code(wasm_byte_code.0).unwrap(),
+            SdkMsg::Instantiate {
+                code_id,
+                msg,
+            } => self.instantiate_contract(code_id, msg.0).unwrap(),
             msg => error_deliver_tx(format!("Error: unimplemented sdk message: {:?}", msg)),
         }
     }

@@ -27,6 +27,14 @@ impl AppDriver {
                 } => {
                     let wasm_byte_code = self.state.query_code(code_id)?;
                     channel_send(&result_tx, wasm_byte_code)?;
+                },
+                AppCommand::InstantiateContract {
+                    code_id,
+                    msg,
+                    result_tx,
+                } => {
+                    let (success, contract_addr) = self.state.instantiate_contract(code_id, msg)?;
+                    channel_send(&result_tx, (success, contract_addr))?;
                 }
             }
         }

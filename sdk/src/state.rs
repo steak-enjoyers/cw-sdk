@@ -1,5 +1,11 @@
 use std::collections::BTreeMap;
 
+use cosmwasm_std::{Empty, ContractResult, Response};
+use cosmwasm_vm::{
+    call_instantiate,
+    testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage},
+    Backend, Instance, InstanceOptions, VmError,
+};
 use thiserror::Error;
 
 /// The application's state and state transition rules. The core of the blockchain.
@@ -12,8 +18,14 @@ use thiserror::Error;
 /// - https://github.com/penumbra-zone/jmt
 #[derive(Debug, Default)]
 pub struct State {
+    /// The total number of wasm byte codes stored
     pub code_count: u64,
+    /// Wasm byte codes indexed by the ids
     pub codes: BTreeMap<u64, Vec<u8>>,
+    /// The total number of contracts instantiated
+    pub contract_count: u64,
+    /// Contract stores
+    pub contract_stores: BTreeMap<u64, MockStorage>,
 }
 
 impl State {
@@ -24,6 +36,47 @@ impl State {
         Ok(code_id)
     }
 
+    pub fn instantiate_contract(
+        &mut self,
+        code_id: u64,
+        msg: Vec<u8>,
+    ) -> Result<(bool, Option<u64>), StateError> {
+        let backend = Backend {
+            api: MockApi::default(),
+            storage: MockStorage::default(),
+            querier: MockQuerier::<Empty>::new(&[]),
+        };
+        let mut instance = Instance::from_code(
+            &self.codes[&code_id],
+            backend,
+            InstanceOptions {
+                gas_limit: u64::MAX,
+                print_debug: true,
+            },
+            None,
+        )?;
+        let result: ContractResult<Response<Empty>> = call_instantiate(
+            &mut instance,
+            &mock_env(),
+            &mock_info("larry", &[]),
+            &msg,
+        )?;
+
+        let Backend {
+            storage,
+            ..
+        } = instance.recycle().unwrap();
+
+        if result.is_ok() {
+            self.contract_count += 1;
+            let contract_addr = self.contract_count;
+            self.contract_stores.insert(contract_addr, storage);
+            Ok((true, Some(contract_addr)))
+        } else {
+            Ok((false, None))
+        }
+    }
+
     pub fn query_code(&self, code_id: u64) -> Result<Option<Vec<u8>>, StateError> {
         let wasm_byte_code = self.codes.get(&code_id);
         Ok(wasm_byte_code.cloned())
@@ -31,4 +84,7 @@ impl State {
 }
 
 #[derive(Debug, Error)]
-pub enum StateError {}
+pub enum StateError {
+    #[error("{0}")]
+    Vm(#[from] VmError),
+}

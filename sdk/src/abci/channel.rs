@@ -23,6 +23,13 @@ pub enum AppCommand {
         /// Return `Some(wasm_byte_code)` if code exists, `None` otherwise
         result_tx: Sender<Option<Vec<u8>>>,
     },
+    /// Instantiate a contract using the specified code id
+    InstantiateContract {
+        code_id: u64,
+        msg: Vec<u8>,
+        /// Return whether instantiation if successful, and if yes, the contract address
+        result_tx: Sender<(bool, Option<u64>)>,
+    },
 }
 
 /// A helper function for sending the specified value through a channel.
