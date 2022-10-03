@@ -496,6 +496,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-daemon"
+version = "0.1.0"
+dependencies = [
+ "cw-sdk",
+ "structopt",
+ "tendermint-abci",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "cw-sdk"
 version = "0.1.0"
 dependencies = [
@@ -506,12 +516,10 @@ dependencies = [
  "schemars",
  "serde",
  "serde-json-wasm",
- "structopt",
  "tendermint-abci",
  "tendermint-proto",
  "thiserror",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]

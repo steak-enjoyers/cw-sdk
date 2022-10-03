@@ -1,7 +1,10 @@
+use std::sync::mpsc::channel;
+
 use structopt::StructOpt;
+use tendermint_abci::ServerBuilder;
 use tracing_subscriber::filter::LevelFilter;
 
-use cw_sdk::abci::create_abci_app;
+use cw_sdk::abci::{App, AppDriver};
 use cw_sdk::State;
 
 #[derive(Debug, StructOpt)]
@@ -35,9 +38,17 @@ fn main() {
     };
     tracing_subscriber::fmt().with_max_level(log_level).init();
 
-    let state = State::default();
+    let (cmd_tx, cmd_rx) = channel();
+    let app = App {
+        cmd_tx,
+    };
+    let driver = AppDriver {
+        state: State::default(),
+        cmd_rx,
+    };
+
     let listen_addr = format!("{}:{}", opt.host, opt.port);
-    let (server, driver) = create_abci_app(state, listen_addr);
+    let server = ServerBuilder::default().bind(listen_addr, app).unwrap();
 
     std::thread::spawn(move || driver.run());
     server.listen().unwrap();

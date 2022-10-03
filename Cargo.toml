@@ -1,5 +1,5 @@
 [workspace]
-members = ["contracts/*", "sdk"]
+members = ["contracts/*", "daemon", "sdk"]
 
 [profile.release]
 rpath = false
