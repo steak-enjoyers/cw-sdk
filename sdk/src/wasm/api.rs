@@ -8,7 +8,7 @@ impl BackendApi for WasmApi {
     // implement proper bech32 decoding.
     fn canonical_address(&self, human: &str) -> BackendResult<Vec<u8>> {
         let bytes = human.as_bytes().to_owned();
-        return (Ok(bytes), GasInfo::free());
+        (Ok(bytes), GasInfo::free())
     }
 
     // TODO: currently we just return the utf8 bytes of the string. in the future we should
@@ -19,6 +19,6 @@ impl BackendApi for WasmApi {
     fn human_address(&self, canonical: &[u8]) -> BackendResult<String> {
         let human = String::from_utf8(canonical.to_owned())
             .map_err(|_| BackendError::user_err("invalid utf8"));
-        return (human, GasInfo::free());
+        (human, GasInfo::free())
     }
 }
