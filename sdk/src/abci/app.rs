@@ -98,6 +98,60 @@ impl App {
         })
     }
 
+    pub fn execute_contract(
+        &self,
+        contract_addr: u64,
+        msg: Vec<u8>,
+    ) -> Result<ResponseDeliverTx, ABCIError> {
+        let (result_tx, result_rx) = channel();
+
+        channel_send(
+            &self.cmd_tx,
+            AppCommand::ExecuteContract {
+                contract_addr,
+                msg,
+                result_tx,
+            },
+        )?;
+        let (success, events) = channel_recv(&result_rx)?;
+
+        let log = if success {
+            "contract execution successful!"
+        } else {
+            "contract execution failed!"
+        };
+
+        // need to parse cosmwasm_std::Event to tendermint_abci::Event
+        let tm_events = events
+            .unwrap_or_default()
+            .into_iter()
+            .map(|event| Event {
+                r#type: event.ty,
+                attributes: event
+                    .attributes
+                    .iter()
+                    .cloned()
+                    .map(|attr| EventAttribute {
+                        key: attr.key.into_bytes(),
+                        value: attr.value.into_bytes(),
+                        index: false,
+                    })
+                    .collect(),
+            })
+            .collect::<Vec<_>>();
+
+        Ok(ResponseDeliverTx {
+            code: 0,
+            data: vec![],
+            log: log.to_string(),
+            info: "".to_string(),
+            gas_wanted: 0,
+            gas_used: 0,
+            events: tm_events,
+            codespace: "".to_string(),
+        })
+    }
+
     pub fn query_code(&self, code_id: u64) -> Result<ResponseQuery, ABCIError> {
         let (result_tx, result_rx) = channel();
 
@@ -158,6 +212,42 @@ impl App {
             codespace: "".to_string(),
         })
     }
+
+    pub fn query_wasm_smart(
+        &self,
+        contract_addr: u64,
+        msg: Vec<u8>,
+    ) -> Result<ResponseQuery, ABCIError> {
+        let (result_tx, result_rx) = channel();
+
+        channel_send(
+            &self.cmd_tx,
+            AppCommand::QueryWasmSmart {
+                contract_addr,
+                msg: msg.clone(),
+                result_tx,
+            },
+        )?;
+        let (success, data) = channel_recv(&result_rx)?;
+
+        let log = if success {
+            "smart query successful!"
+        } else {
+            "smart query failed!"
+        };
+
+        Ok(ResponseQuery {
+            code: 0,
+            log: log.to_string(),
+            info: "".to_string(),
+            index: 0,
+            key: msg,
+            value: data.unwrap_or_default(),
+            proof_ops: None,
+            height: 0,
+            codespace: "".to_string(),
+        })
+    }
 }
 
 impl tendermint_abci::Application for App {
@@ -177,9 +267,13 @@ impl tendermint_abci::Application for App {
                 code_id,
             } => self.query_code(code_id).unwrap(),
             SdkQuery::WasmRaw {
-                contract_addr,
+                contract,
                 key,
-            } => self.query_wasm_raw(contract_addr, key.0).unwrap(),
+            } => self.query_wasm_raw(contract, key.0).unwrap(),
+            SdkQuery::WasmSmart {
+                contract,
+                msg,
+            } => self.query_wasm_smart(contract, msg.0).unwrap(),
             _ => panic!("unimplemented sdk query type!!"),
         }
     }
@@ -200,6 +294,12 @@ impl tendermint_abci::Application for App {
                 code_id,
                 msg,
             } => self.instantiate_contract(code_id, msg.0).unwrap(),
+            SdkMsg::Execute {
+                contract,
+                msg,
+                // TODO: the `funds` parameter is ignored for now
+                ..
+            } => self.execute_contract(contract, msg.0).unwrap(),
             msg => error_deliver_tx(format!("Error: unimplemented sdk message: {:?}", msg)),
         }
     }

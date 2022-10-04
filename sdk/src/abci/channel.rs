@@ -1,5 +1,7 @@
 use std::sync::mpsc::{Sender, Receiver};
 
+use cosmwasm_std::Event;
+
 use super::ABCIError;
 
 /// The ABCI server and the driver maintains a channel between them, and communicate by sending
@@ -17,12 +19,6 @@ pub enum AppCommand {
         /// Return the code id
         result_tx: Sender<u64>,
     },
-    /// Query a code based on code id
-    QueryCode {
-        code_id: u64,
-        /// Return `Some(wasm_byte_code)` if code exists, `None` otherwise
-        result_tx: Sender<Option<Vec<u8>>>,
-    },
     /// Instantiate a contract using the specified code id
     InstantiateContract {
         code_id: u64,
@@ -30,10 +26,27 @@ pub enum AppCommand {
         /// Return whether instantiation if successful, and if yes, the contract address
         result_tx: Sender<(bool, Option<u64>)>,
     },
+    /// Execute a contract
+    ExecuteContract {
+        contract_addr: u64,
+        msg: Vec<u8>,
+        result_tx: Sender<(bool, Option<Vec<Event>>)>,
+    },
+    /// Query a wasm byte code based on code id
+    QueryCode {
+        code_id: u64,
+        /// Return `Some(wasm_byte_code)` if code exists, `None` otherwise
+        result_tx: Sender<Option<Vec<u8>>>,
+    },
     QueryWasmRaw {
         contract_addr: u64,
         key: Vec<u8>,
         result_tx: Sender<Option<Vec<u8>>>,
+    },
+    QueryWasmSmart {
+        contract_addr: u64,
+        msg: Vec<u8>,
+        result_tx: Sender<(bool, Option<Vec<u8>>)>,
     },
 }
 

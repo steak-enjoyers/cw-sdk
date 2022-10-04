@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
-use cosmwasm_std::{Binary, ContractResult, Empty, Response};
+use cosmwasm_std::{Binary, ContractResult, Empty, Response, Event};
 use cosmwasm_vm::testing::{mock_env, mock_info};
 use cosmwasm_vm::{
-    call_instantiate, call_query, Backend, Instance, InstanceOptions, VmError,
+    call_instantiate, call_query, Backend, Instance, InstanceOptions, VmError, call_execute,
 };
 use thiserror::Error;
 
@@ -60,11 +60,66 @@ impl State {
         } = instance.recycle().unwrap();
 
         if result.is_ok() {
+            // TODO: handle submessages and events emitted by the contract
             self.contract_count += 1;
             let contract_addr = self.contract_count;
             self.contract_codes.insert(contract_addr, code_id);
             self.contract_store = storage;
             Ok((true, Some(contract_addr)))
+        } else {
+            Ok((false, None))
+        }
+    }
+
+    pub fn execute_contract(
+        &mut self,
+        contract_addr: u64,
+        msg: Vec<u8>,
+    ) -> Result<(bool, Option<Vec<Event>>), StateError> {
+        let backend = wasm::create_backend(&self.contract_store);
+        let mut instance = Instance::from_code(
+            &self.codes[&self.contract_codes[&contract_addr]],
+            backend,
+            InstanceOptions {
+                gas_limit: u64::MAX,
+                print_debug: true,
+            },
+            None,
+        )?;
+        let result: ContractResult<Response<Empty>> = call_execute(
+            &mut instance,
+            &mock_env(),
+            &mock_info("larry", &[]),
+            &msg,
+        )?;
+
+        let Backend {
+            storage,
+            ..
+        } = instance.recycle().unwrap();
+
+        if result.is_ok() {
+            let Response {
+                messages,
+                mut events,
+                attributes,
+                ..
+            } = result.unwrap();
+
+            // TODO: handle submessages
+            // for now we just throw an error if the response includes submessages
+            if !messages.is_empty() {
+                return Err(StateError::SubmessagesUnsupported);
+            }
+
+            // save storage
+            self.contract_store = storage;
+
+            // handle events
+            let wasm_event = Event::new("wasm").add_attributes(attributes);
+            events.push(wasm_event);
+
+            Ok((true, Some(events)))
         } else {
             Ok((false, None))
         }
@@ -121,4 +176,7 @@ impl State {
 pub enum StateError {
     #[error("{0}")]
     Vm(#[from] VmError),
+
+    #[error("contract response includes submessages, which is not supported yet")]
+    SubmessagesUnsupported,
 }

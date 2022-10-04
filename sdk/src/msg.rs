@@ -11,12 +11,12 @@ pub enum SdkMsg {
         msg: Binary,
     },
     Execute {
-        contract: String,
+        contract: u64,
         msg: Binary,
         funds: Vec<Coin>,
     },
     Migrate {
-        contract: String,
+        contract: u64,
         code_id: u64,
         msg: Binary,
     },
@@ -28,14 +28,14 @@ pub enum SdkQuery {
         code_id: u64,
     },
     Contract {
-        contract_addr: u64,
+        contract: u64,
     },
     WasmRaw {
-        contract_addr: u64,
+        contract: u64,
         key: Binary,
     },
     WasmSmart {
-        contract_addr: u64,
+        contract: u64,
         msg: Binary,
     },
 }
