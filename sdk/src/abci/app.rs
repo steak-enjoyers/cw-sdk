@@ -5,7 +5,7 @@ use tendermint_proto::abci::{
 };
 
 use super::{channel_recv, channel_send, ABCIError, AppCommand};
-use crate::{SdkMsg, SdkQuery};
+use crate::msg::{SdkMsg, SdkQuery};
 
 #[derive(Clone, Debug)]
 pub struct App {

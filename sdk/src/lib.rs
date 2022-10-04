@@ -1,7 +1,7 @@
 pub mod abci;
-mod msg;
-mod state;
+pub mod msg;
+mod state_machine;
+pub mod store;
 pub mod wasm;
 
-pub use msg::*;
-pub use state::*;
+pub use state_machine::{State, StateError};

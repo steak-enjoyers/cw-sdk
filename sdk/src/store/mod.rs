@@ -16,12 +16,12 @@ struct Iter {
 }
 
 #[derive(Default, Debug, Clone)]
-pub struct WasmStorage {
+pub struct AppStorage {
     pub data: BTreeMap<Vec<u8>, Vec<u8>>,
     iterators: HashMap<u32, Iter>,
 }
 
-impl WasmStorage {
+impl AppStorage {
     pub fn new() -> Self {
         Self::default()
     }
@@ -45,7 +45,7 @@ impl WasmStorage {
     }
 }
 
-impl Storage for WasmStorage {
+impl Storage for AppStorage {
     fn get(&self, key: &[u8]) -> BackendResult<Option<Vec<u8>>> {
         (Ok(self.data.get(key).cloned()), GasInfo::free())
     }
@@ -125,3 +125,4 @@ fn clone_item(item_ref: BTreeMapRecordRef) -> Record {
     let (key, value) = item_ref;
     (key.clone(), value.clone())
 }
+

@@ -7,7 +7,8 @@ use cosmwasm_vm::{
 };
 use thiserror::Error;
 
-use crate::wasm::{self, WasmStorage};
+use crate::wasm;
+use crate::store::AppStorage;
 
 /// The application's state and state transition rules. The core of the blockchain.
 #[derive(Debug, Default)]
@@ -21,7 +22,7 @@ pub struct State {
     /// The code id used by each contract
     pub contract_codes: BTreeMap<u64, u64>,
     /// Contract store
-    pub contract_store: WasmStorage,
+    pub contract_store: AppStorage,
 }
 
 impl State {
@@ -37,7 +38,7 @@ impl State {
         code_id: u64,
         msg: Vec<u8>,
     ) -> Result<(bool, Option<u64>), StateError> {
-        let backend = wasm::create_backend(&self.contract_store);
+        let backend = wasm::create_backend(self.contract_store.clone());
         let mut instance = Instance::from_code(
             &self.codes[&code_id],
             backend,
@@ -76,7 +77,7 @@ impl State {
         contract_addr: u64,
         msg: Vec<u8>,
     ) -> Result<(bool, Option<Vec<Event>>), StateError> {
-        let backend = wasm::create_backend(&self.contract_store);
+        let backend = wasm::create_backend(self.contract_store.clone());
         let mut instance = Instance::from_code(
             &self.codes[&self.contract_codes[&contract_addr]],
             backend,
@@ -135,7 +136,8 @@ impl State {
         _contract_addr: u64,
         _key: &[u8],
     ) -> Result<Option<Vec<u8>>, StateError> {
-        // for now we just dump for whole contract store
+        // for now we just dump for whole contract store, regardless of which contract address or
+        // key is given.
         // need to collect into a Vec first, because serde-json-wasm can't serialize maps
         let data = self
             .contract_store
@@ -152,7 +154,7 @@ impl State {
         contract_addr: u64,
         msg: &[u8],
     ) -> Result<(bool, Option<Vec<u8>>), StateError> {
-        let backend = wasm::create_backend(&self.contract_store);
+        let backend = wasm::create_backend(self.contract_store.clone());
         let mut instance = Instance::from_code(
             &self.codes[&self.contract_codes[&contract_addr]],
             backend,

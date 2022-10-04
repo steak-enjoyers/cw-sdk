@@ -1,18 +1,16 @@
 mod api;
 mod error;
 mod querier;
-mod storage;
 
 pub use api::WasmApi;
-use cosmwasm_vm::Backend;
+use cosmwasm_vm::{Backend, Storage};
 pub use error::WasmError;
 pub use querier::WasmQuerier;
-pub use storage::WasmStorage;
 
-pub fn create_backend(storage: &WasmStorage) -> Backend<WasmApi, WasmStorage, WasmQuerier> {
+pub fn create_backend<T: Storage>(storage: T) -> Backend<WasmApi, T, WasmQuerier> {
     Backend {
         api: WasmApi,
-        storage: storage.clone(),
+        storage,
         querier: WasmQuerier,
     }
 }
