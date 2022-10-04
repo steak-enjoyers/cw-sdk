@@ -4,17 +4,21 @@ use cosmwasm_vm::{BackendApi, BackendError, BackendResult, GasInfo};
 pub struct WasmApi;
 
 impl BackendApi for WasmApi {
-    fn canonical_address(&self, _human: &str) -> BackendResult<Vec<u8>> {
-        return (
-            Err(BackendError::user_err("`api.canonical_address` is not yet implemented")),
-            GasInfo::free(),
-        );
+    // TODO: currently we just return the utf8 bytes of the string. in the future we should
+    // implement proper bech32 decoding.
+    fn canonical_address(&self, human: &str) -> BackendResult<Vec<u8>> {
+        let bytes = human.as_bytes().to_owned();
+        return (Ok(bytes), GasInfo::free());
     }
 
-    fn human_address(&self, _canonical: &[u8]) -> BackendResult<String> {
-        return (
-            Err(BackendError::user_err("`api.human_address` is not yet implemented")),
-            GasInfo::free(),
-        );
+    // TODO: currently we just return the utf8 bytes of the string. in the future we should
+    // implement proper bech32 decoding.
+    // a question here is, if this function is supposed to be stateless, how do we know which bech32
+    // prefix to use? for Go SDK the prefix is hardcoded in the daemon, but for cw-sdk we don't want
+    // to hardcode any chain-specific params.
+    fn human_address(&self, canonical: &[u8]) -> BackendResult<String> {
+        let human = String::from_utf8(canonical.to_owned())
+            .map_err(|_| BackendError::user_err("invalid utf8"));
+        return (human, GasInfo::free());
     }
 }
