@@ -63,3 +63,12 @@ pub enum SdkQuery {
         msg: Binary,
     },
 }
+
+#[cw_serde]
+pub struct Account {
+    /// The account's secp256k1 public key
+    pub pubkey: Binary,
+    /// The account's sequence number, used to prevent replay attacks.
+    /// The first tx ever to be submitted by the account should come with the sequence of 1.
+    pub sequence: u64,
+}

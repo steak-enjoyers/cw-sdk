@@ -7,12 +7,18 @@ use cosmwasm_vm::{
 };
 use thiserror::Error;
 
-use crate::wasm;
+use crate::msg::Account;
 use crate::store::AppStorage;
+use crate::wasm;
 
 /// The application's state and state transition rules. The core of the blockchain.
 #[derive(Debug, Default)]
 pub struct State {
+    /// Identifier of the chain
+    pub chain_id: String,
+    /// User accounts: Address -> Account
+    /// TODO: use &str instead of String as key?
+    pub accounts: BTreeMap<String, Account>,
     /// The total number of wasm byte codes stored
     pub code_count: u64,
     /// Wasm byte codes indexed by the ids
@@ -26,6 +32,22 @@ pub struct State {
 }
 
 impl State {
+    pub fn get_chain_id(&self) -> &str {
+        &self.chain_id
+    }
+
+    pub fn set_chain_id(&mut self, chain_id: String) {
+        self.chain_id = chain_id;
+    }
+
+    pub fn get_account(&self, address: &str) -> Option<&Account> {
+        self.accounts.get(address)
+    }
+
+    pub fn set_account(&mut self, address: &str, account: Account) {
+        self.accounts.insert(address.to_owned(), account);
+    }
+
     pub fn store_code(&mut self, wasm_byte_code: Vec<u8>) -> Result<u64, StateError> {
         self.code_count += 1;
         let code_id = self.code_count;
