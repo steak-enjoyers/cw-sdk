@@ -1,4 +1,5 @@
 use bech32::{ToBase32, Variant};
+use cosmwasm_std::Binary;
 use secp256k1::{ecdsa::Signature, hashes::sha256::Hash as Sha256Hash, Message, PublicKey, Secp256k1};
 use thiserror::Error;
 
@@ -19,11 +20,7 @@ pub fn authenticate_tx(tx: &Tx, state: &mut State) -> Result<bool, AuthError> {
         Some(account) => {
             if let Some(pubkey) = &tx.pubkey {
                 if account.pubkey != *pubkey {
-                    return Err(AuthError::PubkeyMismatch {
-                        sender: sender.into(),
-                        expect: hex::encode(account.pubkey.as_slice()),
-                        found: hex::encode(pubkey.as_slice()),
-                    });
+                    return Err(AuthError::pubkey_mismatch(sender, &account.pubkey, pubkey));
                 }
             }
             account.clone()
@@ -37,10 +34,7 @@ pub fn authenticate_tx(tx: &Tx, state: &mut State) -> Result<bool, AuthError> {
 
             let address = adr28_addr(ACCOUNT_PREFIX, pubkey.as_slice())?;
             if sender != &address {
-                return Err(AuthError::AddressMismatch {
-                    expect: address,
-                    found: sender.into(),
-                });
+                return Err(AuthError::address_mismatch(address, sender));
             }
 
             Account {
@@ -53,20 +47,13 @@ pub fn authenticate_tx(tx: &Tx, state: &mut State) -> Result<bool, AuthError> {
     // the chain id must match
     let chain_id = state.get_chain_id();
     if chain_id != tx.body.chain_id {
-        return Err(AuthError::ChainIdMismatch {
-            expect: chain_id.into(),
-            found: tx.body.chain_id.clone(),
-        });
+        return Err(AuthError::chain_id_mismatch(chain_id, &tx.body.chain_id));
     }
 
     // the account sequence mush match
     account.sequence += 1;
     if account.sequence != tx.body.sequence {
-        return Err(AuthError::SequenceMismatch {
-            sender: sender.into(),
-            expect: account.sequence,
-            found: tx.body.sequence,
-        });
+        return Err(AuthError::sequence_mismatch(sender, account.sequence, tx.body.sequence));
     }
 
     // verify the signature. the content to be signed is (the sha256 hash of) the tx body
@@ -164,6 +151,44 @@ pub enum AuthError {
         /// The sequence number provided by the tx
         found: u64,
     },
+}
+
+impl AuthError {
+    pub fn account_not_found(sender: impl Into<String>) -> Self {
+        Self::AccountNotFound {
+            sender: sender.into(),
+        }
+    }
+
+    pub fn address_mismatch(expect: impl Into<String>, found: impl Into<String>) -> Self {
+        Self::AddressMismatch {
+            expect: expect.into(),
+            found: found.into(),
+        }
+    }
+
+    pub fn pubkey_mismatch(sender: impl Into<String>, expect: &Binary, found: &Binary) -> Self {
+        Self::PubkeyMismatch {
+            sender: sender.into(),
+            expect: hex::encode(expect.as_slice()),
+            found: hex::encode(found.as_slice()),
+        }
+    }
+
+    pub fn chain_id_mismatch(expect: impl Into<String>, found: impl Into<String>) -> Self {
+        Self::ChainIdMismatch {
+            expect: expect.into(),
+            found: found.into(),
+        }
+    }
+
+    pub fn sequence_mismatch(sender: impl Into<String>, expect: u64, found: u64) -> Self {
+        Self::SequenceMismatch {
+            sender: sender.into(),
+            expect,
+            found,
+        }
+    }
 }
 
 #[cfg(test)]
