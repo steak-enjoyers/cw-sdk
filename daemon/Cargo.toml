@@ -11,7 +11,8 @@ license     = "AGPL-v3-or-later"
 keywords    = ["blockchain", "cosmos", "cosmwasm"]
 
 [dependencies]
+abscissa_core = "0.6"
+clap = "3" # latest version is 4 but there are some breaking changes
 cw-sdk = { path = "../sdk" }
-structopt = "0.3"
+serde = "1.0"
 tendermint-abci = "0.25"
-tracing-subscriber = "0.2"
