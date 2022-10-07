@@ -15,7 +15,7 @@ name = "cwd"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "4", features = ["derive"] }
+clap = { version = "3", features = ["derive"] }
 cw-sdk = { path = "../sdk" }
 home = "0.5"
 serde = "1.0"
