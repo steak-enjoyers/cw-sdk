@@ -47,6 +47,7 @@ impl Keyring {
 
             let password_hash_bytes = fs::read(&password_hash_path)?;
             let password_hash = String::from_utf8(password_hash_bytes)?;
+
             if bcrypt::verify(&password, &password_hash)? {
                 Ok(password)
             } else {
