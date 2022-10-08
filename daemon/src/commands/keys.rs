@@ -72,31 +72,31 @@ impl KeysCmd {
                 let key = Key::from_mnemonic(name, &mnemonic, *coin_type).unwrap();
                 keyring.set(&key).unwrap();
 
-                println!("");
+                println!();
                 print_key(&key);
-                println!("");
+                println!();
 
                 if !recover {
                     println!("**Important** write this mnemonic phrase in a safe place!");
                     println!("It is the only way to recover your account if you ever forget your password.");
-                    println!("");
+                    println!();
                     print_mnemonic(mnemonic.phrase());
-                    println!("");
+                    println!();
                 }
             },
             KeysSubcmd::Show {
                 name,
             } => {
                 let key = keyring.get(name).unwrap();
-                println!("");
+                println!();
                 print_key(&key);
-                println!("");
+                println!();
             },
             KeysSubcmd::List => {
                 let keys = keyring.list().unwrap();
-                println!("");
+                println!();
                 print_keys(&keys);
-                println!("");
+                println!();
             },
             KeysSubcmd::Delete {
                 name,
@@ -114,7 +114,6 @@ fn print_key(key: &Key) {
 fn print_keys(keys: &[Key]) {
     if keys.is_empty() {
         println!("[]");
-        return;
     } else {
         // TODO: sort keys by name?
         keys.iter().for_each(print_key);
@@ -122,7 +121,7 @@ fn print_keys(keys: &[Key]) {
 }
 
 fn print_mnemonic(phrase: &str) {
-    let words = phrase.split(" ").collect::<Vec<_>>();
+    let words = phrase.split(' ').collect::<Vec<_>>();
     let word_amount = words.len();
     let mut start = 0usize;
     while start < word_amount {

@@ -42,7 +42,7 @@ impl Keyring {
         if password_hash_path.exists() {
             let password = rpassword::prompt_password(format!(
                 "Enter the password to unlock keyring `{}`: ",
-                stringify_pathbuf(&self.dir())
+                stringify_pathbuf(self.dir())
             ))?;
 
             let password_hash_bytes = fs::read(&password_hash_path)?;
@@ -56,7 +56,7 @@ impl Keyring {
         } else {
             let password = rpassword::prompt_password(format!(
                 "Enter a password to encrypt the keyring `{}`: ",
-                stringify_pathbuf(&self.dir())
+                stringify_pathbuf(self.dir())
             ))?;
 
             // Go SDK uses a difficult of 2
