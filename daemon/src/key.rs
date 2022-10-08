@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use cw_sdk::address::Address;
 
-/// Represents a private key that can be used to sign stuff.
+/// Represents a private key that is to be saved in the keyring.
 ///
 /// The format used here is different from that used by Go SDK
 /// (https://github.com/cosmos/keyring/blob/v1.2.0/keyring.go#L76-L86), but backward compatibility
