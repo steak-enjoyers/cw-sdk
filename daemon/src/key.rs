@@ -25,13 +25,10 @@ impl Key {
         mnemonic: &Mnemonic,
         coin_type: u32,
     ) -> Result<Self, KeyError> {
-        // The `to_seed` function takes a password to generate salt. Here we just use an empty
-        // string. My current knowledge is not sufficient to determine whether this is safe or not.
-        // For reference:
-        // - Terra Station uses empty string:
-        //   https://github.com/terra-money/terra.js/blob/v3.1.7/src/key/MnemonicKey.ts#L79
-        // - Keplr uses an emtpy string by default. Haven't looked up what it uses in practice yet:
-        //   https://github.com/chainapsis/keplr-wallet/blob/b6062a4d24f3dcb15dda063b1ece7d1fbffdbfc8/packages/crypto/src/mnemonic.ts#L63
+        // The `to_seed` function takes a password to generate salt. Here we just use an empty str.
+        // For reference, both Terra Station and Keplr use an empty string as well:
+        // - https://github.com/terra-money/terra.js/blob/v3.1.7/src/key/MnemonicKey.ts#L79
+        // - https://github.com/chainapsis/keplr-wallet/blob/b6062a4d24f3dcb15dda063b1ece7d1fbffdbfc8/packages/crypto/src/mnemonic.ts#L63
         let seed = mnemonic.to_seed("");
         let path = format!("m/44'/{}'/0'/0/0", coin_type);
         let xprv = XPrv::derive_from_path(&seed, &path.parse()?)?;
@@ -42,7 +39,7 @@ impl Key {
     }
 
     /// Create a new key instance from a given name and private key bytes
-    pub fn from_bytes(name: impl Into<String>, sk_bytes: &[u8]) -> Result<Self, KeyError> {
+    pub fn from_privkey_bytes(name: impl Into<String>, sk_bytes: &[u8]) -> Result<Self, KeyError> {
         let sk = SigningKey::from_bytes(sk_bytes)?;
         Ok(Self {
             name: name.into(),
@@ -50,12 +47,12 @@ impl Key {
         })
     }
 
-    /// Return the private key bytes
-    pub fn to_bytes(&self) -> Vec<u8> {
-        self.sk.to_bytes().to_vec()
+    /// Return a reference to the private key
+    pub fn privkey(&self) -> &SigningKey {
+        &self.sk
     }
 
-    /// Return the key's pubkey
+    /// Return the pubkey
     pub fn pubkey(&self) -> VerifyingKey {
         self.sk.verifying_key()
     }
@@ -95,7 +92,7 @@ impl TryFrom<JwtPayload> for Key {
             .ok_or_else(|| KeyError::malformed_payload("incorrect JSON value type for `sk`"))?;
 
         let sk_bytes = hex::decode(sk_str)?;
-        Key::from_bytes(name, &sk_bytes)
+        Key::from_privkey_bytes(name, &sk_bytes)
     }
 }
 
