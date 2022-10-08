@@ -1,7 +1,7 @@
 use bech32::{ToBase32, Variant};
-use thiserror::Error;
 use ripemd::Ripemd160;
-    use sha2::{Digest, Sha256};
+use sha2::{Digest, Sha256};
+use thiserror::Error;
 
 pub struct Address(Vec<u8>);
 
