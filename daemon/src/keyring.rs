@@ -9,15 +9,12 @@ use thiserror::Error;
 
 use crate::{stringify_pathbuf, Key, KeyError};
 
-/// Keyring is a wrapper around a Path, which represents the directory where the encrypted key files
-/// are to be saved.
+/// Keyring is a wrapper around a PathBuf, which represents the directory where the encrypted key
+/// files are to be saved.
 pub struct Keyring(PathBuf);
 
 impl Keyring {
-    /// Create a new keyring under the given directory.
-    ///
-    /// Upon creation, the password is set to `None`. Invoke the `unlock` function, which will
-    /// display a CLI prompt for entering the password.
+    /// Create a new keyring under the given directory
     pub fn new(dir: PathBuf) -> Result<Self, KeyringError> {
         if !dir.exists() {
             fs::create_dir_all(&dir)?;
@@ -31,7 +28,6 @@ impl Keyring {
     }
 
     /// Return the absolute path of a key file given the key's name.
-    /// Go SDK uses the `*.info` suffix. Not sure why, but we do the same here anyways.
     pub fn filename(&self, name: &str) -> PathBuf {
         let file = format!("{}.key", name);
         self.dir().join(file)
@@ -62,6 +58,8 @@ impl Keyring {
                 stringify_pathbuf(&self.dir())
             ))?;
 
+            // Go SDK uses a difficult of 2
+            // We use 4 here which is smallest value allowed by the bcrypt crate
             let password_hash = bcrypt::hash(&password, 4)?;
             fs::write(&password_hash_path, &password_hash)?;
 
@@ -118,32 +116,19 @@ impl Keyring {
 
     /// Read binary data of all keys stored in the keyring
     pub fn list(&self) -> Result<Vec<Key>, KeyringError> {
-        // read all files in the directory
-        let tokens = self
+        let password = self.unlock()?;
+        let decrypter = jwe::PBES2_HS256_A128KW.decrypter_from_bytes(password.as_bytes())?;
+
+        self
             .dir()
             .read_dir()?
             .map(|entry| {
                 let entry = entry?;
-                fs::read(entry.path())
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        if tokens.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let password = self.unlock()?;
-        let decrypter = jwe::PBES2_HS256_A128KW.decrypter_from_bytes(password.as_bytes())?;
-
-        tokens
-            .iter()
-            .map(|token| jwt::decode_with_decrypter(&token, &decrypter))
-            // only return the files that can be successfully decoded
-            .filter(|res| res.is_ok())
-            .map(|res| {
-                let (payload, _) = res?;
+                let token = fs::read(entry.path())?;
+                let (payload, _) = jwt::decode_with_decrypter(&token, &decrypter)?;
                 payload.try_into().map_err(KeyringError::from)
             })
+            .filter(|res| res.is_ok())
             .collect()
     }
 
