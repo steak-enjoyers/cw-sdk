@@ -1,3 +1,4 @@
+pub mod address;
 pub mod abci;
 pub mod auth;
 pub mod msg;

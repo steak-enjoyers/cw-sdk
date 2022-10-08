@@ -3,7 +3,8 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 use tracing_subscriber::filter::LevelFilter;
 
-use cw_daemon::{default_home, InitCmd, StartCmd, KeysCmd};
+use cw_daemon::commands::{InitCmd, KeysCmd, StartCmd};
+use cw_daemon::default_home;
 
 #[derive(Parser)]
 #[clap(author, version, about)]

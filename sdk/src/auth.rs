@@ -1,13 +1,13 @@
-use bech32::{ToBase32, Variant};
 use cosmwasm_std::Binary;
 use secp256k1::{ecdsa::Signature, hashes::sha256::Hash as Sha256Hash, Message, PublicKey, Secp256k1};
 use thiserror::Error;
 
+use crate::address::{Address, AddressError};
 use crate::msg::{Account, Tx};
 use crate::State;
 
 // TODO: include this in the chain's state
-const ACCOUNT_PREFIX: &str = "cw";
+pub const ACCOUNT_PREFIX: &str = "cw";
 
 /// NOTE: we take a `&mut State` because if the tx is authenticated, we need to update the user's
 /// pubkey (if previously not recorded) and sequence number. maybe think of a way to separate the
@@ -32,9 +32,10 @@ pub fn authenticate_tx(tx: &Tx, state: &mut State) -> Result<bool, AuthError> {
                 sender: sender.into(),
             })?;
 
-            let address = adr28_addr(ACCOUNT_PREFIX, pubkey.as_slice())?;
-            if sender != &address {
-                return Err(AuthError::address_mismatch(address, sender));
+            let address = Address::from_pubkey(pubkey.as_slice());
+            let bech32_addr = address.bech32(ACCOUNT_PREFIX)?;
+            if *sender != bech32_addr {
+                return Err(AuthError::address_mismatch(bech32_addr, sender));
             }
 
             Account {
@@ -76,42 +77,16 @@ pub fn authenticate_tx(tx: &Tx, state: &mut State) -> Result<bool, AuthError> {
     }
 }
 
-/// Convert a pubkey to bech32 address according to
-/// [ADR-028](https://docs.cosmos.network/master/architecture/adr-028-public-key-addresses.html),
-/// which specifies that address bytes are to be computed as:
-/// ```plain
-/// address_bytes := ripemd160(sha256(pubkey_bytes))[:20]
-/// ```
-pub fn adr28_addr(prefix: &str, pubkey: &[u8]) -> Result<String, AuthError> {
-    use ripemd::Ripemd160;
-    use sha2::{Digest, Sha256};
-
-    fn sha256(bytes: &[u8]) -> Vec<u8> {
-        let mut hasher = Sha256::new();
-        hasher.update(bytes);
-        hasher.finalize().to_vec()
-    }
-
-    fn ripemd160(bytes: &[u8]) -> Vec<u8> {
-        let mut hasher = Ripemd160::new();
-        hasher.update(bytes);
-        hasher.finalize().to_vec()
-    }
-
-    let account_bytes = ripemd160(&sha256(pubkey));
-    bech32::encode(prefix, account_bytes.to_base32(), Variant::Bech32).map_err(AuthError::from)
-}
-
 #[derive(Debug, Error)]
 pub enum AuthError {
     #[error("failed to serialize tx body into json: {0}")]
     Serialization(#[from] serde_json_wasm::ser::Error),
 
-    #[error("failed to encode pubkey into bech32: {0}")]
-    Bech32(#[from] bech32::Error),
-
     #[error("error while validating secp256k1 signature: {0}")]
     Secp256k1(#[from] secp256k1::Error),
+
+    #[error("{0}")]
+    Address(#[from] AddressError),
 
     #[error("pubkey for sender {sender} is neither provided in the tx nor stored on-chain")]
     AccountNotFound {

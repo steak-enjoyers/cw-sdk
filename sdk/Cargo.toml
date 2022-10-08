@@ -19,6 +19,7 @@ cosmwasm-vm = "1.1"
 hex = "0.4"
 ripemd = "0.1"
 schemars = "0.8"
+# TODO: switching to k256
 secp256k1 = { version = "0.24", features = ["bitcoin_hashes"] }
 serde = "1.0"
 serde-json-wasm = "0.4"

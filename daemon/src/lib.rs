@@ -1,11 +1,10 @@
+pub mod commands;
 mod config;
-mod home;
-mod init;
-mod keys;
-mod start;
+mod key;
+mod keyring;
+mod path;
 
-pub use crate::home::*;
+pub use path::*;
 pub use config::*;
-pub use init::*;
-pub use keys::*;
-pub use start::*;
+pub use key::*;
+pub use keyring::*;
