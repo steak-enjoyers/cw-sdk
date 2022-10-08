@@ -36,7 +36,7 @@ impl Keyring {
     /// Unlock the keyring, return the password.
     /// Firstly, check whether a password hash file already exists:
     /// - If yes, prompt the user to enter the password, and check against the hash file;
-    /// - If not, then prompt the user to enter a new password, and save the hash to the file;
+    /// - If not, prompt the user to enter a new password, and save the hash to the file;
     pub fn unlock(&self) -> Result<String, KeyringError> {
         let password_hash_path = self.dir().join("password_hash");
         if password_hash_path.exists() {
@@ -54,13 +54,14 @@ impl Keyring {
                 Err(KeyringError::IncorrectPassword)
             }
         } else {
+            // TODO: ask the user to repeat the password?
             let password = rpassword::prompt_password(format!(
                 "Enter a password to encrypt the keyring `{}`: ",
                 stringify_pathbuf(self.dir())
             ))?;
 
             // Go SDK uses a difficult of 2
-            // We use 4 here which is smallest value allowed by the bcrypt crate
+            // We use 4 here which is smallest value allowed by the bcrypt library
             let password_hash = bcrypt::hash(&password, 4)?;
             fs::write(&password_hash_path, &password_hash)?;
 
@@ -68,7 +69,7 @@ impl Keyring {
         }
     }
 
-    /// Save an arbitrary binary data in the keyring under the given name.
+    /// Save a key in the keyring
     pub fn set(&self, key: &Key) -> Result<(), KeyringError> {
         let filename = self.filename(&key.name);
         if filename.exists() {
@@ -76,6 +77,7 @@ impl Keyring {
         }
 
         // header
+        // these are copied from the tutorial. not sure if i'm using the correct values
         let mut header = jwe::JweHeader::new();
         header.set_token_type("JWT");
         header.set_algorithm("PBES2-HS256+A128KW");
