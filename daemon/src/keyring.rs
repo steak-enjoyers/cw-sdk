@@ -83,7 +83,7 @@ impl Keyring {
         // cast key into JWT payload
         let payload = key.clone().try_into()?;
 
-        // encrypt {header, payload} into token
+        // encrypt { header, payload } into token
         let password = self.unlock()?;
         let encrypter = jwe::PBES2_HS256_A128KW.encrypter_from_bytes(password)?;
         let token = jwt::encode_with_encrypter(&payload, &header, &encrypter)?;
@@ -105,7 +105,7 @@ impl Keyring {
             fs::read(&filename)?
         };
 
-        // decrypt {header, payload} from token
+        // decrypt { header, payload } from token
         let password = self.unlock()?;
         let decrypter = jwe::PBES2_HS256_A128KW.decrypter_from_bytes(password.as_bytes())?;
         let (payload, _) = jwt::decode_with_decrypter(&token, &decrypter)?;
