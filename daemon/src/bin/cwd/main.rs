@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 use tracing_subscriber::filter::LevelFilter;
 
-use cw_daemon::commands::{InitCmd, KeysCmd, StartCmd};
+use cw_daemon::commands::{InitCmd, KeysCmd, QueryCmd, StartCmd, TxCmd};
 use cw_daemon::default_home;
 
 #[derive(Parser)]
@@ -27,8 +27,12 @@ pub enum Command {
     Init(InitCmd),
     /// Manage private keys
     Keys(KeysCmd),
+    /// Query the application state
+    Query(QueryCmd),
     /// Start the ABCI server
     Start(StartCmd),
+    /// Sign and broadcast transactions
+    Tx(TxCmd),
 }
 
 fn main() {
@@ -48,6 +52,8 @@ fn main() {
     match &cli.command {
         Command::Init(cmd) => cmd.run(&home_dir),
         Command::Keys(cmd) => cmd.run(&home_dir),
+        Command::Query(cmd) => cmd.run(&home_dir),
         Command::Start(cmd) => cmd.run(&home_dir),
+        Command::Tx(cmd) => cmd.run(&home_dir),
     }
 }

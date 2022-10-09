@@ -614,6 +614,7 @@ dependencies = [
  "rand_core 0.6.4",
  "rpassword",
  "serde",
+ "serde-json-wasm",
  "tendermint-abci",
  "text_io",
  "thiserror",
