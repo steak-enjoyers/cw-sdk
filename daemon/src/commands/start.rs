@@ -1,4 +1,3 @@
-use std::fs;
 use std::path::Path;
 use std::sync::mpsc;
 
@@ -21,8 +20,7 @@ impl StartCmd {
             return;
         }
 
-        let app_cfg_str = fs::read_to_string(home_dir.join("config/app.toml")).unwrap();
-        let app_cfg: AppConfig = toml::from_str(&app_cfg_str).expect("");
+        let app_cfg = AppConfig::load(home_dir).unwrap();
 
         // TODO: currently we use an in-memory mock storage, and always start the default blank
         // state when starting the daemon.

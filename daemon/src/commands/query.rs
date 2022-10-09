@@ -1,4 +1,3 @@
-use std::fs;
 use std::path::Path;
 
 use clap::{Args, Subcommand};
@@ -55,10 +54,7 @@ impl QueryCmd {
             return;
         }
 
-        let client_cfg_path = home_dir.join("config/client.toml");
-        let client_cfg_bytes = fs::read(&client_cfg_path).unwrap();
-        let client_cfg: ClientConfig = serde_json_wasm::from_slice(&client_cfg_bytes).unwrap();
-        dbg!(&client_cfg);
+        let client_cfg = ClientConfig::load(home_dir).unwrap();
 
         error!("unimplemented");
     }
