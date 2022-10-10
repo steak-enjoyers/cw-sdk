@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use bech32::{FromBase32, ToBase32, Variant};
 
 use crate::hash::{ripemd160, sha256};
@@ -5,19 +7,22 @@ use crate::hash::{ripemd160, sha256};
 /// Represents an account address
 pub struct Address(Vec<u8>);
 
+impl FromStr for Address {
+    type Err = bech32::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (_, addr_bytes_base32, _) = bech32::decode(s)?;
+        let addr_bytes = Vec::<u8>::from_base32(&addr_bytes_base32)?;
+        Ok(Self(addr_bytes))
+    }
+}
+
 impl Address {
     /// Convert a pubkey bytes to address bytes according to
     /// [ADR-028](https://docs.cosmos.network/master/architecture/adr-028-public-key-addresses.html)
     pub fn from_pubkey(pubkey_bytes: &[u8]) -> Self {
         let addr_bytes = ripemd160(&sha256(pubkey_bytes));
         Self(addr_bytes)
-    }
-
-    /// Convert a human-readable address to the underlying bytes
-    pub fn from_bech32(addr_str: &str) -> Result<Self, bech32::Error> {
-        let (_, addr_base32, _) = bech32::decode(addr_str)?;
-        let addr_bytes = Vec::<u8>::from_base32(&addr_base32)?;
-        Ok(Self(addr_bytes))
     }
 
     /// Return a reference of the address bytes
