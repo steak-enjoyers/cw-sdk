@@ -39,6 +39,6 @@ pub fn print_as_yaml(data: impl serde::Serialize) {
 }
 
 pub fn print_as_json(data: impl serde::Serialize) {
-    let data_str = serde_json_wasm::to_string(&data).unwrap();
+    let data_str = serde_json::to_string_pretty(&data).unwrap();
     println!("{}", data_str);
 }

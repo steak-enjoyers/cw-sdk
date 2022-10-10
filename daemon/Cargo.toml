@@ -25,6 +25,7 @@ rpassword = "7.0"
 rand_core = "0.6"
 serde = "1.0"
 serde-json-wasm = "0.4"
+serde_json = "1.0"
 serde_yaml = "0.9"
 tendermint-abci = "0.25"
 tendermint-rpc = { version = "0.25", features = ["http-client"] }

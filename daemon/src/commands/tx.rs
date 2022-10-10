@@ -5,7 +5,7 @@ use std::fs;
 use clap::{Args, Subcommand};
 use dialoguer::Confirm;
 use tendermint_rpc::{Client, HttpClient, Url};
-use tracing::{error, info};
+use tracing::error;
 
 use cw_sdk::auth::ACCOUNT_PREFIX;
 use cw_sdk::msg::{SdkQuery, SdkMsg, AccountResponse, TxBody};
@@ -149,8 +149,9 @@ impl TxCmd {
         let tx = key.sign_tx(&body).unwrap();
         let tx_bytes = serde_json_wasm::to_vec(&tx).unwrap();
 
-        info!("signed tx using key {}", key.name);
         println!();
+        println!("successfully signed tx:");
+        println!("-----------------------");
         print_as_json(&tx);
         println!();
 
