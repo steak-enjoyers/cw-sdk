@@ -6,9 +6,8 @@ use rand_core::OsRng;
 use text_io::read;
 use tracing::error;
 
-use cw_sdk::auth::ACCOUNT_PREFIX;
-
 use crate::{stringify_pathbuf, Key, Keyring};
+use crate::print::{print_key, print_keys, print_mnemonic};
 
 #[derive(Args)]
 pub struct KeysCmd {
@@ -102,36 +101,5 @@ impl KeysCmd {
                 name,
             } => keyring.delete(name).unwrap(),
         }
-    }
-}
-
-fn print_key(key: &Key) {
-    println!("- name: {}", key.name);
-    println!("  address: {}", key.address().bech32(ACCOUNT_PREFIX).unwrap());
-    println!("  pubkey: {}", hex::encode(key.pubkey().to_bytes().as_slice()));
-}
-
-fn print_keys(keys: &[Key]) {
-    if keys.is_empty() {
-        println!("[]");
-    } else {
-        // TODO: sort keys by name?
-        keys.iter().for_each(print_key);
-    }
-}
-
-fn print_mnemonic(phrase: &str) {
-    let words = phrase.split(' ').collect::<Vec<_>>();
-    let word_amount = words.len();
-    let mut start = 0usize;
-    while start < word_amount {
-        let end = (start + 4).min(word_amount);
-        let slice = words[start..end]
-            .iter()
-            .map(|word| format!("{: >8}", word))
-            .collect::<Vec<_>>()
-            .join(" ");
-        println!("{: >2} - {: >2}  {}", start + 1, end, slice,);
-        start = end;
     }
 }

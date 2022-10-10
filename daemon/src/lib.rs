@@ -3,6 +3,7 @@ mod config;
 mod key;
 mod keyring;
 mod path;
+pub mod print;
 
 pub use path::*;
 pub use config::*;

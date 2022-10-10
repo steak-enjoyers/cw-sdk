@@ -15,6 +15,7 @@ bcrypt = "0.13"
 bip32 = "0.4"
 clap = { version = "3", features = ["derive"] }
 cw-sdk = { path = "../sdk" }
+futures = "0.3"
 hex = "0.4"
 home = "0.5"
 josekit = "0.8"
@@ -23,7 +24,9 @@ rpassword = "7.0"
 rand_core = "0.6"
 serde = "1.0"
 serde-json-wasm = "0.4"
+serde_yaml = "0.9"
 tendermint-abci = "0.25"
+tendermint-rpc = { version = "0.25", features = ["http-client"] }
 text_io = "0.1"
 thiserror = "1.0"
 toml = "0.5"

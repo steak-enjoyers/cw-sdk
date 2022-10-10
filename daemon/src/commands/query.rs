@@ -1,8 +1,14 @@
-use std::path::Path;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use clap::{Args, Subcommand};
-use tracing::error;
+use tendermint_rpc::{Client, HttpClient, Url};
+use tracing::{error, info};
 
+use cw_sdk::msg::{CodeResponse, ContractResponse, SdkQuery, WasmRawResponse, WasmSmartResponse};
+
+use crate::print::print_as_yaml;
 use crate::{stringify_pathbuf, ClientConfig};
 
 #[derive(Args)]
@@ -17,14 +23,14 @@ pub struct QueryCmd {
 
 #[derive(Subcommand)]
 pub enum QuerySubcmd {
-    /// Retrieve the wasm byte code corresponding to the given id
+    /// Retrieve the metadata and wasm byte code corresponding to the given code id
     Code {
         /// Code id
         code_id: u64,
 
-        /// Where the byte code is to be downloaded to; default to "$(pwd)/${code_id}.wasm"
+        /// If given, then save the wasm byte code to this path
         #[clap(long)]
-        output_path: Option<String>,
+        output: Option<PathBuf>,
     },
     /// Query metadata of a contract
     Contract {
@@ -35,7 +41,7 @@ pub enum QuerySubcmd {
     WasmRaw {
         /// Contract address
         contract: u64,
-        /// The key to be queried in the contract store, in base64 encoding
+        /// The key to be queried in the contract store, in hex encoding
         key: String,
     },
     /// Perform a wasm smart query
@@ -48,14 +54,83 @@ pub enum QuerySubcmd {
 }
 
 impl QueryCmd {
-    pub fn run(&self, home_dir: &Path) {
+    pub async fn run(&self, home_dir: &Path) {
         if !home_dir.exists() {
             error!("home directory does not exist: {}", stringify_pathbuf(home_dir));
             return;
         }
 
         let client_cfg = ClientConfig::load(home_dir).unwrap();
+        let url_str = self.node.as_ref().unwrap_or(&client_cfg.node);
+        let url = Url::from_str(url_str).unwrap();
+        let client = HttpClient::new(url).unwrap();
 
-        error!("unimplemented");
+        let query = match &self.subcommand {
+            QuerySubcmd::Code {
+                code_id,
+                ..
+            } => SdkQuery::Code {
+                code_id: *code_id,
+            },
+            QuerySubcmd::Contract {
+                contract,
+            } => SdkQuery::Contract {
+                contract: *contract,
+            },
+            QuerySubcmd::WasmRaw {
+                contract,
+                key,
+            } => SdkQuery::WasmRaw {
+                contract: *contract,
+                key: hex::decode(&key).unwrap().into(),
+            },
+            QuerySubcmd::WasmSmart {
+                contract,
+                msg,
+            } => SdkQuery::WasmSmart {
+                contract: *contract,
+                msg: msg.as_bytes().to_vec().into(),
+            },
+        };
+        let query_bytes = serde_json_wasm::to_vec(&query).unwrap();
+
+        let result = client
+            .abci_query(None, query_bytes, None, false)
+            .await
+            .unwrap();
+
+        match &self.subcommand {
+            QuerySubcmd::Code {
+                output,
+                ..
+            } => {
+                let response: CodeResponse = serde_json_wasm::from_slice(&result.value).unwrap();
+                print_as_yaml(&response);
+
+                if let Some(output) = output {
+                    let wasm_byte_code = result.value;
+                    fs::write(output, wasm_byte_code).unwrap();
+                    info!("wasm byte code written to {}", stringify_pathbuf(output));
+                }
+            },
+            QuerySubcmd::Contract {
+                ..
+            } => {
+                let response: ContractResponse = serde_json_wasm::from_slice(&result.value).unwrap();
+                print_as_yaml(&response);
+            },
+            QuerySubcmd::WasmRaw {
+                ..
+            } => {
+                let response: WasmRawResponse = serde_json_wasm::from_slice(&result.value).unwrap();
+                print_as_yaml(&response);
+            },
+            QuerySubcmd::WasmSmart {
+                ..
+            } => {
+                let response: WasmSmartResponse = serde_json_wasm::from_slice(&result.value).unwrap();
+                print_as_yaml(&response);
+            },
+        }
     }
 }

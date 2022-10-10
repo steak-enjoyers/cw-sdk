@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
+use futures::executor::block_on;
 use tracing_subscriber::filter::LevelFilter;
 
 use cw_daemon::commands::{InitCmd, KeysCmd, QueryCmd, StartCmd, TxCmd};
@@ -35,6 +36,7 @@ pub enum Command {
     Tx(TxCmd),
 }
 
+// TODO: https://users.rust-lang.org/t/how-to-implement-async-await-in-main/38007/4
 fn main() {
     let cli = Cli::parse();
 
@@ -52,8 +54,8 @@ fn main() {
     match &cli.command {
         Command::Init(cmd) => cmd.run(&home_dir),
         Command::Keys(cmd) => cmd.run(&home_dir),
-        Command::Query(cmd) => cmd.run(&home_dir),
+        Command::Query(cmd) => block_on(cmd.run(&home_dir)),
         Command::Start(cmd) => cmd.run(&home_dir),
-        Command::Tx(cmd) => cmd.run(&home_dir),
+        Command::Tx(cmd) => block_on(cmd.run(&home_dir)),
     }
 }

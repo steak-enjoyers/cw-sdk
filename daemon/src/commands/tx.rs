@@ -58,13 +58,13 @@ pub enum TxSubcmd {
 }
 
 impl TxCmd {
-    pub fn run(&self, home_dir: &Path) {
+    pub async fn run(&self, home_dir: &Path) {
         if !home_dir.exists() {
             error!("home directory does not exist: {}", stringify_pathbuf(home_dir));
             return;
         }
 
-        let client_cfg = ClientConfig::load(home_dir).unwrap();
+        let _client_cfg = ClientConfig::load(home_dir).unwrap();
 
         error!("unimplemented");
     }
