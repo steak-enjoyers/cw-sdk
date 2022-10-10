@@ -1,4 +1,4 @@
-use bech32::{ToBase32, Variant};
+use bech32::{FromBase32, ToBase32, Variant};
 
 use crate::hash::{ripemd160, sha256};
 
@@ -9,8 +9,15 @@ impl Address {
     /// Convert a pubkey bytes to address bytes according to
     /// [ADR-028](https://docs.cosmos.network/master/architecture/adr-028-public-key-addresses.html)
     pub fn from_pubkey(pubkey_bytes: &[u8]) -> Self {
-        let address_bytes = ripemd160(&sha256(pubkey_bytes));
-        Self(address_bytes)
+        let addr_bytes = ripemd160(&sha256(pubkey_bytes));
+        Self(addr_bytes)
+    }
+
+    /// Convert a human-readable address to the underlying bytes
+    pub fn from_bech32(addr_str: &str) -> Result<Self, bech32::Error> {
+        let (_, addr_base32, _) = bech32::decode(addr_str)?;
+        let addr_bytes = Vec::<u8>::from_base32(&addr_base32)?;
+        Ok(Self(addr_bytes))
     }
 
     /// Return a reference of the address bytes
