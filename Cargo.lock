@@ -658,14 +658,12 @@ dependencies = [
  "josekit",
  "k256",
  "rand_core 0.6.4",
- "rpassword",
  "serde",
  "serde-json-wasm",
  "serde_json",
  "serde_yaml",
  "tendermint-abci",
  "tendermint-rpc",
- "text_io",
  "thiserror",
  "toml",
  "tracing",
@@ -2156,16 +2154,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rpassword"
-version = "7.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26b763cb66df1c928432cc35053f8bd4cec3335d8559fc16010017d16b3c1680"
-dependencies = [
- "libc",
- "winapi",
-]
-
-[[package]]
 name = "rustc-demangle"
 version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2726,12 +2714,6 @@ dependencies = [
  "libc",
  "winapi",
 ]
-
-[[package]]
-name = "text_io"
-version = "0.1.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5f0c8eb2ad70c12a6a69508f499b3051c924f4b1cfeae85bfad96e6bc5bba46"
 
 [[package]]
 name = "textwrap"

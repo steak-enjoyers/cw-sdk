@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use josekit::{jwe, jwt};
 use thiserror::Error;
 
-use crate::{stringify_pathbuf, Key, KeyError};
+use crate::{prompt, stringify_pathbuf, Key, KeyError};
 
 /// Keyring is a wrapper around a PathBuf, which represents the directory where the encrypted key
 /// files are to be saved.
@@ -40,8 +40,8 @@ impl Keyring {
     pub fn unlock(&self) -> Result<String, KeyringError> {
         let password_hash_path = self.dir().join("password_hash");
         if password_hash_path.exists() {
-            let password = rpassword::prompt_password(format!(
-                "Enter the password to unlock keyring `{}`: ",
+            let password = prompt::password(format!(
+                "enter the password to unlock keyring `{}`",
                 stringify_pathbuf(self.dir())
             ))?;
 
@@ -55,8 +55,8 @@ impl Keyring {
             }
         } else {
             // TODO: ask the user to repeat the password?
-            let password = rpassword::prompt_password(format!(
-                "Enter a password to encrypt the keyring `{}`: ",
+            let password = prompt::password(format!(
+                "enter a password to encrypt the keyring `{}`",
                 stringify_pathbuf(self.dir())
             ))?;
 

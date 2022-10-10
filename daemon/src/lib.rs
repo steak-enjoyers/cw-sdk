@@ -4,6 +4,7 @@ mod key;
 mod keyring;
 mod path;
 pub mod print;
+pub mod prompt;
 
 pub use path::*;
 pub use config::*;

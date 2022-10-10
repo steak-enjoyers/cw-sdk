@@ -3,7 +3,6 @@ use std::str::FromStr;
 use std::fs;
 
 use clap::{Args, Subcommand};
-use dialoguer::Confirm;
 use tendermint_rpc::{Client, HttpClient, Url};
 use tracing::error;
 
@@ -11,7 +10,7 @@ use cw_sdk::auth::ACCOUNT_PREFIX;
 use cw_sdk::msg::{SdkQuery, SdkMsg, AccountResponse, TxBody};
 
 use crate::print::print_as_json;
-use crate::{stringify_pathbuf, ClientConfig, Keyring};
+use crate::{prompt, stringify_pathbuf, ClientConfig, Keyring};
 
 #[derive(Args)]
 pub struct TxCmd {
@@ -155,7 +154,7 @@ impl TxCmd {
         print_as_json(&tx);
         println!();
 
-        if Confirm::new().with_prompt("broadcast tx?").interact().unwrap() {
+        if prompt::confirm("broadcast tx?").unwrap() {
             client.broadcast_tx_async(tx_bytes.into()).await.unwrap();
         }
     }

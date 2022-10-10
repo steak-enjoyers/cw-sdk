@@ -3,10 +3,9 @@ use std::path::Path;
 use bip32::{Language, Mnemonic};
 use clap::{Args, Subcommand};
 use rand_core::OsRng;
-use text_io::read;
 use tracing::error;
 
-use crate::{stringify_pathbuf, Key, Keyring};
+use crate::{prompt, stringify_pathbuf, Key, Keyring};
 use crate::print::{print_key, print_keys, print_mnemonic};
 
 #[derive(Args)]
@@ -60,8 +59,7 @@ impl KeysCmd {
                 coin_type,
             } => {
                 let mnemonic = if *recover {
-                    println!("\nEnter your BIP-39 mnemonic:\n");
-                    let phrase: String = read!("{}\n");
+                    let phrase: String = prompt::input("enter your BIP-39 mnemonic").unwrap();
                     println!("\n");
                     Mnemonic::new(phrase, Language::English).unwrap()
                 } else {
