@@ -6,7 +6,7 @@ use clap::{Args, Subcommand};
 use tendermint_rpc::{Client, HttpClient, Url};
 use tracing::{error, info};
 
-use cw_sdk::msg::{CodeResponse, ContractResponse, SdkQuery, WasmRawResponse, WasmSmartResponse};
+use cw_sdk::msg::{CodeResponse, ContractResponse, SdkQuery, WasmRawResponse, WasmSmartResponse, AccountResponse};
 
 use crate::print::print_as_yaml;
 use crate::{stringify_pathbuf, ClientConfig};
@@ -23,6 +23,11 @@ pub struct QueryCmd {
 
 #[derive(Subcommand)]
 pub enum QuerySubcmd {
+    /// Query an account's public key and sequence number
+    Account {
+        /// Account address
+        address: String,
+    },
     /// Retrieve the metadata and wasm byte code corresponding to the given code id
     Code {
         /// Code id
@@ -66,6 +71,11 @@ impl QueryCmd {
         let client = HttpClient::new(url).unwrap();
 
         let query = match &self.subcommand {
+            QuerySubcmd::Account {
+                address,
+            } => SdkQuery::Account {
+                address: address.clone(),
+            },
             QuerySubcmd::Code {
                 code_id,
                 ..
@@ -100,6 +110,12 @@ impl QueryCmd {
             .unwrap();
 
         match &self.subcommand {
+            QuerySubcmd::Account {
+                ..
+            } => {
+                let response: AccountResponse = serde_json_wasm::from_slice(&result.value).unwrap();
+                print_as_yaml(&response);
+            }
             QuerySubcmd::Code {
                 output,
                 ..

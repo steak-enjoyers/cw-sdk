@@ -15,6 +15,7 @@ bcrypt = "0.13"
 bip32 = "0.4"
 clap = { version = "3", features = ["derive"] }
 cw-sdk = { path = "../sdk" }
+dialoguer = "0.10"
 futures = "0.3"
 hex = "0.4"
 home = "0.5"

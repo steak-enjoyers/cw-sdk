@@ -1,9 +1,17 @@
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
+use std::fs;
 
 use clap::{Args, Subcommand};
-use tracing::error;
+use dialoguer::Confirm;
+use tendermint_rpc::{Client, HttpClient, Url};
+use tracing::{error, info};
 
-use crate::{stringify_pathbuf, ClientConfig};
+use cw_sdk::auth::ACCOUNT_PREFIX;
+use cw_sdk::msg::{SdkQuery, SdkMsg, AccountResponse, TxBody};
+
+use crate::print::print_as_json;
+use crate::{stringify_pathbuf, ClientConfig, Keyring};
 
 #[derive(Args)]
 pub struct TxCmd {
@@ -54,6 +62,8 @@ pub enum TxSubcmd {
         contract: u64,
         /// Code id which this contract will migrate to
         code_id: u64,
+        /// Migrate message in JSON format
+        msg: String,
     },
 }
 
@@ -64,8 +74,88 @@ impl TxCmd {
             return;
         }
 
-        let _client_cfg = ClientConfig::load(home_dir).unwrap();
+        let client_cfg = ClientConfig::load(home_dir).unwrap();
 
-        error!("unimplemented");
+        let chain_id = self.chain_id.as_ref().unwrap_or(&client_cfg.chain_id);
+
+        let url_str = self.node.as_ref().unwrap_or(&client_cfg.node);
+        let url = Url::from_str(url_str).unwrap();
+        let client = HttpClient::new(url).unwrap();
+
+        let keyring = Keyring::new(home_dir.join("keys")).unwrap();
+        let key = keyring.get(&self.from).unwrap();
+        let sender = key.address().bech32(ACCOUNT_PREFIX).unwrap();
+
+        // query the sender's sequence number if not provided
+        let sequence = match self.sequence {
+            None => {
+                let query = SdkQuery::Account {
+                    address: sender.clone(),
+                };
+                let query_bytes = serde_json_wasm::to_vec(&query).unwrap();
+                let result = client
+                    .abci_query(None, query_bytes, None, false)
+                    .await
+                    .unwrap();
+                let response: AccountResponse = serde_json_wasm::from_slice(&result.value).unwrap();
+                // needs to be 1 greater than the on-chain sequence
+                response.sequence + 1
+            },
+            Some(sequence) => sequence,
+        };
+
+        let msg = match &self.subcommand {
+            TxSubcmd::Store {
+                wasm_byte_code_path,
+            } => {
+                let wasm_byte_code = fs::read(wasm_byte_code_path).unwrap();
+                SdkMsg::StoreCode {
+                    wasm_byte_code: wasm_byte_code.into(),
+                }
+            },
+            TxSubcmd::Instantiate {
+                code_id,
+                msg,
+            } => SdkMsg::Instantiate {
+                code_id: *code_id,
+                msg: msg.clone().into_bytes().into(),
+            },
+            TxSubcmd::Execute {
+                contract,
+                msg,
+            } => SdkMsg::Execute {
+                contract: *contract,
+                msg: msg.clone().into_bytes().into(),
+                funds: vec![],
+            },
+            TxSubcmd::Migrate {
+                contract,
+                code_id,
+                msg,
+            } => SdkMsg::Migrate {
+                contract: *contract,
+                code_id: *code_id,
+                msg: msg.clone().into_bytes().into(),
+            },
+        };
+
+        let body = TxBody {
+            sender,
+            msgs: vec![msg],
+            chain_id: chain_id.into(),
+            sequence
+        };
+
+        let tx = key.sign_tx(&body).unwrap();
+        let tx_bytes = serde_json_wasm::to_vec(&tx).unwrap();
+
+        info!("signed tx using key {}", key.name);
+        println!();
+        print_as_json(&tx);
+        println!();
+
+        if Confirm::new().with_prompt("broadcast tx?").interact().unwrap() {
+            client.broadcast_tx_async(tx_bytes.into()).await.unwrap();
+        }
     }
 }

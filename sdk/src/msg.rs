@@ -49,6 +49,10 @@ pub enum SdkMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum SdkQuery {
+    #[returns(AccountResponse)]
+    Account {
+        address: String,
+    },
     #[returns(CodeResponse)]
     Code {
         code_id: u64,
@@ -69,12 +73,22 @@ pub enum SdkQuery {
     },
 }
 
+/// This is the account type to be stored on-chain. Not to be confused with `AccountResponse`.
 #[cw_serde]
 pub struct Account {
     /// The account's secp256k1 public key
     pub pubkey: Binary,
     /// The account's sequence number, used to prevent replay attacks.
     /// The first tx ever to be submitted by the account should come with the sequence of 1.
+    pub sequence: u64,
+}
+
+#[cw_serde]
+pub struct AccountResponse {
+    pub address: String,
+    /// None is the account is not found
+    pub pubkey: Option<Binary>,
+    /// Zero if account is not found
     pub sequence: u64,
 }
 

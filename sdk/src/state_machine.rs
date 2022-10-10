@@ -8,7 +8,7 @@ use cosmwasm_vm::{
 use thiserror::Error;
 
 use crate::hash::sha256;
-use crate::msg::{Account, CodeResponse, ContractResponse, WasmRawResponse, WasmSmartResponse};
+use crate::msg::{Account, CodeResponse, ContractResponse, WasmRawResponse, WasmSmartResponse, AccountResponse};
 use crate::store::AppStorage;
 use crate::wasm;
 
@@ -146,6 +146,21 @@ impl State {
             Ok((true, Some(events)))
         } else {
             Ok((false, None))
+        }
+    }
+
+    pub fn query_account(&self, address: &str) -> Result<AccountResponse, StateError> {
+        match self.accounts.get(address) {
+            Some(account) => Ok(AccountResponse {
+                address: address.into(),
+                pubkey: Some(account.pubkey.clone()),
+                sequence: account.sequence,
+            }),
+            None => Ok(AccountResponse {
+                address: address.into(),
+                pubkey: None,
+                sequence: 0,
+            })
         }
     }
 

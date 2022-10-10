@@ -1,9 +1,10 @@
 use bip32::{Mnemonic, XPrv};
 use josekit::jwt::JwtPayload;
-use k256::ecdsa::{SigningKey, VerifyingKey};
+use k256::ecdsa::{signature::Signer, Signature, SigningKey, VerifyingKey};
 use thiserror::Error;
 
 use cw_sdk::address::Address;
+use cw_sdk::msg::{Tx, TxBody};
 
 /// Represents a private key that is to be saved in the keyring.
 ///
@@ -15,7 +16,7 @@ pub struct Key {
     /// The key's name
     pub name: String,
     /// The private key
-    pub sk: SigningKey,
+    sk: SigningKey,
 }
 
 impl Key {
@@ -62,6 +63,22 @@ impl Key {
     pub fn address(&self) -> Address {
         Address::from_pubkey(self.pubkey().to_bytes().as_slice())
     }
+
+    /// Sign an arbitrary byte array. The bytes are SHA-256 hashed before signing
+    pub fn sign_bytes(&self, bytes: &[u8]) -> Signature {
+        self.sk.sign(bytes)
+    }
+
+    /// Sign a tx body, returns the full tx.
+    pub fn sign_tx(&self, body: &TxBody) -> Result<Tx, KeyError> {
+        let body_bytes = serde_json_wasm::to_vec(body)?;
+        let signature = self.sign_bytes(&body_bytes);
+        Ok(Tx {
+            body: body.clone(),
+            pubkey: Some(self.pubkey().to_bytes().to_vec().into()),
+            signature: signature.to_vec().into(),
+        })
+    }
 }
 
 impl TryFrom<Key> for JwtPayload {
@@ -106,6 +123,9 @@ pub enum KeyError {
 
     #[error("{0}")]
     FromHex(#[from] hex::FromHexError),
+
+    #[error(transparent)]
+    Serialize(#[from] serde_json_wasm::ser::Error),
 
     #[error("failed to cast JWT payload to key: {reason}")]
     MalformedPayload {
