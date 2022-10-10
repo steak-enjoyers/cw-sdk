@@ -71,14 +71,12 @@ impl KeysCmd {
 
                 println!();
                 print_key(&key);
-                println!();
 
                 if !recover {
                     println!("**Important** write this mnemonic phrase in a safe place!");
                     println!("It is the only way to recover your account if you ever forget your password.");
                     println!();
                     print_mnemonic(mnemonic.phrase());
-                    println!();
                 }
             },
             KeysSubcmd::Show {
@@ -87,13 +85,11 @@ impl KeysCmd {
                 let key = keyring.get(name).unwrap();
                 println!();
                 print_key(&key);
-                println!();
             },
             KeysSubcmd::List => {
                 let keys = keyring.list().unwrap();
                 println!();
                 print_keys(&keys);
-                println!();
             },
             KeysSubcmd::Delete {
                 name,

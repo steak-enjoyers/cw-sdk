@@ -30,6 +30,6 @@ pub fn input(prompt: impl Into<String>) -> io::Result<String> {
 pub fn password(prompt: impl Into<String>) -> io::Result<String> {
     dialoguer::Password::new()
         .with_prompt(prompt)
-        .report(false)
+        .report(true)
         .interact()
 }
