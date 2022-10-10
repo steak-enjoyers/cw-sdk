@@ -1,8 +1,8 @@
 use bech32::{ToBase32, Variant};
-use ripemd::Ripemd160;
-use sha2::{Digest, Sha256};
-use thiserror::Error;
 
+use crate::hash::{ripemd160, sha256};
+
+/// Represents an account address
 pub struct Address(Vec<u8>);
 
 impl Address {
@@ -24,26 +24,7 @@ impl Address {
     }
 
     /// Return the bech32 encoding of the address with the given prefix
-    pub fn bech32(&self, prefix: &str) -> Result<String, AddressError> {
+    pub fn bech32(&self, prefix: &str) -> Result<String, bech32::Error> {
         bech32::encode(prefix, self.bytes().to_base32(), Variant::Bech32)
-            .map_err(AddressError::from)
     }
-}
-
-fn sha256(bytes: &[u8]) -> Vec<u8> {
-    let mut hasher = Sha256::new();
-    hasher.update(bytes);
-    hasher.finalize().to_vec()
-}
-
-fn ripemd160(bytes: &[u8]) -> Vec<u8> {
-    let mut hasher = Ripemd160::new();
-    hasher.update(bytes);
-    hasher.finalize().to_vec()
-}
-
-#[derive(Debug, Error)]
-pub enum AddressError {
-    #[error("failed to encode address into bech32: {0}")]
-    Bech32(#[from] bech32::Error),
 }

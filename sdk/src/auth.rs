@@ -2,7 +2,7 @@ use cosmwasm_std::Binary;
 use secp256k1::{ecdsa::Signature, hashes::sha256::Hash as Sha256Hash, Message, PublicKey, Secp256k1};
 use thiserror::Error;
 
-use crate::address::{Address, AddressError};
+use crate::address::Address;
 use crate::msg::{Account, Tx};
 use crate::State;
 
@@ -79,14 +79,14 @@ pub fn authenticate_tx(tx: &Tx, state: &mut State) -> Result<bool, AuthError> {
 
 #[derive(Debug, Error)]
 pub enum AuthError {
-    #[error("failed to serialize tx body into json: {0}")]
+    #[error(transparent)]
     Serialization(#[from] serde_json_wasm::ser::Error),
 
-    #[error("error while validating secp256k1 signature: {0}")]
+    #[error(transparent)]
     Secp256k1(#[from] secp256k1::Error),
 
-    #[error("{0}")]
-    Address(#[from] AddressError),
+    #[error(transparent)]
+    Bech32(#[from] bech32::Error),
 
     #[error("pubkey for sender {sender} is neither provided in the tx nor stored on-chain")]
     AccountNotFound {

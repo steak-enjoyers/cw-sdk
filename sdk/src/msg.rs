@@ -1,5 +1,5 @@
-use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Binary, Coin};
+use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::{Binary, Coin, ContractResult};
 
 #[cw_serde]
 pub struct Tx {
@@ -47,17 +47,22 @@ pub enum SdkMsg {
 }
 
 #[cw_serde]
+#[derive(QueryResponses)]
 pub enum SdkQuery {
+    #[returns(CodeResponse)]
     Code {
         code_id: u64,
     },
+    #[returns(ContractResponse)]
     Contract {
         contract: u64,
     },
+    #[returns(WasmRawResponse)]
     WasmRaw {
         contract: u64,
         key: Binary,
     },
+    #[returns(WasmSmartResponse)]
     WasmSmart {
         contract: u64,
         msg: Binary,
@@ -71,4 +76,37 @@ pub struct Account {
     /// The account's sequence number, used to prevent replay attacks.
     /// The first tx ever to be submitted by the account should come with the sequence of 1.
     pub sequence: u64,
+}
+
+#[cw_serde]
+pub struct CodeResponse {
+    /// SHA-256 hash of the wasm byte code. None if the code does not exist
+    pub hash: Option<Binary>,
+    /// The wasm byte code. None if the code does not exist
+    pub wasm_byte_code: Option<Binary>,
+}
+
+#[cw_serde]
+pub struct ContractResponse {
+    /// This contract's code id
+    pub code_id: u64,
+}
+
+#[cw_serde]
+pub struct WasmRawResponse {
+    /// Contract address
+    pub contract: u64,
+    /// The key
+    pub key: Binary,
+    /// Raw value in the contract storage under the given key. None if the key does not exist.
+    pub value: Option<Binary>,
+}
+
+#[cw_serde]
+pub struct WasmSmartResponse {
+    /// Contract address
+    pub contract: u64,
+    /// Smart query result.
+    /// The querying program is responsible for decoding the binary response into the correct type.
+    pub result: ContractResult<Binary>,
 }

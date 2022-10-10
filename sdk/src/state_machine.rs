@@ -3,11 +3,12 @@ use std::collections::BTreeMap;
 use cosmwasm_std::{Binary, ContractResult, Empty, Response, Event};
 use cosmwasm_vm::testing::{mock_env, mock_info};
 use cosmwasm_vm::{
-    call_instantiate, call_query, Backend, Instance, InstanceOptions, VmError, call_execute,
+    call_execute, call_instantiate, call_query, Backend, Instance, InstanceOptions, VmError,
 };
 use thiserror::Error;
 
-use crate::msg::Account;
+use crate::hash::sha256;
+use crate::msg::{Account, CodeResponse, ContractResponse, WasmRawResponse, WasmSmartResponse};
 use crate::store::AppStorage;
 use crate::wasm;
 
@@ -148,18 +149,31 @@ impl State {
         }
     }
 
-    pub fn query_code(&self, code_id: u64) -> Result<Option<Vec<u8>>, StateError> {
+    pub fn query_code(&self, code_id: u64) -> Result<CodeResponse, StateError> {
         let wasm_byte_code = self.codes.get(&code_id);
-        Ok(wasm_byte_code.cloned())
+        let hash = wasm_byte_code.map(|bytes| sha256(bytes));
+        Ok(CodeResponse {
+            hash: hash.map(Binary::from),
+            wasm_byte_code: wasm_byte_code.cloned().map(Binary::from),
+        })
+    }
+
+    pub fn query_contract(&self, contract: u64) -> Result<ContractResponse, StateError> {
+        match self.contract_codes.get(&contract) {
+            Some(code_id) => Ok(ContractResponse {
+                code_id: *code_id,
+            }),
+            None => Err(StateError::contract_not_found(contract)),
+        }
     }
 
     pub fn query_wasm_raw(
         &self,
-        _contract_addr: u64,
-        _key: &[u8],
-    ) -> Result<Option<Vec<u8>>, StateError> {
+        contract: u64,
+        key: &[u8],
+    ) -> Result<WasmRawResponse, StateError> {
         // for now we just dump for whole contract store, regardless of which contract address or
-        // key is given.
+        // key is given. this is for testing purpose
         // need to collect into a Vec first, because serde-json-wasm can't serialize maps
         let data = self
             .contract_store
@@ -168,17 +182,23 @@ impl State {
             .map(|(key, value)| (Binary(key.clone()), Binary(value.clone())))
             .collect::<Vec<_>>();
         let bytes = serde_json_wasm::to_vec(&data).unwrap();
-        Ok(Some(bytes))
+        Ok(WasmRawResponse {
+            contract,
+            key: key.to_owned().into(),
+            // note again, for testing purpose, this is not the actual key. this is the entire
+            // contract store
+            value: Some(bytes.into()),
+        })
     }
 
     pub fn query_wasm_smart(
         &self,
-        contract_addr: u64,
+        contract: u64,
         msg: &[u8],
-    ) -> Result<(bool, Option<Vec<u8>>), StateError> {
+    ) -> Result<WasmSmartResponse, StateError> {
         let backend = wasm::create_backend(self.contract_store.clone());
         let mut instance = Instance::from_code(
-            &self.codes[&self.contract_codes[&contract_addr]],
+            &self.codes[&self.contract_codes[&contract]],
             backend,
             InstanceOptions {
                 gas_limit: u64::MAX,
@@ -187,12 +207,10 @@ impl State {
             None,
         )?;
         let result = call_query(&mut instance, &mock_env(), msg)?;
-
-        if result.is_ok() {
-            Ok((true, Some(result.unwrap().0)))
-        } else {
-            Ok((false, None))
-        }
+        Ok(WasmSmartResponse {
+            contract,
+            result,
+        })
     }
 }
 
@@ -201,6 +219,30 @@ pub enum StateError {
     #[error("{0}")]
     Vm(#[from] VmError),
 
+    #[error("no wasm binary code found with the id {code_id}")]
+    CodeNotFound {
+        code_id: u64,
+    },
+
+    #[error("no contract found under the address {address}")]
+    ContractNotFound {
+        address: u64,
+    },
+
     #[error("contract response includes submessages, which is not supported yet")]
     SubmessagesUnsupported,
+}
+
+impl StateError {
+    pub fn code_not_found(code_id: u64) -> Self {
+        Self::CodeNotFound {
+            code_id,
+        }
+    }
+
+    pub fn contract_not_found(address: u64) -> Self {
+        Self::ContractNotFound {
+            address,
+        }
+    }
 }

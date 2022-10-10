@@ -26,39 +26,46 @@ impl AppDriver {
                     msg,
                     result_tx,
                 } => {
-                    let (success, contract_addr) = self.state.instantiate_contract(code_id, msg)?;
-                    channel_send(&result_tx, (success, contract_addr))?;
+                    let (success, contract) = self.state.instantiate_contract(code_id, msg)?;
+                    channel_send(&result_tx, (success, contract))?;
                 },
                 AppCommand::ExecuteContract {
-                    contract_addr,
+                    contract,
                     msg,
                     result_tx,
                 } => {
-                    let (success, events) = self.state.execute_contract(contract_addr, msg)?;
+                    let (success, events) = self.state.execute_contract(contract, msg)?;
                     channel_send(&result_tx, (success, events))?;
                 },
                 AppCommand::QueryCode {
                     code_id,
                     result_tx,
                 } => {
-                    let wasm_byte_code = self.state.query_code(code_id)?;
-                    channel_send(&result_tx, wasm_byte_code)?;
+                    let response = self.state.query_code(code_id)?;
+                    channel_send(&result_tx, response)?;
+                },
+                AppCommand::QueryContract {
+                    contract,
+                    result_tx,
+                } => {
+                    let response = self.state.query_contract(contract)?;
+                    channel_send(&result_tx, response)?;
                 },
                 AppCommand::QueryWasmRaw {
-                    contract_addr,
+                    contract,
                     key,
                     result_tx,
                 } => {
-                    let value = self.state.query_wasm_raw(contract_addr, &key)?;
-                    channel_send(&result_tx, value)?;
+                    let response = self.state.query_wasm_raw(contract, &key)?;
+                    channel_send(&result_tx, response)?;
                 },
                 AppCommand::QueryWasmSmart {
-                    contract_addr,
+                    contract,
                     msg,
                     result_tx,
                 } => {
-                    let data = self.state.query_wasm_smart(contract_addr, &msg)?;
-                    channel_send(&result_tx, data)?;
+                    let response = self.state.query_wasm_smart(contract, &msg)?;
+                    channel_send(&result_tx, response)?;
                 }
             }
         }

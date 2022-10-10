@@ -59,7 +59,7 @@ impl App {
                 result_tx,
             }
         )?;
-        let (success, contract_addr) = channel_recv(&result_rx)?;
+        let (success, contract) = channel_recv(&result_rx)?;
 
         let log = if success {
             "successfully instantiated contract!"
@@ -88,8 +88,8 @@ impl App {
                         index: false,
                     },
                     EventAttribute {
-                        key: "contract_addr".as_bytes().to_owned(),
-                        value: contract_addr.unwrap_or(0).to_string().into_bytes(),
+                        key: "contract".as_bytes().to_owned(),
+                        value: contract.unwrap_or(0).to_string().into_bytes(),
                         index: false,
                     },
                 ],
@@ -100,7 +100,7 @@ impl App {
 
     pub fn execute_contract(
         &self,
-        contract_addr: u64,
+        contract: u64,
         msg: Vec<u8>,
     ) -> Result<ResponseDeliverTx, ABCIError> {
         let (result_tx, result_rx) = channel();
@@ -108,7 +108,7 @@ impl App {
         channel_send(
             &self.cmd_tx,
             AppCommand::ExecuteContract {
-                contract_addr,
+                contract,
                 msg,
                 result_tx,
             },
@@ -162,9 +162,9 @@ impl App {
                 result_tx,
             },
         )?;
-        let wasm_byte_code = channel_recv(&result_rx)?;
+        let response = channel_recv(&result_rx)?;
 
-        let log = if wasm_byte_code.is_some() {
+        let log = if response.wasm_byte_code.is_some() {
             "exists"
         } else {
             "does not exist"
@@ -176,7 +176,7 @@ impl App {
             info: "".to_string(),
             index: 0,
             key: code_id.to_string().into_bytes(),
-            value: wasm_byte_code.unwrap_or_default(),
+            value: serde_json_wasm::to_vec(&response).unwrap(),
             proof_ops: None,
             height: 0,
             codespace: "".to_string(),
@@ -185,7 +185,7 @@ impl App {
 
     pub fn query_wasm_raw(
         &self,
-        contract_addr: u64,
+        contract: u64,
         key: Vec<u8>,
     ) -> Result<ResponseQuery, ABCIError> {
         let (result_tx, result_rx) = channel();
@@ -193,12 +193,12 @@ impl App {
         channel_send(
             &self.cmd_tx,
             AppCommand::QueryWasmRaw {
-                contract_addr,
+                contract,
                 key: key.clone(),
                 result_tx,
             },
         )?;
-        let value = channel_recv(&result_rx)?;
+        let response = channel_recv(&result_rx)?;
 
         Ok(ResponseQuery {
             code: 0,
@@ -206,7 +206,7 @@ impl App {
             info: "".to_string(),
             index: 0,
             key,
-            value: value.unwrap_or_default(),
+            value: serde_json_wasm::to_vec(&response).unwrap(),
             proof_ops: None,
             height: 0,
             codespace: "".to_string(),
@@ -215,7 +215,7 @@ impl App {
 
     pub fn query_wasm_smart(
         &self,
-        contract_addr: u64,
+        contract: u64,
         msg: Vec<u8>,
     ) -> Result<ResponseQuery, ABCIError> {
         let (result_tx, result_rx) = channel();
@@ -223,14 +223,14 @@ impl App {
         channel_send(
             &self.cmd_tx,
             AppCommand::QueryWasmSmart {
-                contract_addr,
+                contract,
                 msg: msg.clone(),
                 result_tx,
             },
         )?;
-        let (success, data) = channel_recv(&result_rx)?;
+        let response = channel_recv(&result_rx)?;
 
-        let log = if success {
+        let log = if response.result.is_ok() {
             "smart query successful!"
         } else {
             "smart query failed!"
@@ -242,7 +242,7 @@ impl App {
             info: "".to_string(),
             index: 0,
             key: msg,
-            value: data.unwrap_or_default(),
+            value: serde_json_wasm::to_vec(&response).unwrap(),
             proof_ops: None,
             height: 0,
             codespace: "".to_string(),
