@@ -33,10 +33,9 @@ pub fn execute(
             amount,
         } => execute::mint(deps, info, to, amount),
         ExecuteMsg::Send {
-            from,
             to,
             amount,
-        } => execute::send(deps, info, from, to, amount),
+        } => execute::send(deps, info.sender, to, amount),
     }
 }
 
