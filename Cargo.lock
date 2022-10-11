@@ -661,6 +661,7 @@ dependencies = [
  "serde-json-wasm",
  "serde_json",
  "serde_yaml",
+ "tendermint",
  "tendermint-abci",
  "tendermint-rpc",
  "thiserror",

@@ -3,12 +3,17 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use clap::{Args, Subcommand};
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
+use tendermint::Hash;
 use tendermint_rpc::{Client, HttpClient, Url};
 use tracing::{error, info};
 
-use cw_sdk::msg::{CodeResponse, ContractResponse, SdkQuery, WasmRawResponse, WasmSmartResponse, AccountResponse};
+use cw_sdk::msg::{
+    AccountResponse, CodeResponse, ContractResponse, SdkQuery, WasmRawResponse, WasmSmartResponse,
+};
 
-use crate::print::print_as_yaml;
+use crate::print::{print_as_json, print_as_yaml};
 use crate::{stringify_pathbuf, ClientConfig};
 
 #[derive(Args)]
@@ -23,6 +28,11 @@ pub struct QueryCmd {
 
 #[derive(Subcommand)]
 pub enum QuerySubcmd {
+    /// Query a transaction by hash
+    Tx {
+        /// Transaction hash, in hex encoding
+        txhash: String,
+    },
     /// Query an account's public key and sequence number
     Account {
         /// Account address
@@ -70,59 +80,38 @@ impl QueryCmd {
         let url = Url::from_str(url_str).unwrap();
         let client = HttpClient::new(url).unwrap();
 
-        let query = match &self.subcommand {
+        match self.subcommand {
+            QuerySubcmd::Tx {
+                txhash,
+            } => {
+                let hash = Hash::from_str(&txhash).unwrap();
+                let response = client.tx(hash, false).await.unwrap();
+                print_as_json(&response);
+            },
             QuerySubcmd::Account {
                 address,
-            } => SdkQuery::Account {
-                address: address.clone(),
+            } => {
+                do_abci_query(
+                    &client,
+                    SdkQuery::Account {
+                        address: address.clone(),
+                    },
+                )
+                .await;
             },
             QuerySubcmd::Code {
                 code_id,
                 ..
-            } => SdkQuery::Code {
-                code_id: *code_id,
-            },
-            QuerySubcmd::Contract {
-                contract,
-            } => SdkQuery::Contract {
-                contract: *contract,
-            },
-            QuerySubcmd::WasmRaw {
-                contract,
-                key,
-            } => SdkQuery::WasmRaw {
-                contract: *contract,
-                key: hex::decode(&key).unwrap().into(),
-            },
-            QuerySubcmd::WasmSmart {
-                contract,
-                msg,
-            } => SdkQuery::WasmSmart {
-                contract: *contract,
-                msg: msg.as_bytes().to_vec().into(),
-            },
-        };
-        let query_bytes = serde_json_wasm::to_vec(&query).unwrap();
-
-        let result = client
-            .abci_query(None, query_bytes, None, false)
-            .await
-            .unwrap();
-
-        match &self.subcommand {
-            QuerySubcmd::Account {
-                ..
             } => {
-                let response: AccountResponse = serde_json_wasm::from_slice(&result.value).unwrap();
-                print_as_yaml(&response);
-            }
-            QuerySubcmd::Code {
-                output,
-                ..
-            } => {
-                let response: CodeResponse = serde_json_wasm::from_slice(&result.value).unwrap();
-                print_as_yaml(&response);
+                let response = do_abci_query(
+                    &client,
+                    SdkQuery::Code {
+                        code_id: *code_id,
+                    },
+                )
+                .await;
 
+                // save the wasm byte code to file if an output path is specified
                 if let Some(output) = output {
                     let wasm_byte_code = result.value;
                     fs::write(output, wasm_byte_code).unwrap();
@@ -130,23 +119,62 @@ impl QueryCmd {
                 }
             },
             QuerySubcmd::Contract {
-                ..
+                contract,
             } => {
-                let response: ContractResponse = serde_json_wasm::from_slice(&result.value).unwrap();
-                print_as_yaml(&response);
+                do_abci_query(
+                    &client,
+                    SdkQuery::Contract {
+                        contract: *contract,
+                    },
+                )
+                .await;
             },
             QuerySubcmd::WasmRaw {
-                ..
+                contract,
+                key,
             } => {
-                let response: WasmRawResponse = serde_json_wasm::from_slice(&result.value).unwrap();
-                print_as_yaml(&response);
+                do_abci_query(
+                    &client,
+                    SdkQuery::WasmRaw {
+                        contract: *contract,
+                        key: hex::decode(&key).unwrap().into(),
+                    },
+                )
+                .await;
             },
             QuerySubcmd::WasmSmart {
-                ..
+                contract,
+                msg,
             } => {
-                let response: WasmSmartResponse = serde_json_wasm::from_slice(&result.value).unwrap();
-                print_as_yaml(&response);
+                do_abci_query(
+                    &client,
+                    SdkQuery::WasmSmart {
+                        contract: *contract,
+                        msg,
+                    },
+                )
+                .await;
             },
-        }
+        };
     }
+}
+
+async fn do_abci_query<'de, Q: Serialize, R: Serialize + DeserializeOwned>(
+    client: &HttpClient,
+    query: Q,
+) -> R {
+    // serialize the query into binary
+    let query_bytes = serde_json_wasm::to_vec(&query).unwrap();
+
+    // do query
+    let result = client
+        .abci_query(None, query_bytes, None, false)
+        .await
+        .unwrap();
+
+    // deserialize the response
+    let response: R = serde_json_wasm::from_slice(&result.value).unwrap();
+
+    print_as_yaml(&response);
+    response
 }
