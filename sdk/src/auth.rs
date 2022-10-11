@@ -9,13 +9,11 @@ use crate::State;
 // TODO: include this in the chain's state
 pub const ACCOUNT_PREFIX: &str = "cw";
 
-/// NOTE: we take a `&mut State` because if the tx is authenticated, we need to update the user's
-/// pubkey (if previously not recorded) and sequence number. maybe think of a way to separate the
-/// state-mutating portion of the function and non-mutating part into separate functions.
-pub fn authenticate_tx(tx: &Tx, state: &mut State) -> Result<bool, AuthError> {
+/// Return the user's updated account info is authentication is successful; error if failed.
+pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<Account, AuthError> {
     // find the user's account
     let sender = &tx.body.sender;
-    let mut account = match state.get_account(sender) {
+    let mut account = match state.accounts.get(sender) {
         // if the account is found on-chain, its pubkey must match the one included in the tx
         Some(account) => {
             if let Some(pubkey) = &tx.pubkey {
@@ -46,9 +44,8 @@ pub fn authenticate_tx(tx: &Tx, state: &mut State) -> Result<bool, AuthError> {
     };
 
     // the chain id must match
-    let chain_id = state.get_chain_id();
-    if chain_id != tx.body.chain_id {
-        return Err(AuthError::chain_id_mismatch(chain_id, &tx.body.chain_id));
+    if state.chain_id != tx.body.chain_id {
+        return Err(AuthError::chain_id_mismatch(&state.chain_id, &tx.body.chain_id));
     }
 
     // the account sequence mush match
@@ -67,13 +64,10 @@ pub fn authenticate_tx(tx: &Tx, state: &mut State) -> Result<bool, AuthError> {
     let pubkey = PublicKey::from_slice(account.pubkey.as_slice())?;
     let message = Message::from_hashed_data::<Sha256Hash>(&body_bytes);
     let signature = Signature::from_compact(&tx.signature)?;
+
     match Secp256k1::new().verify_ecdsa(&message, &signature, &pubkey) {
-        Ok(()) => {
-            // TODO: only update account if it's DeliverTx; don't update if it's CheckTx
-            state.set_account(sender, account);
-            Ok(true)
-        },
-        Err(err) => Err(AuthError::from(err)),
+        Ok(()) => Ok(account),
+        Err(err) => Err(err.into()),
     }
 }
 

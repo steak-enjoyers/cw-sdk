@@ -3,9 +3,8 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use clap::{Args, Subcommand};
-use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
-use tendermint::Hash;
+use serde::{de::DeserializeOwned, Serialize};
+use tendermint::abci::transaction::Hash;
 use tendermint_rpc::{Client, HttpClient, Url};
 use tracing::{error, info};
 
@@ -80,30 +79,32 @@ impl QueryCmd {
         let url = Url::from_str(url_str).unwrap();
         let client = HttpClient::new(url).unwrap();
 
-        match self.subcommand {
+        match &self.subcommand {
             QuerySubcmd::Tx {
                 txhash,
             } => {
-                let hash = Hash::from_str(&txhash).unwrap();
+                let hash = Hash::from_str(txhash).unwrap();
                 let response = client.tx(hash, false).await.unwrap();
                 print_as_json(&response);
             },
             QuerySubcmd::Account {
                 address,
             } => {
-                do_abci_query(
+                let response: AccountResponse = do_abci_query(
                     &client,
                     SdkQuery::Account {
                         address: address.clone(),
                     },
                 )
                 .await;
+
+                print_as_yaml(response);
             },
             QuerySubcmd::Code {
                 code_id,
-                ..
+                output,
             } => {
-                let response = do_abci_query(
+                let response: CodeResponse = do_abci_query(
                     &client,
                     SdkQuery::Code {
                         code_id: *code_id,
@@ -111,29 +112,33 @@ impl QueryCmd {
                 )
                 .await;
 
+                // only print the hash, not the bytecode
+                println!("hash: {}", response.hash);
+
                 // save the wasm byte code to file if an output path is specified
                 if let Some(output) = output {
-                    let wasm_byte_code = result.value;
-                    fs::write(output, wasm_byte_code).unwrap();
+                    fs::write(output, response.wasm_byte_code.as_slice()).unwrap();
                     info!("wasm byte code written to {}", stringify_pathbuf(output));
                 }
             },
             QuerySubcmd::Contract {
                 contract,
             } => {
-                do_abci_query(
+                let response: ContractResponse = do_abci_query(
                     &client,
                     SdkQuery::Contract {
                         contract: *contract,
                     },
                 )
                 .await;
+
+                print_as_yaml(response);
             },
             QuerySubcmd::WasmRaw {
                 contract,
                 key,
             } => {
-                do_abci_query(
+                let response: WasmRawResponse = do_abci_query(
                     &client,
                     SdkQuery::WasmRaw {
                         contract: *contract,
@@ -141,25 +146,29 @@ impl QueryCmd {
                     },
                 )
                 .await;
+
+                print_as_yaml(response);
             },
             QuerySubcmd::WasmSmart {
                 contract,
                 msg,
             } => {
-                do_abci_query(
+                let response: WasmSmartResponse = do_abci_query(
                     &client,
                     SdkQuery::WasmSmart {
                         contract: *contract,
-                        msg,
+                        msg: msg.clone().into_bytes().into(),
                     },
                 )
                 .await;
+
+                print_as_yaml(response);
             },
         };
     }
 }
 
-async fn do_abci_query<'de, Q: Serialize, R: Serialize + DeserializeOwned>(
+async fn do_abci_query<Q: Serialize, R: Serialize + DeserializeOwned>(
     client: &HttpClient,
     query: Q,
 ) -> R {
@@ -173,8 +182,5 @@ async fn do_abci_query<'de, Q: Serialize, R: Serialize + DeserializeOwned>(
         .unwrap();
 
     // deserialize the response
-    let response: R = serde_json_wasm::from_slice(&result.value).unwrap();
-
-    print_as_yaml(&response);
-    response
+    serde_json_wasm::from_slice(&result.value).unwrap()
 }

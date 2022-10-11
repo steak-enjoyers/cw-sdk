@@ -14,7 +14,7 @@ pub struct App {
 
 impl tendermint_abci::Application for App {
     fn query(&self, request: RequestQuery) -> ResponseQuery {
-        let path = request.path.split("/").collect::<Vec<_>>();
+        let path = request.path.split('/').collect::<Vec<_>>();
 
         if path.is_empty() {
             return ResponseQuery {
@@ -24,8 +24,8 @@ impl tendermint_abci::Application for App {
             };
         }
 
-        match path[0] {
-            "app" => {
+        match &path[0] {
+            &"app" => {
                 let (result_tx, result_rx) = channel();
 
                 self.cmd_tx
@@ -49,7 +49,7 @@ impl tendermint_abci::Application for App {
                     },
                 }
             },
-            "store" => {
+            &"store" => {
                 // unimplemented
                 ResponseQuery {
                     code: 1,
@@ -57,7 +57,7 @@ impl tendermint_abci::Application for App {
                     ..Default::default()
                 }
             },
-            "p2p" => {
+            &"p2p" => {
                 // unimplemented as well
                 // however, return no error to signal that the peer should not be rejected
                 // see:
@@ -67,6 +67,11 @@ impl tendermint_abci::Application for App {
                     log: "p2p query is not implemented yet".into(),
                     ..Default::default()
                 }
+            },
+            prefix => ResponseQuery {
+                code: 1,
+                log: format!("unsupported query path prefix: {}", prefix),
+                ..Default::default()
             },
         }
     }
@@ -106,7 +111,7 @@ fn wasm_attrs_to_abci(wasm_attrs: Vec<WasmAttribute>) -> Vec<EventAttribute> {
         .into_iter()
         .map(|attr| EventAttribute {
             key: attr.key.into_bytes(),
-            value: attr.key.into_bytes(),
+            value: attr.value.into_bytes(),
             // Not sure what "index" means, but Go SDK returns `true` for all attributes,
             // so I'll do the same here =)
             index: true,

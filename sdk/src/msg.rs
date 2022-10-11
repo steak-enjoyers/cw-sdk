@@ -94,10 +94,10 @@ pub struct AccountResponse {
 
 #[cw_serde]
 pub struct CodeResponse {
-    /// SHA-256 hash of the wasm byte code. None if the code does not exist
-    pub hash: Option<Binary>,
-    /// The wasm byte code. None if the code does not exist
-    pub wasm_byte_code: Option<Binary>,
+    /// SHA-256 hash of the wasm byte code
+    pub hash: Binary,
+    /// The wasm byte code
+    pub wasm_byte_code: Binary,
 }
 
 #[cw_serde]
