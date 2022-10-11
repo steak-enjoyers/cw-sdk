@@ -16,12 +16,12 @@ struct Iter {
 }
 
 #[derive(Default, Debug, Clone)]
-pub struct AppStorage {
+pub struct ContractStore {
     pub data: BTreeMap<Vec<u8>, Vec<u8>>,
     iterators: HashMap<u32, Iter>,
 }
 
-impl AppStorage {
+impl ContractStore {
     pub fn new() -> Self {
         Self::default()
     }
@@ -45,7 +45,7 @@ impl AppStorage {
     }
 }
 
-impl Storage for AppStorage {
+impl Storage for ContractStore {
     fn get(&self, key: &[u8]) -> BackendResult<Option<Vec<u8>>> {
         (Ok(self.data.get(key).cloned()), GasInfo::free())
     }

@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 
 use cosmwasm_std::{Binary, ContractResult, Empty, Event, Response};
 use cosmwasm_vm::testing::{mock_env, mock_info};
-use cosmwasm_vm::{call_execute, call_instantiate, call_query, Backend, Instance, InstanceOptions};
+use cosmwasm_vm::{
+    call_execute, call_instantiate, call_query, Backend, Instance, InstanceOptions, Storage,
+};
 use thiserror::Error;
 
 use crate::hash::sha256;
@@ -10,7 +12,7 @@ use crate::msg::{
     Account, AccountResponse, CodeResponse, ContractResponse, SdkMsg, SdkQuery, Tx,
     WasmRawResponse, WasmSmartResponse,
 };
-use crate::store::AppStorage;
+use crate::store::ContractStore;
 use crate::{auth, wasm};
 
 /// The application's state and state transition rules. The core of the blockchain.
@@ -30,7 +32,7 @@ pub struct State {
     /// The code id used by each contract
     pub contract_codes: BTreeMap<u64, u64>,
     /// Contract store
-    pub contract_store: AppStorage,
+    pub contract_stores: BTreeMap<u64, ContractStore>,
 }
 
 // public functions for the state machine
@@ -136,7 +138,7 @@ impl State {
         code_id: u64,
         msg: Vec<u8>,
     ) -> Result<Vec<Event>, StateError> {
-        let backend = wasm::create_backend(self.contract_store.clone());
+        let backend = wasm::create_backend(ContractStore::new());
         let mut instance = Instance::from_code(
             &self.codes[&code_id],
             backend,
@@ -171,7 +173,7 @@ impl State {
                 let contract_addr = self.contract_count;
                 self.contract_codes.insert(contract_addr, code_id);
 
-                self.contract_store = storage;
+                self.contract_stores.insert(contract_addr, storage);
 
                 // collect the events
                 let event = Event::new("instantiate_contract")
@@ -192,7 +194,12 @@ impl State {
         contract_addr: u64,
         msg: Vec<u8>,
     ) -> Result<Vec<Event>, StateError> {
-        let backend = wasm::create_backend(self.contract_store.clone());
+        let storage = self
+            .contract_stores
+            .get(&contract_addr)
+            .ok_or_else(|| StateError::contract_not_found(contract_addr))?
+            .clone();
+        let backend = wasm::create_backend(storage);
         let mut instance = Instance::from_code(
             &self.codes[&self.contract_codes[&contract_addr]],
             backend,
@@ -220,7 +227,7 @@ impl State {
                     return Err(StateError::SubmessagesUnsupported);
                 }
 
-                self.contract_store = storage;
+                self.contract_stores.insert(contract_addr, storage);
 
                 // collect the events
                 let event = Event::new("execute_contract")
@@ -269,27 +276,27 @@ impl State {
     }
 
     fn query_wasm_raw(&self, contract: u64, key: &[u8]) -> Result<WasmRawResponse, StateError> {
-        // for now we just dump for whole contract store, regardless of which contract address or
-        // key is given. this is for testing purpose
-        // need to collect into a Vec first, because serde-json-wasm can't serialize maps
-        let data = self
-            .contract_store
-            .data
-            .iter()
-            .map(|(key, value)| (Binary(key.clone()), Binary(value.clone())))
-            .collect::<Vec<_>>();
-        let bytes = serde_json_wasm::to_vec(&data).unwrap();
+        let storage = self
+            .contract_stores
+            .get(&contract)
+            .ok_or_else(|| StateError::contract_not_found(contract))?
+            .clone();
+        let (res, _) = storage.get(key);
+        let value = res?;
         Ok(WasmRawResponse {
             contract,
             key: key.to_owned().into(),
-            // note again, for testing purpose, this is not the actual key. this is the entire
-            // contract store
-            value: Some(bytes.into()),
+            value: value.map(Binary),
         })
     }
 
     fn query_wasm_smart(&self, contract: u64, msg: &[u8]) -> Result<WasmSmartResponse, StateError> {
-        let backend = wasm::create_backend(self.contract_store.clone());
+        let storage = self
+            .contract_stores
+            .get(&contract)
+            .ok_or_else(|| StateError::contract_not_found(contract))?
+            .clone();
+        let backend = wasm::create_backend(storage);
         let mut instance = Instance::from_code(
             &self.codes[&self.contract_codes[&contract]],
             backend,
@@ -309,6 +316,9 @@ impl State {
 
 #[derive(Debug, Error)]
 pub enum StateError {
+    #[error(transparent)]
+    Backend(#[from] cosmwasm_vm::BackendError),
+
     #[error(transparent)]
     Vm(#[from] cosmwasm_vm::VmError),
 
