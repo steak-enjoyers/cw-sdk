@@ -1,6 +1,6 @@
 use std::sync::mpsc::Receiver;
 
-use super::{channel_send, AppCommand, ABCIError};
+use super::AppCommand;
 use crate::State;
 
 /// The driver is a wrapper around the actual state machine. It maintains a channel with the ABCI
@@ -11,69 +11,17 @@ pub struct AppDriver {
 }
 
 impl AppDriver {
-    pub fn run(mut self) -> Result<(), ABCIError> {
+    pub fn run(mut self) {
         loop {
-            match self.cmd_rx.recv()? {
-                AppCommand::StoreCode {
-                    wasm_byte_code,
+            match self.cmd_rx.recv().unwrap() {
+                AppCommand::Query {
+                    query_bytes,
                     result_tx,
-                } => {
-                    let code_id = self.state.store_code(wasm_byte_code)?;
-                    channel_send(&result_tx, code_id)?;
-                },
-                AppCommand::InstantiateContract {
-                    code_id,
-                    msg,
+                } => result_tx.send(self.state.handle_query(&query_bytes)).unwrap(),
+                AppCommand::DeliverTx {
+                    tx_bytes,
                     result_tx,
-                } => {
-                    let (success, contract) = self.state.instantiate_contract(code_id, msg)?;
-                    channel_send(&result_tx, (success, contract))?;
-                },
-                AppCommand::ExecuteContract {
-                    contract,
-                    msg,
-                    result_tx,
-                } => {
-                    let (success, events) = self.state.execute_contract(contract, msg)?;
-                    channel_send(&result_tx, (success, events))?;
-                },
-                AppCommand::QueryAccount {
-                    address,
-                    result_tx,
-                } => {
-                    let response = self.state.query_account(&address)?;
-                    channel_send(&result_tx, response)?;
-                }
-                AppCommand::QueryCode {
-                    code_id,
-                    result_tx,
-                } => {
-                    let response = self.state.query_code(code_id)?;
-                    channel_send(&result_tx, response)?;
-                },
-                AppCommand::QueryContract {
-                    contract,
-                    result_tx,
-                } => {
-                    let response = self.state.query_contract(contract)?;
-                    channel_send(&result_tx, response)?;
-                },
-                AppCommand::QueryWasmRaw {
-                    contract,
-                    key,
-                    result_tx,
-                } => {
-                    let response = self.state.query_wasm_raw(contract, &key)?;
-                    channel_send(&result_tx, response)?;
-                },
-                AppCommand::QueryWasmSmart {
-                    contract,
-                    msg,
-                    result_tx,
-                } => {
-                    let response = self.state.query_wasm_smart(contract, &msg)?;
-                    channel_send(&result_tx, response)?;
-                }
+                } => result_tx.send(self.state.handle_tx(&tx_bytes)).unwrap(),
             }
         }
     }
