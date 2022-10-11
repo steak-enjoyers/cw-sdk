@@ -25,12 +25,17 @@ pub struct Cli {
 pub enum Command {
     /// Initialize application home directory
     Init(InitCmd),
+
     /// Manage private keys
     Keys(KeysCmd),
+
     /// Query the application state
+    #[clap(alias = "q")]
     Query(QueryCmd),
+
     /// Start the ABCI server
     Start(StartCmd),
+
     /// Sign and broadcast transactions
     Tx(TxCmd),
 }
