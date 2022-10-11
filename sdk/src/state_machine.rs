@@ -146,8 +146,12 @@ impl State {
             },
             None,
         )?;
-        let result: ContractResult<Response<Empty>> =
-            call_instantiate(&mut instance, &mock_env(), &mock_info("larry", &[]), &msg)?;
+        let result: ContractResult<Response<Empty>> = call_instantiate(
+            &mut instance,
+            &mock_env(),
+            &mock_info(sender, &[]),
+            &msg,
+        )?;
 
         let Backend {
             storage,
@@ -198,8 +202,12 @@ impl State {
             },
             None,
         )?;
-        let result: ContractResult<Response<Empty>> =
-            call_execute(&mut instance, &mock_env(), &mock_info("larry", &[]), &msg)?;
+        let result: ContractResult<Response<Empty>> = call_execute(
+            &mut instance,
+            &mock_env(),
+            &mock_info(sender, &[]),
+            &msg,
+        )?;
 
         let Backend {
             storage,
