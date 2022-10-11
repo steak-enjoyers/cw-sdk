@@ -1,15 +1,16 @@
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::fs;
 
 use clap::{Args, Subcommand};
 use tendermint_rpc::{Client, HttpClient, Url};
 use tracing::error;
 
 use cw_sdk::auth::ACCOUNT_PREFIX;
-use cw_sdk::msg::{SdkQuery, SdkMsg, AccountResponse, TxBody};
+use cw_sdk::msg::{AccountResponse, SdkMsg, SdkQuery, TxBody};
 
 use crate::print::{print_as_json, print_as_yaml};
+use crate::query::do_abci_query;
 use crate::{prompt, stringify_pathbuf, ClientConfig, Keyring};
 
 #[derive(Args)]
@@ -88,15 +89,14 @@ impl TxCmd {
         // query the sender's sequence number if not provided
         let sequence = match self.sequence {
             None => {
-                let query = SdkQuery::Account {
-                    address: sender.clone(),
-                };
-                let query_bytes = serde_json_wasm::to_vec(&query).unwrap();
-                let result = client
-                    .abci_query(None, query_bytes, None, false)
-                    .await
-                    .unwrap();
-                let response: AccountResponse = serde_json_wasm::from_slice(&result.value).unwrap();
+                let response: AccountResponse = do_abci_query(
+                    &client,
+                    SdkQuery::Account {
+                        address: sender.clone(),
+                    },
+                )
+                .await;
+
                 // needs to be 1 greater than the on-chain sequence
                 response.sequence + 1
             },
@@ -142,7 +142,7 @@ impl TxCmd {
             sender,
             msgs: vec![msg],
             chain_id: chain_id.into(),
-            sequence
+            sequence,
         };
 
         let tx = key.sign_tx(&body).unwrap();

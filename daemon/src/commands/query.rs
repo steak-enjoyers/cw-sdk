@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use clap::{Args, Subcommand};
-use serde::{de::DeserializeOwned, Serialize};
 use tendermint::abci::transaction::Hash;
 use tendermint_rpc::{Client, HttpClient, Url};
 use tracing::{error, info};
@@ -13,6 +12,7 @@ use cw_sdk::msg::{
 };
 
 use crate::print::{print_as_json, print_as_yaml};
+use crate::query::do_abci_query;
 use crate::{stringify_pathbuf, ClientConfig};
 
 #[derive(Args)]
@@ -166,21 +166,4 @@ impl QueryCmd {
             },
         };
     }
-}
-
-async fn do_abci_query<Q: Serialize, R: Serialize + DeserializeOwned>(
-    client: &HttpClient,
-    query: Q,
-) -> R {
-    // serialize the query into binary
-    let query_bytes = serde_json_wasm::to_vec(&query).unwrap();
-
-    // do query
-    let result = client
-        .abci_query(None, query_bytes, None, false)
-        .await
-        .unwrap();
-
-    // deserialize the response
-    serde_json_wasm::from_slice(&result.value).unwrap()
 }

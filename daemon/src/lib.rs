@@ -2,9 +2,10 @@ pub mod commands;
 mod config;
 mod key;
 mod keyring;
-mod path;
+pub mod path;
 pub mod print;
 pub mod prompt;
+pub mod query;
 
 pub use path::*;
 pub use config::*;
