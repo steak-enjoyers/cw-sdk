@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use clap::{Args, Subcommand};
+use cosmwasm_std::ContractResult;
 use tendermint::abci::transaction::Hash;
 use tendermint_rpc::{Client, HttpClient, Url};
 use tracing::{error, info};
@@ -11,9 +12,8 @@ use cw_sdk::msg::{
     AccountResponse, CodeResponse, ContractResponse, SdkQuery, WasmRawResponse, WasmSmartResponse,
 };
 
-use crate::print::{print_as_json, print_as_yaml};
 use crate::query::do_abci_query;
-use crate::{stringify_pathbuf, ClientConfig};
+use crate::{print, stringify_pathbuf, ClientConfig};
 
 #[derive(Args)]
 pub struct QueryCmd {
@@ -85,7 +85,7 @@ impl QueryCmd {
             } => {
                 let hash = Hash::from_str(txhash).unwrap();
                 let response = client.tx(hash, false).await.unwrap();
-                print_as_json(&response);
+                print::json(&response);
             },
             QuerySubcmd::Account {
                 address,
@@ -98,7 +98,7 @@ impl QueryCmd {
                 )
                 .await;
 
-                print_as_yaml(response);
+                print::yaml(response);
             },
             QuerySubcmd::Code {
                 code_id,
@@ -132,7 +132,7 @@ impl QueryCmd {
                 )
                 .await;
 
-                print_as_yaml(response);
+                print::yaml(response);
             },
             QuerySubcmd::WasmRaw {
                 contract,
@@ -147,7 +147,7 @@ impl QueryCmd {
                 )
                 .await;
 
-                print_as_yaml(response);
+                print::yaml(response);
             },
             QuerySubcmd::WasmSmart {
                 contract,
@@ -162,7 +162,29 @@ impl QueryCmd {
                 )
                 .await;
 
-                print_as_yaml(response);
+                match response.result {
+                    ContractResult::Ok(bytes) => {
+                        println!("query successful with binary response:");
+                        print::hr();
+                        println!("{}", bytes.to_base64());
+
+                        match String::from_utf8(bytes.into()){ Ok(s) => {
+                            println!("\nresponse decoded as utf8:");
+                            print::hr();
+                            println!("{}", s);
+                        }
+                        Err(err) => {
+                            println!("\nfailed to decode response as utf8:");
+                            print::hr();
+                            println!("{}", err);
+                        }}
+                    },
+                    ContractResult::Err(err) => {
+                        println!("query failed with error message:");
+                        print::hr();
+                        println!("{}", err);
+                    },
+                }
             },
         };
     }

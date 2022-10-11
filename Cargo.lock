@@ -650,6 +650,7 @@ dependencies = [
  "bcrypt",
  "bip32",
  "clap",
+ "cosmwasm-std",
  "cw-sdk",
  "dialoguer",
  "hex",

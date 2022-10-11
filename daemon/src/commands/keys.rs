@@ -5,8 +5,7 @@ use clap::{Args, Subcommand};
 use rand_core::OsRng;
 use tracing::error;
 
-use crate::{prompt, stringify_pathbuf, Key, Keyring};
-use crate::print::{print_key, print_keys, print_mnemonic};
+use crate::{print, prompt, stringify_pathbuf, Key, Keyring};
 
 #[derive(Args)]
 pub struct KeysCmd {
@@ -70,13 +69,13 @@ impl KeysCmd {
                 keyring.set(&key).unwrap();
 
                 println!();
-                print_key(&key);
+                print::key(&key);
 
                 if !recover {
                     println!("**Important** write this mnemonic phrase in a safe place!");
                     println!("It is the only way to recover your account if you ever forget your password.");
                     println!();
-                    print_mnemonic(mnemonic.phrase());
+                    print::mnemonic(mnemonic.phrase());
                 }
             },
             KeysSubcmd::Show {
@@ -84,12 +83,12 @@ impl KeysCmd {
             } => {
                 let key = keyring.get(name).unwrap();
                 println!();
-                print_key(&key);
+                print::key(&key);
             },
             KeysSubcmd::List => {
                 let keys = keyring.list().unwrap();
                 println!();
-                print_keys(&keys);
+                print::keys(&keys);
             },
             KeysSubcmd::Delete {
                 name,

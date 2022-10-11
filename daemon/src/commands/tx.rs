@@ -9,9 +9,8 @@ use tracing::error;
 use cw_sdk::auth::ACCOUNT_PREFIX;
 use cw_sdk::msg::{AccountResponse, SdkMsg, SdkQuery, TxBody};
 
-use crate::print::{print_as_json, print_as_yaml};
 use crate::query::do_abci_query;
-use crate::{prompt, stringify_pathbuf, ClientConfig, Keyring};
+use crate::{print, prompt, stringify_pathbuf, ClientConfig, Keyring};
 
 #[derive(Args)]
 pub struct TxCmd {
@@ -150,14 +149,14 @@ impl TxCmd {
 
         println!();
         println!("successfully signed tx:");
-        println!("-----------------------");
-        print_as_json(&tx);
+        print::hr();
+        print::json(&tx);
         println!();
 
         if prompt::confirm("broadcast tx?").unwrap() {
             let response = client.broadcast_tx_async(tx_bytes.into()).await.unwrap();
             println!();
-            print_as_yaml(&response);
+            print::yaml(&response);
         }
     }
 }
