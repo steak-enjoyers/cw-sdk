@@ -5,7 +5,7 @@ use tendermint_proto::abci::{
 };
 
 use super::{channel_recv, channel_send, ABCIError, AppCommand};
-use crate::msg::{SdkMsg, SdkQuery};
+use crate::msg::{SdkMsg, SdkQuery, Tx};
 
 #[derive(Clone, Debug)]
 pub struct App {
@@ -152,6 +152,24 @@ impl App {
         })
     }
 
+    pub fn query_account(&self, address: String) -> Result<ResponseQuery, ABCIError> {
+        let (result_tx, result_rx) = channel();
+
+        channel_send(
+            &self.cmd_tx,
+            AppCommand::QueryAccount {
+                address,
+                result_tx,
+            },
+        )?;
+        let response = channel_recv(&result_rx)?;
+
+        Ok(ResponseQuery {
+            value: serde_json_wasm::to_vec(&response).unwrap(),
+            ..Default::default()
+        })
+    }
+
     pub fn query_code(&self, code_id: u64) -> Result<ResponseQuery, ABCIError> {
         let (result_tx, result_rx) = channel();
 
@@ -180,6 +198,24 @@ impl App {
             proof_ops: None,
             height: 0,
             codespace: "".to_string(),
+        })
+    }
+
+    pub fn query_contract(&self, contract: u64) -> Result<ResponseQuery, ABCIError> {
+        let (result_tx, result_rx) = channel();
+
+        channel_send(
+            &self.cmd_tx,
+            AppCommand::QueryContract {
+                contract,
+                result_tx,
+            },
+        )?;
+        let response = channel_recv(&result_rx)?;
+
+        Ok(ResponseQuery {
+            value: serde_json_wasm::to_vec(&response).unwrap(),
+            ..Default::default()
         })
     }
 
@@ -263,9 +299,15 @@ impl tendermint_abci::Application for App {
         };
 
         match query {
+            SdkQuery::Account {
+                address,
+            } => self.query_account(address).unwrap(),
             SdkQuery::Code {
                 code_id,
             } => self.query_code(code_id).unwrap(),
+            SdkQuery::Contract {
+                contract,
+            } => self.query_contract(contract).unwrap(),
             SdkQuery::WasmRaw {
                 contract,
                 key,
@@ -274,19 +316,22 @@ impl tendermint_abci::Application for App {
                 contract,
                 msg,
             } => self.query_wasm_smart(contract, msg.0).unwrap(),
-            _ => panic!("unimplemented sdk query type!!"),
         }
     }
 
     fn deliver_tx(&self, request: RequestDeliverTx) -> ResponseDeliverTx {
-        let msg = match serde_json_wasm::from_slice::<SdkMsg>(&request.tx) {
-            Ok(msg) => msg,
+        let tx = match serde_json_wasm::from_slice::<Tx>(&request.tx) {
+            Ok(tx) => tx,
             Err(err) => {
                 return error_deliver_tx(format!("Error: failed to unmarshal message: {}", err))
             },
         };
 
-        match msg {
+        // TODO: validate auth info here
+
+        // NOTE: currently we only support one message per tx
+
+        match tx.body.msgs[0].clone() {
             SdkMsg::StoreCode {
                 wasm_byte_code,
             } => self.store_code(wasm_byte_code.0).unwrap(),

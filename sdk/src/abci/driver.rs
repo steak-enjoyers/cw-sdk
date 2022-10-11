@@ -37,6 +37,13 @@ impl AppDriver {
                     let (success, events) = self.state.execute_contract(contract, msg)?;
                     channel_send(&result_tx, (success, events))?;
                 },
+                AppCommand::QueryAccount {
+                    address,
+                    result_tx,
+                } => {
+                    let response = self.state.query_account(&address)?;
+                    channel_send(&result_tx, response)?;
+                }
                 AppCommand::QueryCode {
                     code_id,
                     result_tx,

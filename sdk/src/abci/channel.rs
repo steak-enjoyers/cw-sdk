@@ -3,7 +3,7 @@ use std::sync::mpsc::{Sender, Receiver};
 use cosmwasm_std::Event;
 
 use super::ABCIError;
-use crate::msg::{CodeResponse, ContractResponse, WasmRawResponse, WasmSmartResponse};
+use crate::msg::{CodeResponse, ContractResponse, WasmRawResponse, WasmSmartResponse, AccountResponse};
 
 /// The ABCI server and the driver maintains a channel between them, and communicate by sending
 /// commands.
@@ -32,6 +32,10 @@ pub enum AppCommand {
         contract: u64,
         msg: Vec<u8>,
         result_tx: Sender<(bool, Option<Vec<Event>>)>,
+    },
+    QueryAccount {
+        address: String,
+        result_tx: Sender<AccountResponse>,
     },
     /// Query a wasm byte code based on code id
     QueryCode {

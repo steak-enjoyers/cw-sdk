@@ -9,7 +9,7 @@ use tracing::error;
 use cw_sdk::auth::ACCOUNT_PREFIX;
 use cw_sdk::msg::{SdkQuery, SdkMsg, AccountResponse, TxBody};
 
-use crate::print::print_as_json;
+use crate::print::{print_as_json, print_as_yaml};
 use crate::{prompt, stringify_pathbuf, ClientConfig, Keyring};
 
 #[derive(Args)]
@@ -155,7 +155,9 @@ impl TxCmd {
         println!();
 
         if prompt::confirm("broadcast tx?").unwrap() {
-            client.broadcast_tx_async(tx_bytes.into()).await.unwrap();
+            let response = client.broadcast_tx_async(tx_bytes.into()).await.unwrap();
+            println!();
+            print_as_yaml(&response);
         }
     }
 }

@@ -39,7 +39,7 @@ impl Default for ClientConfig {
     fn default() -> Self {
         Self {
             chain_id: "".into(),
-            node: "tcp://localhost:26657".into(),
+            node: "http://localhost:26657".into(),
         }
     }
 }
