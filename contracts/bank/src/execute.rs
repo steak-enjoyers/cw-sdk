@@ -1,4 +1,4 @@
-use cosmwasm_std::{Coin, DepsMut, MessageInfo, Response, Uint128};
+use cosmwasm_std::{Addr, Coin, DepsMut, MessageInfo, Response, Uint128};
 
 use crate::error::ContractError;
 use crate::msg::Balance;
@@ -61,16 +61,10 @@ pub fn mint(
 
 pub fn send(
     deps: DepsMut,
-    info: MessageInfo,
-    from: String,
+    from_addr: Addr,
     to: String,
     amount: Vec<Coin>,
 ) -> Result<Response, ContractError> {
-    if info.sender != from {
-        return Err(ContractError::unauthorized("sender is not the from address"));
-    }
-
-    let from_addr = deps.api.addr_validate(&from)?;
     let to_addr = deps.api.addr_validate(&to)?;
 
     for coin in &amount {
@@ -90,7 +84,7 @@ pub fn send(
 
     Ok(Response::new()
         .add_attribute("action", "bank/send")
-        .add_attribute("from", from)
+        .add_attribute("from", from_addr)
         .add_attribute("to", to)
         .add_attribute("amount", stringify_coins(&amount)))
 }

@@ -21,7 +21,6 @@ pub enum ExecuteMsg {
         amount: Coin,
     },
     Send {
-        from: String,
         to: String,
         amount: Vec<Coin>,
     },
