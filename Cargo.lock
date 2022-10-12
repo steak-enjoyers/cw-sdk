@@ -682,7 +682,6 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-vm",
  "hex",
- "ripemd",
  "schemars",
  "secp256k1",
  "serde",

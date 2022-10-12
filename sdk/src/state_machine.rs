@@ -217,6 +217,8 @@ impl State {
             .add_attribute("hash", hash_str))
     }
 
+    /// TODO: need to check there is no collision between the contract address and account address
+    /// before committing the newly instantiated contract to the store
     fn instantiate_contract(
         &mut self,
         sender: &str,
