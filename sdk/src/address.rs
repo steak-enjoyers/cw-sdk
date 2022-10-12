@@ -5,16 +5,22 @@ use thiserror::Error;
 
 use crate::hash::{sha256, sha256_truncate};
 
-/// The latest version of [ADR-028](https://github.com/cosmos/cosmos-sdk/blob/main/docs/architecture/adr-028-public-key-addresses.md)
-/// has increated the address length from 20 bytes to 32, due to concerns of collisions.
+/// The latest version of ADR-028 has increased the address length from 20 bytes to 32, due to
+/// concerns of collisions.
+///
+/// References:
+/// - ADR-028:
+///   https://github.com/cosmos/cosmos-sdk/blob/main/docs/architecture/adr-028-public-key-addresses.md
+/// - A related discussion on Ethereum forum:
+///   https://ethereum-magicians.org/t/increasing-address-size-from-20-to-32-bytes/5485/43
 pub const ADDRESS_LENGTH: usize = 32;
 
-/// According to ADR-028, each basic address (one that is represented by a single key pair), need to
-/// have a "type" string denoting its public key schema used.
+/// According to ADR-028, each basic address (one that is represented by a single key pair), needs
+/// to have a "type" string denoting the public key scheme used.
 ///
-/// For now, cw-sdk only supports the secp256k1 public key. The type string is defined by:
+/// For now, cw-sdk only supports the secp256k1 scheme. The type string is defined by:
 /// https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/crypto/secp256k1/keys.proto
-pub const ACCOUNT_TYPE: &str = "cosmos.crypto.secp256k1.PubKey";
+pub const PUBKEY_TYPE: &str = "cosmos.crypto.secp256k1.PubKey";
 
 /// Represents an account address
 pub struct Address(Vec<u8>);
@@ -38,26 +44,25 @@ impl FromStr for Address {
 }
 
 impl Address {
-    /// Convert a pubkey bytes to address bytes according to
-    /// [ADR-028](https://github.com/cosmos/cosmos-sdk/blob/main/docs/architecture/adr-028-public-key-addresses.md).
+    /// Derive an account address based on the public key.
     ///
-    /// The address bytes are derived as
+    /// The address bytes are computed as:
     ///
     /// ```plain
-    /// address_bytes := sha256(ACCOUNT_TYPE | sha256(pubkey_bytes))[:ADDRESS_LENGTH]
+    /// address_bytes := sha256(PUBKEY_TYPE | sha256(pubkey_bytes))[:ADDRESS_LENGTH]
     /// ```
     ///
     /// Where `|` means bytes concatenation without using any separator.
     pub fn from_pubkey(pubkey_bytes: &[u8]) -> Self {
-        let mut bytes = ACCOUNT_TYPE.to_string().into_bytes();
+        let mut bytes = PUBKEY_TYPE.to_string().into_bytes();
         bytes.extend(sha256(pubkey_bytes));
         Self(sha256_truncate(&bytes, ADDRESS_LENGTH))
     }
 
-    /// Derive contract address based on the contract's label. This is used when instantiating
+    /// Derive contract address based on a human-readable label. This is used when instantiating
     /// contracts during genesis.
     ///
-    /// The address bytes are derived as
+    /// The address bytes are computed as:
     ///
     /// ```plain
     /// address_bytes := sha256("label" | label_bytes)[:ACCOUNT_LENGTH]
@@ -73,7 +78,7 @@ impl Address {
     /// Derive contract address based on the code id and instance id. This is used when
     /// instantiating contracts post-genesis.
     ///
-    /// The address bytes are derived as
+    /// The address bytes are computed as:
     ///
     /// ```plain
     /// address_bytes := sha256("ids" | code_id_be_bytes | instance_id_be_bytes)[:ACCOUNT_LENGTH]
