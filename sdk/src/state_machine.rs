@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use cosmwasm_std::{Binary, ContractResult, Empty, Event, Response};
+use cosmwasm_std::{Binary, Coin, ContractResult, Empty, Event, Response};
 use cosmwasm_vm::testing::{mock_env, mock_info};
 use cosmwasm_vm::{
     call_execute, call_instantiate, call_query, Backend, Instance, InstanceOptions, Storage,
@@ -10,7 +10,7 @@ use thiserror::Error;
 use crate::hash::sha256;
 use crate::msg::{
     Account, AccountResponse, CodeResponse, ContractResponse, SdkMsg, SdkQuery, Tx,
-    WasmRawResponse, WasmSmartResponse,
+    WasmRawResponse, WasmSmartResponse, GenesisState,
 };
 use crate::store::ContractStore;
 use crate::{auth, wasm};
@@ -48,29 +48,73 @@ impl State {
         (self.height, app_hash)
     }
 
+    /// Run genesis messages. Return app hash.
+    /// TODO: Once a staking contract is created, return the genesis validator set as well.
+    pub fn init_chain(&mut self, genesis_state_bytes: &[u8]) -> Result<Vec<u8>, StateError> {
+        let GenesisState {
+            deployer,
+            gen_msgs,
+        } = serde_json::from_slice(genesis_state_bytes)?;
+
+        // TODO: validate deployer address
+
+        for msg in gen_msgs {
+            match msg {
+                SdkMsg::StoreCode {
+                    wasm_byte_code,
+                } => {
+                    self.store_code(&deployer, wasm_byte_code.into())?;
+                },
+                SdkMsg::Instantiate {
+                    code_id,
+                    msg,
+                } => {
+                    self.instantiate_contract(&deployer, code_id, msg.into())?;
+                },
+                SdkMsg::Execute {
+                    contract,
+                    msg,
+                    funds,
+                } => {
+                    self.execute_contract(&deployer, contract, msg.into(), funds)?;
+                },
+                SdkMsg::Migrate {
+                    contract,
+                    code_id,
+                    msg,
+                } => {
+                    self.migrate_contract(&deployer, contract, code_id, msg.into())?;
+                },
+            }
+        }
+
+        let (_, app_hash) = self.info();
+        Ok(app_hash)
+    }
+
     /// Handle ABCI queries. Return query responses as raw binaries.
     pub fn handle_query(&self, query_bytes: &[u8]) -> Result<Vec<u8>, StateError> {
         // deserialize the query from bytes
-        let query: SdkQuery = serde_json_wasm::from_slice(query_bytes)?;
+        let query: SdkQuery = serde_json::from_slice(query_bytes)?;
 
         match query {
             SdkQuery::Account {
                 address,
-            } => serde_json_wasm::to_vec(&self.query_account(&address)?),
+            } => serde_json::to_vec(&self.query_account(&address)?),
             SdkQuery::Code {
                 code_id,
-            } => serde_json_wasm::to_vec(&self.query_code(code_id)?),
+            } => serde_json::to_vec(&self.query_code(code_id)?),
             SdkQuery::Contract {
                 contract,
-            } => serde_json_wasm::to_vec(&self.query_contract(contract)?),
+            } => serde_json::to_vec(&self.query_contract(contract)?),
             SdkQuery::WasmRaw {
                 contract,
                 key,
-            } => serde_json_wasm::to_vec(&self.query_wasm_raw(contract, key.as_slice())?),
+            } => serde_json::to_vec(&self.query_wasm_raw(contract, key.as_slice())?),
             SdkQuery::WasmSmart {
                 contract,
                 msg,
-            } => serde_json_wasm::to_vec(&self.query_wasm_smart(contract, msg.as_slice())?),
+            } => serde_json::to_vec(&self.query_wasm_smart(contract, msg.as_slice())?),
         }
         .map_err(StateError::from)
     }
@@ -78,7 +122,7 @@ impl State {
     /// Handle transactions. Returns events emitted during transaction executions.
     pub fn handle_tx(&mut self, tx_bytes: &[u8]) -> Result<Vec<Event>, StateError> {
         // deserialize the tx from bytes
-        let tx: Tx = serde_json_wasm::from_slice(tx_bytes)?;
+        let tx: Tx = serde_json::from_slice(tx_bytes)?;
 
         // authenticate signature, chain id, sequence, etc.
         let account = auth::authenticate_tx(&tx, self)?;
@@ -103,15 +147,12 @@ impl State {
                     contract,
                     msg,
                     funds,
-                } => {
-                    if !funds.is_empty() {
-                        return Err(StateError::FundsUnsupported);
-                    }
-                    self.execute_contract(&tx.body.sender, contract, msg.into())
-                },
+                } => self.execute_contract(&tx.body.sender, contract, msg.into(), funds),
                 SdkMsg::Migrate {
-                    ..
-                } => Err(StateError::MigrationUnsupported),
+                    contract,
+                    code_id,
+                    msg,
+                } => self.migrate_contract(&tx.body.sender, contract, code_id, msg.into()),
             })
             .try_for_each(|res| -> Result<_, StateError> {
                 events.extend(res?);
@@ -217,7 +258,12 @@ impl State {
         sender: &str,
         contract_addr: u64,
         msg: Vec<u8>,
+        funds: Vec<Coin>,
     ) -> Result<Vec<Event>, StateError> {
+        if !funds.is_empty() {
+            return Err(StateError::FundsUnsupported);
+        }
+
         let storage = self
             .contract_stores
             .get(&contract_addr)
@@ -263,6 +309,16 @@ impl State {
             },
             ContractResult::Err(err) => Err(StateError::Contract(err)),
         }
+    }
+
+    fn migrate_contract(
+        &self,
+        _sender: &str,
+        _contract_addr: u64,
+        _code_id: u64,
+        _msg: Vec<u8>,
+    ) -> Result<Vec<Event>, StateError> {
+        Err(StateError::MigrationUnsupported)
     }
 
     fn query_account(&self, address: &str) -> Result<AccountResponse, StateError> {
@@ -347,10 +403,7 @@ pub enum StateError {
     Vm(#[from] cosmwasm_vm::VmError),
 
     #[error(transparent)]
-    Serialize(#[from] serde_json_wasm::ser::Error),
-
-    #[error(transparent)]
-    Deserialize(#[from] serde_json_wasm::de::Error),
+    Serde(#[from] serde_json::Error),
 
     #[error(transparent)]
     Auth(#[from] auth::AuthError),

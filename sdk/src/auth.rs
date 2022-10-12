@@ -55,7 +55,7 @@ pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<Account, AuthError> {
     }
 
     // verify the signature. the content to be signed is (the sha256 hash of) the tx body
-    let body_bytes = serde_json_wasm::to_vec(&tx.body)?;
+    let body_bytes = serde_json::to_vec(&tx.body)?;
 
     // if the signature is valid, save the account, and return true; otherwise, return false
     //
@@ -74,7 +74,7 @@ pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<Account, AuthError> {
 #[derive(Debug, Error)]
 pub enum AuthError {
     #[error(transparent)]
-    Serialization(#[from] serde_json_wasm::ser::Error),
+    Serde(#[from] serde_json::Error),
 
     #[error(transparent)]
     Secp256k1(#[from] secp256k1::Error),

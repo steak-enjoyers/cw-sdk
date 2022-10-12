@@ -130,7 +130,7 @@ impl tendermint_abci::Application for App {
             // for now i just serialize the events into a JSON string as log
             Ok(events) => abci::ResponseDeliverTx {
                 code: 0,
-                log: serde_json_wasm::to_string(&events).unwrap(),
+                log: serde_json::to_string(&events).unwrap(),
                 events: wasm_event_to_abci(events),
                 ..Default::default()
             },

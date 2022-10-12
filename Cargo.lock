@@ -686,7 +686,7 @@ dependencies = [
  "schemars",
  "secp256k1",
  "serde",
- "serde-json-wasm",
+ "serde_json",
  "sha2 0.10.6",
  "tendermint-abci",
  "tendermint-proto",
