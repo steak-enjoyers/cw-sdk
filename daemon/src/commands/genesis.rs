@@ -40,6 +40,18 @@ pub enum GenesisSubcommand {
         code_id: u64,
         /// Instantiate message in JSON format
         msg: String,
+
+        /// A human readable name for the contract
+        #[clap(long)]
+        label: String,
+
+        /// Coins to be sent along the instantiate message
+        #[clap(long)]
+        funds: Option<String>,
+
+        /// Contract admin, the account who can migrate the contract
+        #[clap(long)]
+        admin: Option<String>,
     },
     /// Add an "execute contract" message to the genesis state
     Execute {
@@ -47,6 +59,10 @@ pub enum GenesisSubcommand {
         contract: u64,
         /// Execute message in JSON format
         msg: String,
+
+        /// Coins to be sent along the execute message
+        #[clap(long)]
+        funds: Option<String>,
     },
     /// List all codes in the genesis state
     ListCodes,
@@ -95,20 +111,37 @@ impl GenesisCmd {
             GenesisSubcommand::Instantiate {
                 code_id,
                 msg,
+                funds,
+                label,
+                admin,
             } => {
+                if funds.is_some() {
+                    error!("funds is not supported yet");
+                    return;
+                }
                 app_state.gen_msgs.push(SdkMsg::Instantiate {
                     code_id: *code_id,
                     msg: msg.clone().into_bytes().into(),
+                    funds: vec![],
+                    label: label.clone(),
+                    admin: admin.clone(),
                 });
             },
             GenesisSubcommand::Execute {
                 contract,
                 msg,
-            } => app_state.gen_msgs.push(SdkMsg::Execute {
-                contract: *contract,
-                msg: msg.clone().into_bytes().into(),
-                funds: vec![],
-            }),
+                funds
+            } => {
+                if funds.is_some() {
+                    error!("funds is not supported yet");
+                    return;
+                }
+                app_state.gen_msgs.push(SdkMsg::Execute {
+                    contract: *contract,
+                    msg: msg.clone().into_bytes().into(),
+                    funds: vec![],
+                });
+            },
             GenesisSubcommand::ListCodes => {
                 let mut code_count = 0;
                 let mut codes = vec![];
@@ -133,6 +166,8 @@ impl GenesisCmd {
                 for msg in &app_state.gen_msgs {
                     if let SdkMsg::Instantiate {
                         code_id,
+                        label,
+                        admin,
                         ..
                     } = msg
                     {
@@ -140,6 +175,8 @@ impl GenesisCmd {
                         contracts.push(ContractInfo {
                             address: contract_count,
                             code_id: *code_id,
+                            label: label.clone(),
+                            admin: admin.clone(),
                         });
                     }
                 }
@@ -166,4 +203,6 @@ struct CodeInfo {
 struct ContractInfo {
     address: u64,
     code_id: u64,
+    label: String,
+    admin: Option<String>,
 }

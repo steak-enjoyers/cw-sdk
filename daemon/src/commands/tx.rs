@@ -47,6 +47,18 @@ pub enum TxSubcmd {
         code_id: u64,
         /// Instantiate message in JSON format
         msg: String,
+
+        /// A human readable name for the contract
+        #[clap(long)]
+        label: String,
+
+        /// Coins to be sent along the instantiate message
+        #[clap(long)]
+        funds: Option<String>,
+
+        /// Contract admin, the account who can migrate the contract
+        #[clap(long)]
+        admin: Option<String>,
     },
     /// Execute a contract
     Execute {
@@ -54,6 +66,10 @@ pub enum TxSubcmd {
         contract: u64,
         /// Execute message in JSON format
         msg: String,
+
+        /// Coins to be sent along the execute message
+        #[clap(long)]
+        funds: Option<String>,
     },
     /// Migrate an existing contract to a new code id
     Migrate {
@@ -115,17 +131,36 @@ impl TxCmd {
             TxSubcmd::Instantiate {
                 code_id,
                 msg,
-            } => SdkMsg::Instantiate {
-                code_id: *code_id,
-                msg: msg.clone().into_bytes().into(),
+                funds,
+                label,
+                admin
+            } => {
+                if funds.is_some() {
+                    error!("funds is not supported yet");
+                    return;
+                }
+                SdkMsg::Instantiate {
+                    code_id: *code_id,
+                    msg: msg.clone().into_bytes().into(),
+                    funds: vec![],
+                    label: label.clone(),
+                    admin: admin.clone(),
+                }
             },
             TxSubcmd::Execute {
                 contract,
                 msg,
-            } => SdkMsg::Execute {
-                contract: *contract,
-                msg: msg.clone().into_bytes().into(),
-                funds: vec![],
+                funds,
+            } => {
+                if funds.is_some() {
+                    error!("funds is not supported yet");
+                    return;
+                }
+                SdkMsg::Execute {
+                    contract: *contract,
+                    msg: msg.clone().into_bytes().into(),
+                    funds: vec![],
+                }
             },
             TxSubcmd::Migrate {
                 contract,

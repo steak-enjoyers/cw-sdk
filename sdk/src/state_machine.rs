@@ -9,8 +9,8 @@ use thiserror::Error;
 
 use crate::hash::sha256;
 use crate::msg::{
-    Account, AccountResponse, CodeResponse, ContractResponse, SdkMsg, SdkQuery, Tx,
-    WasmRawResponse, WasmSmartResponse, GenesisState,
+    Account, AccountResponse, Code, CodeResponse, Contract, ContractResponse, GenesisState, SdkMsg,
+    SdkQuery, Tx, WasmRawResponse, WasmSmartResponse,
 };
 use crate::store::ContractStore;
 use crate::{auth, wasm};
@@ -20,21 +20,26 @@ use crate::{auth, wasm};
 pub struct State {
     /// Current block height
     pub height: u64,
+
     /// Identifier of the chain
     pub chain_id: String,
+    /// The total number of wasm byte codes stored
+    pub code_count: u64,
+    /// The total number of contracts instantiated
+    pub contract_count: u64,
+
     /// User accounts: Address -> Account
     /// TODO: use &str instead of String as key?
     pub accounts: BTreeMap<String, Account>,
-    /// The total number of wasm byte codes stored
-    pub code_count: u64,
+
     /// Wasm byte codes indexed by the ids
-    pub codes: BTreeMap<u64, Vec<u8>>,
-    /// The total number of contracts instantiated
-    pub contract_count: u64,
+    pub codes: BTreeMap<u64, Code>,
+
     /// The code id used by each contract
-    pub contract_codes: BTreeMap<u64, u64>,
+    pub contracts: BTreeMap<u64, Contract>,
+
     /// Contract store
-    pub contract_stores: BTreeMap<u64, ContractStore>,
+    pub stores: BTreeMap<u64, ContractStore>,
 }
 
 // public functions for the state machine
@@ -63,15 +68,16 @@ impl State {
                 SdkMsg::StoreCode {
                     wasm_byte_code,
                 } => {
-                    self.store_code(&deployer, wasm_byte_code.into())?;
+                    self.store_code(&deployer, wasm_byte_code)?;
                 },
                 SdkMsg::Instantiate {
                     code_id,
                     msg,
                     funds,
                     label,
+                    admin,
                 } => {
-                    self.instantiate_contract(&deployer, code_id, msg.into(), funds, label)?;
+                    self.instantiate_contract(&deployer, code_id, msg.into(), funds, label, admin)?;
                 },
                 SdkMsg::Execute {
                     contract,
@@ -140,13 +146,17 @@ impl State {
             .map(|msg| match msg {
                 SdkMsg::StoreCode {
                     wasm_byte_code,
-                } => self.store_code(&tx.body.sender, wasm_byte_code.into()),
+                } => {
+                    let event = self.store_code(&tx.body.sender, wasm_byte_code)?;
+                    Ok(vec![event])
+                },
                 SdkMsg::Instantiate {
                     code_id,
                     msg,
                     funds,
                     label,
-                } => self.instantiate_contract(&tx.body.sender, code_id, msg.into(), funds, label),
+                    admin,
+                } => self.instantiate_contract(&tx.body.sender, code_id, msg.into(), funds, label, admin),
                 SdkMsg::Execute {
                     contract,
                     msg,
@@ -183,22 +193,28 @@ impl State {
     fn store_code(
         &mut self,
         sender: &str,
-        wasm_byte_code: Vec<u8>,
-    ) -> Result<Vec<Event>, StateError> {
-        // compute code hash
-        let hash = sha256(&wasm_byte_code);
+        wasm_byte_code: Binary,
+    ) -> Result<Event, StateError> {
+        let hash = sha256(wasm_byte_code.as_slice());
+        let hash_str = hex::encode(&hash);
 
         // increment code count
         self.code_count += 1;
 
         // insert code into the map
         let code_id = self.code_count;
-        self.codes.insert(code_id, wasm_byte_code);
+        self.codes.insert(
+            code_id,
+            Code {
+                creator: sender.into(),
+                wasm_byte_code,
+            },
+        );
 
-        Ok(vec![Event::new("store_code")
+        Ok(Event::new("store_code")
             .add_attribute("code_id", code_id.to_string())
             .add_attribute("sender", sender)
-            .add_attribute("hash", hex::encode(&hash))])
+            .add_attribute("hash", hash_str))
     }
 
     fn instantiate_contract(
@@ -208,14 +224,16 @@ impl State {
         msg: Vec<u8>,
         funds: Vec<Coin>,
         label: String,
+        admin: Option<String>,
     ) -> Result<Vec<Event>, StateError> {
         if !funds.is_empty() {
             return Err(StateError::FundsUnsupported);
         }
 
         let backend = wasm::create_backend(ContractStore::new());
+        let code = &self.codes[&code_id];
         let mut instance = Instance::from_code(
-            &self.codes[&code_id],
+            &code.wasm_byte_code,
             backend,
             InstanceOptions {
                 gas_limit: u64::MAX,
@@ -246,9 +264,15 @@ impl State {
 
                 // for now, we just use a number as contract address
                 let contract_addr = self.contract_count;
-                self.contract_codes.insert(contract_addr, code_id);
-
-                self.contract_stores.insert(contract_addr, storage);
+                self.contracts.insert(
+                    contract_addr,
+                    Contract {
+                        code_id,
+                        label,
+                        admin,
+                    },
+                );
+                self.stores.insert(contract_addr, storage);
 
                 // collect the events
                 let event = Event::new("instantiate_contract")
@@ -275,13 +299,15 @@ impl State {
         }
 
         let storage = self
-            .contract_stores
+            .stores
             .get(&contract_addr)
             .ok_or_else(|| StateError::contract_not_found(contract_addr))?
             .clone();
+        let contract = &self.contracts[&contract_addr];
+        let code = &self.codes[&contract.code_id];
         let backend = wasm::create_backend(storage);
         let mut instance = Instance::from_code(
-            &self.codes[&self.contract_codes[&contract_addr]],
+            &code.wasm_byte_code,
             backend,
             InstanceOptions {
                 gas_limit: u64::MAX,
@@ -307,7 +333,7 @@ impl State {
                     return Err(StateError::SubmessagesUnsupported);
                 }
 
-                self.contract_stores.insert(contract_addr, storage);
+                self.stores.insert(contract_addr, storage);
 
                 // collect the events
                 let event = Event::new("execute_contract")
@@ -348,47 +374,44 @@ impl State {
 
     fn query_code(&self, code_id: u64) -> Result<CodeResponse, StateError> {
         match self.codes.get(&code_id) {
-            Some(wasm_byte_code) => Ok(CodeResponse {
-                hash: sha256(wasm_byte_code).into(),
-                wasm_byte_code: wasm_byte_code.clone().into(),
-            }),
+            Some(code) => Ok(code.clone().into()),
             None => Err(StateError::code_not_found(code_id)),
         }
     }
 
-    fn query_contract(&self, contract: u64) -> Result<ContractResponse, StateError> {
-        match self.contract_codes.get(&contract) {
-            Some(code_id) => Ok(ContractResponse {
-                code_id: *code_id,
-            }),
-            None => Err(StateError::contract_not_found(contract)),
-        }
+    fn query_contract(&self, contract_addr: u64) -> Result<ContractResponse, StateError> {
+        self.contracts
+            .get(&contract_addr)
+            .cloned()
+            .ok_or_else(|| StateError::contract_not_found(contract_addr))
     }
 
-    fn query_wasm_raw(&self, contract: u64, key: &[u8]) -> Result<WasmRawResponse, StateError> {
+    fn query_wasm_raw(&self, contract_addr: u64, key: &[u8]) -> Result<WasmRawResponse, StateError> {
         let storage = self
-            .contract_stores
-            .get(&contract)
-            .ok_or_else(|| StateError::contract_not_found(contract))?
-            .clone();
+            .stores
+            .get(&contract_addr)
+            .cloned()
+            .ok_or_else(|| StateError::contract_not_found(contract_addr))?;
         let (res, _) = storage.get(key);
         let value = res?;
         Ok(WasmRawResponse {
-            contract,
+            contract: contract_addr,
             key: key.to_owned().into(),
             value: value.map(Binary),
         })
     }
 
-    fn query_wasm_smart(&self, contract: u64, msg: &[u8]) -> Result<WasmSmartResponse, StateError> {
+    fn query_wasm_smart(&self, contract_addr: u64, msg: &[u8]) -> Result<WasmSmartResponse, StateError> {
         let storage = self
-            .contract_stores
-            .get(&contract)
-            .ok_or_else(|| StateError::contract_not_found(contract))?
-            .clone();
+            .stores
+            .get(&contract_addr)
+            .cloned()
+            .ok_or_else(|| StateError::contract_not_found(contract_addr))?;
+        let contract = &self.contracts[&contract_addr];
+        let code = &self.codes[&contract.code_id];
         let backend = wasm::create_backend(storage);
         let mut instance = Instance::from_code(
-            &self.codes[&self.contract_codes[&contract]],
+            &code.wasm_byte_code,
             backend,
             InstanceOptions {
                 gas_limit: u64::MAX,
@@ -398,7 +421,7 @@ impl State {
         )?;
         let result = call_query(&mut instance, &mock_env(), msg)?;
         Ok(WasmSmartResponse {
-            contract,
+            contract: contract_addr,
             result,
         })
     }

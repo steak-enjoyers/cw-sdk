@@ -1,6 +1,8 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Coin, ContractResult};
 
+use crate::hash::sha256;
+
 /// This should be included as JSON inside `~/.tendermint/genesis.json`, under the `app_state`
 /// field. Tendermint will provide this as binary to the application in a InitChain request.
 #[derive(Default)]
@@ -42,6 +44,7 @@ pub struct TxBody {
     pub sequence: u64,
 }
 
+// TODO: add comments
 #[cw_serde]
 pub enum SdkMsg {
     StoreCode {
@@ -66,6 +69,9 @@ pub enum SdkMsg {
         /// For such labels, developers must make sure to deploy contracts that have compatible
         /// execute/query/sudo methods implemented.
         label: String,
+        /// Account who is allowed to migrate the contract.
+        /// To make the contract immutable, leave this field empty.
+        admin: Option<String>,
     },
     Execute {
         contract: u64,
@@ -79,26 +85,36 @@ pub enum SdkMsg {
     },
 }
 
+// TODO: add enumerative queries for account, code, contract
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum SdkQuery {
+    /// TODO: add comments
     #[returns(AccountResponse)]
     Account {
         address: String,
     },
+
+    /// TODO: add comments
     #[returns(CodeResponse)]
     Code {
         code_id: u64,
     },
+
+    /// TODO: add comments
     #[returns(ContractResponse)]
     Contract {
         contract: u64,
     },
+
+    /// TODO: add comments
     #[returns(WasmRawResponse)]
     WasmRaw {
         contract: u64,
         key: Binary,
     },
+
+    /// TODO: add comments
     #[returns(WasmSmartResponse)]
     WasmSmart {
         contract: u64,
@@ -106,7 +122,7 @@ pub enum SdkQuery {
     },
 }
 
-/// This is the account type to be stored on-chain. Not to be confused with `AccountResponse`.
+/// The account type to be stored on-chain
 #[cw_serde]
 pub struct Account {
     /// The account's secp256k1 public key
@@ -116,6 +132,7 @@ pub struct Account {
     pub sequence: u64,
 }
 
+/// The response type for `SdkQuery::Account`
 #[cw_serde]
 pub struct AccountResponse {
     pub address: String,
@@ -125,20 +142,51 @@ pub struct AccountResponse {
     pub sequence: u64,
 }
 
+/// The code metadata and byte code to be stored on-chain
+#[cw_serde]
+pub struct Code {
+    /// Account who stored the code
+    pub creator: String,
+    /// The wasm byte code
+    pub wasm_byte_code: Binary,
+}
+
+/// The response type for `SdkQuery::Code`
 #[cw_serde]
 pub struct CodeResponse {
+    /// Account who stored the code
+    pub creator: String,
     /// SHA-256 hash of the wasm byte code
     pub hash: Binary,
     /// The wasm byte code
     pub wasm_byte_code: Binary,
 }
 
-#[cw_serde]
-pub struct ContractResponse {
-    /// This contract's code id
-    pub code_id: u64,
+impl From<Code> for CodeResponse {
+    fn from(code: Code) -> CodeResponse {
+        CodeResponse {
+            creator: code.creator,
+            hash: sha256(code.wasm_byte_code.as_slice()).into(),
+            wasm_byte_code: code.wasm_byte_code,
+        }
+    }
 }
 
+/// The contract metadata to be stored on-chain
+#[cw_serde]
+pub struct Contract {
+    /// This contract's code id
+    pub code_id: u64,
+    /// A human readable name for the contract
+    pub label: String,
+    /// Account who is allowed to migrate the contract
+    pub admin: Option<String>,
+}
+
+/// The response type for `SdkQuery::Contract`
+pub type ContractResponse = Contract;
+
+/// The response type for `SdkQuery::WasmRaw`
 #[cw_serde]
 pub struct WasmRawResponse {
     /// Contract address
@@ -149,6 +197,7 @@ pub struct WasmRawResponse {
     pub value: Option<Binary>,
 }
 
+/// The response type for `SdkQuery::WasmSmart`
 #[cw_serde]
 pub struct WasmSmartResponse {
     /// Contract address
