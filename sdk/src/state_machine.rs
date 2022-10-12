@@ -68,8 +68,10 @@ impl State {
                 SdkMsg::Instantiate {
                     code_id,
                     msg,
+                    funds,
+                    label,
                 } => {
-                    self.instantiate_contract(&deployer, code_id, msg.into())?;
+                    self.instantiate_contract(&deployer, code_id, msg.into(), funds, label)?;
                 },
                 SdkMsg::Execute {
                     contract,
@@ -142,7 +144,9 @@ impl State {
                 SdkMsg::Instantiate {
                     code_id,
                     msg,
-                } => self.instantiate_contract(&tx.body.sender, code_id, msg.into()),
+                    funds,
+                    label,
+                } => self.instantiate_contract(&tx.body.sender, code_id, msg.into(), funds, label),
                 SdkMsg::Execute {
                     contract,
                     msg,
@@ -202,7 +206,13 @@ impl State {
         sender: &str,
         code_id: u64,
         msg: Vec<u8>,
+        funds: Vec<Coin>,
+        label: String,
     ) -> Result<Vec<Event>, StateError> {
+        if !funds.is_empty() {
+            return Err(StateError::FundsUnsupported);
+        }
+
         let backend = wasm::create_backend(ContractStore::new());
         let mut instance = Instance::from_code(
             &self.codes[&code_id],

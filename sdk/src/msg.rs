@@ -50,6 +50,22 @@ pub enum SdkMsg {
     Instantiate {
         code_id: u64,
         msg: Binary,
+        funds: Vec<Coin>,
+        /// A human readable name for the contract. Must be unique.
+        ///
+        /// Contracts deployed during genesis will have their addresses generated deterministically
+        /// according to the label, using the same algorithm that the Go SDK generates module
+        /// account addresses.
+        ///
+        /// There are several special labels, such as `bank`, `staking`, `gov`, `ibc`, etc., that
+        /// developers need to pay special attention to. For example,
+        ///
+        /// - the SDK invokes the "bank" contract to process gas fee payments
+        /// - IBC relayers will invoke the "ibc" contract to deliver packets
+        ///
+        /// For such labels, developers must make sure to deploy contracts that have compatible
+        /// execute/query/sudo methods implemented.
+        label: String,
     },
     Execute {
         contract: u64,
