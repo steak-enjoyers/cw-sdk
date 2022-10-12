@@ -1,6 +1,23 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Coin, ContractResult};
 
+/// This should be included as JSON inside `~/.tendermint/genesis.json`, under the `app_state`
+/// field. Tendermint will provide this as binary to the application in a InitChain request.
+#[derive(Default)]
+#[cw_serde]
+pub struct GenesisState {
+    /// Address of the account which will act as the sender of genesis messages.
+    ///
+    /// For example, if an "Instantiate" message in included in `gen_msgs`, then the deployer
+    /// address will be provided as `info.sender` in the instantiation call.
+    ///
+    /// Note that during genesis, no transaction verification is performed. The application
+    /// developers must provide a trust deployer account.
+    pub deployer: String,
+    /// Messages to be executed in order during the InitChain call.
+    pub gen_msgs: Vec<SdkMsg>,
+}
+
 #[cw_serde]
 pub struct Tx {
     /// Transaction body

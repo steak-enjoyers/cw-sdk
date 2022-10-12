@@ -106,6 +106,7 @@ impl TxCmd {
             TxSubcmd::Store {
                 wasm_byte_code_path,
             } => {
+                // TODO: check whether the file exists
                 let wasm_byte_code = fs::read(wasm_byte_code_path).unwrap();
                 SdkMsg::StoreCode {
                     wasm_byte_code: wasm_byte_code.into(),
