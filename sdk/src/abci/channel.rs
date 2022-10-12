@@ -8,6 +8,9 @@ use crate::StateError;
 /// commands. This enum defines the commands allowed to be transmitted through the channel.
 #[derive(Debug, Clone)]
 pub enum AppCommand {
+    Info {
+        result_tx: Sender<(u64, Vec<u8>)>,
+    },
     Query {
         query_bytes: Vec<u8>,
         result_tx: Sender<Result<Vec<u8>, StateError>>,
@@ -15,5 +18,8 @@ pub enum AppCommand {
     DeliverTx {
         tx_bytes: Vec<u8>,
         result_tx: Sender<Result<Vec<Event>, StateError>>,
+    },
+    Commit {
+        result_tx: Sender<(u64, Vec<u8>)>,
     }
 }

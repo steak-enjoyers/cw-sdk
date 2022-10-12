@@ -1,9 +1,7 @@
 use std::sync::mpsc::{channel, Sender};
 
 use cosmwasm_std::{Attribute as WasmAttribute, Event as WasmEvent};
-use tendermint_proto::abci::{
-    Event, EventAttribute, RequestDeliverTx, RequestQuery, ResponseDeliverTx, ResponseQuery,
-};
+use tendermint_proto::abci::{self, Event, EventAttribute};
 
 use super::AppCommand;
 
@@ -13,11 +11,40 @@ pub struct App {
 }
 
 impl tendermint_abci::Application for App {
-    fn query(&self, request: RequestQuery) -> ResponseQuery {
+    /// Provide information about the ABCI application.
+    ///
+    /// TODO: `abci::Requestinfo` has three parameters: version, block_version, and p2p_version.
+    /// I don't know what they mean or how to handle them. For now they are just ignored.
+    fn info(&self, _request: abci::RequestInfo) -> abci::ResponseInfo {
+        let (result_tx, result_rx) = channel();
+
+        self.cmd_tx
+            .send(AppCommand::Info {
+                result_tx,
+            })
+            .unwrap();
+        let (height, app_hash) = result_rx.recv().unwrap();
+
+        abci::ResponseInfo {
+            data: env!("CARGO_PKG_NAME").into(),
+            version: env!("CARGO_PKG_VERSION").into(),
+            app_version: 1,
+            last_block_height: height as i64,
+            last_block_app_hash: app_hash,
+        }
+    }
+
+    /// Called once upon genesis.
+    fn init_chain(&self, _request: abci::RequestInitChain) -> abci::ResponseInitChain {
+        Default::default()
+    }
+
+    /// Query the application for data at the current or past height.
+    fn query(&self, request: abci::RequestQuery) -> abci::ResponseQuery {
         let path = request.path.split('/').collect::<Vec<_>>();
 
         if path.is_empty() {
-            return ResponseQuery {
+            return abci::ResponseQuery {
                 code: 1,
                 log: "no query path provided".into(),
                 ..Default::default()
@@ -37,12 +64,12 @@ impl tendermint_abci::Application for App {
                 let result = result_rx.recv().unwrap();
 
                 match result {
-                    Ok(response_bytes) => ResponseQuery {
+                    Ok(response_bytes) => abci::ResponseQuery {
                         code: 0,
                         value: response_bytes,
                         ..Default::default()
                     },
-                    Err(error) => ResponseQuery {
+                    Err(error) => abci::ResponseQuery {
                         code: 1,
                         log: error.to_string(),
                         ..Default::default()
@@ -51,7 +78,7 @@ impl tendermint_abci::Application for App {
             },
             &"store" => {
                 // unimplemented
-                ResponseQuery {
+                abci::ResponseQuery {
                     code: 1,
                     log: "store query is not implemented yet".into(),
                     ..Default::default()
@@ -62,13 +89,13 @@ impl tendermint_abci::Application for App {
                 // however, return no error to signal that the peer should not be rejected
                 // see:
                 // https://github.com/tendermint/tendermint/blob/v0.34.x/spec/abci/apps.md#query-connection
-                ResponseQuery {
+                abci::ResponseQuery {
                     code: 0,
                     log: "p2p query is not implemented yet".into(),
                     ..Default::default()
                 }
             },
-            prefix => ResponseQuery {
+            prefix => abci::ResponseQuery {
                 code: 1,
                 log: format!("unsupported query path prefix: {}", prefix),
                 ..Default::default()
@@ -76,7 +103,18 @@ impl tendermint_abci::Application for App {
         }
     }
 
-    fn deliver_tx(&self, request: RequestDeliverTx) -> ResponseDeliverTx {
+    /// Check the given transaction before putting it into the local mempool.
+    fn check_tx(&self, _request: abci::RequestCheckTx) -> abci::ResponseCheckTx {
+        Default::default()
+    }
+
+    /// Signals the beginning of a new block, prior to any `DeliverTx` calls.
+    fn begin_block(&self, _request: abci::RequestBeginBlock) -> abci::ResponseBeginBlock {
+        Default::default()
+    }
+
+    /// Apply a transaction to the application's state.
+    fn deliver_tx(&self, request: abci::RequestDeliverTx) -> abci::ResponseDeliverTx {
         let (result_tx, result_rx) = channel();
 
         self.cmd_tx
@@ -90,17 +128,40 @@ impl tendermint_abci::Application for App {
         match result {
             // TODO: what should we put in `data` and `log` fields?
             // for now i just serialize the events into a JSON string as log
-            Ok(events) => ResponseDeliverTx {
+            Ok(events) => abci::ResponseDeliverTx {
                 code: 0,
                 log: serde_json_wasm::to_string(&events).unwrap(),
                 events: wasm_event_to_abci(events),
                 ..Default::default()
             },
-            Err(error) => ResponseDeliverTx {
+            Err(error) => abci::ResponseDeliverTx {
                 code: 1,
                 log: error.to_string(),
                 ..Default::default()
             },
+        }
+    }
+
+    /// Signals the end of a block.
+    fn end_block(&self, _request: abci::RequestEndBlock) -> abci::ResponseEndBlock {
+        Default::default()
+    }
+
+    /// Commit the current state at the current height.
+    fn commit(&self) -> abci::ResponseCommit {
+        let (result_tx, result_rx) = channel();
+
+        self.cmd_tx
+            .send(AppCommand::Commit {
+                result_tx,
+            })
+            .unwrap();
+        let (height, app_hash) = result_rx.recv().unwrap();
+
+        abci::ResponseCommit {
+            data: app_hash,
+            // TODO: I don't really know what retain_height means
+            retain_height: (height - 1) as i64,
         }
     }
 }

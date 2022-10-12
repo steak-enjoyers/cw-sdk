@@ -18,6 +18,8 @@ use crate::{auth, wasm};
 /// The application's state and state transition rules. The core of the blockchain.
 #[derive(Debug, Default)]
 pub struct State {
+    /// Current block height
+    pub height: u64,
     /// Identifier of the chain
     pub chain_id: String,
     /// User accounts: Address -> Account
@@ -37,6 +39,43 @@ pub struct State {
 
 // public functions for the state machine
 impl State {
+    /// Returns ABCI info response.
+    ///
+    /// For now, our mock storage doesn't provide a method to generate the app hash. Instead, we
+    /// simply return `sha256(height)` as a mock app hash.
+    pub fn info(&self) -> (u64, Vec<u8>) {
+        let app_hash = sha256(&self.height.to_be_bytes());
+        (self.height, app_hash)
+    }
+
+    /// Handle ABCI queries. Return query responses as raw binaries.
+    pub fn handle_query(&self, query_bytes: &[u8]) -> Result<Vec<u8>, StateError> {
+        // deserialize the query from bytes
+        let query: SdkQuery = serde_json_wasm::from_slice(query_bytes)?;
+
+        match query {
+            SdkQuery::Account {
+                address,
+            } => serde_json_wasm::to_vec(&self.query_account(&address)?),
+            SdkQuery::Code {
+                code_id,
+            } => serde_json_wasm::to_vec(&self.query_code(code_id)?),
+            SdkQuery::Contract {
+                contract,
+            } => serde_json_wasm::to_vec(&self.query_contract(contract)?),
+            SdkQuery::WasmRaw {
+                contract,
+                key,
+            } => serde_json_wasm::to_vec(&self.query_wasm_raw(contract, key.as_slice())?),
+            SdkQuery::WasmSmart {
+                contract,
+                msg,
+            } => serde_json_wasm::to_vec(&self.query_wasm_smart(contract, msg.as_slice())?),
+        }
+        .map_err(StateError::from)
+    }
+
+    /// Handle transactions. Returns events emitted during transaction executions.
     pub fn handle_tx(&mut self, tx_bytes: &[u8]) -> Result<Vec<Event>, StateError> {
         // deserialize the tx from bytes
         let tx: Tx = serde_json_wasm::from_slice(tx_bytes)?;
@@ -82,30 +121,15 @@ impl State {
         Ok(events)
     }
 
-    pub fn handle_query(&self, query_bytes: &[u8]) -> Result<Vec<u8>, StateError> {
-        // deserialize the query from bytes
-        let query: SdkQuery = serde_json_wasm::from_slice(query_bytes)?;
-
-        match query {
-            SdkQuery::Account {
-                address,
-            } => serde_json_wasm::to_vec(&self.query_account(&address)?),
-            SdkQuery::Code {
-                code_id,
-            } => serde_json_wasm::to_vec(&self.query_code(code_id)?),
-            SdkQuery::Contract {
-                contract,
-            } => serde_json_wasm::to_vec(&self.query_contract(contract)?),
-            SdkQuery::WasmRaw {
-                contract,
-                key,
-            } => serde_json_wasm::to_vec(&self.query_wasm_raw(contract, key.as_slice())?),
-            SdkQuery::WasmSmart {
-                contract,
-                msg,
-            } => serde_json_wasm::to_vec(&self.query_wasm_smart(contract, msg.as_slice())?),
-        }
-        .map_err(StateError::from)
+    /// Commit changes in the cached state into the main application state, and advance block
+    /// height by 1. Return the updated block height and app hash.
+    ///
+    /// TODO: Ideally the state machine maintains a cached state for uncommitted changes separate
+    /// from the "main" state, and only commits changes in the cached state into the main state upon
+    /// this function call. However for now we don't have such a mechanism implemented.
+    pub fn commit(&mut self) -> (u64, Vec<u8>) {
+        self.height += 1;
+        self.info()
     }
 }
 

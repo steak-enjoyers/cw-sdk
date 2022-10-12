@@ -14,6 +14,9 @@ impl AppDriver {
     pub fn run(mut self) {
         loop {
             match self.cmd_rx.recv().unwrap() {
+                AppCommand::Info {
+                    result_tx,
+                } => result_tx.send(self.state.info()).unwrap(),
                 AppCommand::Query {
                     query_bytes,
                     result_tx,
@@ -22,6 +25,9 @@ impl AppDriver {
                     tx_bytes,
                     result_tx,
                 } => result_tx.send(self.state.handle_tx(&tx_bytes)).unwrap(),
+                AppCommand::Commit {
+                    result_tx,
+                } => result_tx.send(self.state.commit()).unwrap(),
             }
         }
     }
