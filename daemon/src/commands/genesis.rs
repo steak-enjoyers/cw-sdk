@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::{Args, Subcommand};
 use cw_sdk::hash::sha256;
@@ -98,6 +98,7 @@ impl GenesisCmd {
             } => {
                 // TODO: validate deployer address
                 app_state.deployer = address.clone();
+                update_and_write(&mut genesis, &app_state, &genesis_path);
             },
             GenesisSubcommand::Store {
                 wasm_byte_code_path,
@@ -107,6 +108,7 @@ impl GenesisCmd {
                 app_state.gen_msgs.push(SdkMsg::StoreCode {
                     wasm_byte_code: wasm_byte_code.into(),
                 });
+                update_and_write(&mut genesis, &app_state, &genesis_path);
             },
             GenesisSubcommand::Instantiate {
                 code_id,
@@ -126,6 +128,7 @@ impl GenesisCmd {
                     label: label.clone(),
                     admin: admin.clone(),
                 });
+                update_and_write(&mut genesis, &app_state, &genesis_path);
             },
             GenesisSubcommand::Execute {
                 contract,
@@ -141,6 +144,7 @@ impl GenesisCmd {
                     msg: msg.clone().into_bytes().into(),
                     funds: vec![],
                 });
+                update_and_write(&mut genesis, &app_state, &genesis_path);
             },
             GenesisSubcommand::ListCodes => {
                 let mut code_count = 0;
@@ -183,13 +187,15 @@ impl GenesisCmd {
                 print::yaml(&contracts);
             },
         }
-
-        genesis.app_state = serde_json::to_value(app_state).unwrap();
-        let genesis_str = serde_json::to_vec_pretty(&genesis).unwrap();
-        fs::write(&genesis_path, &genesis_str).unwrap();
-
-        info!("genesis file written to {}", stringify_pathbuf(&genesis_path));
     }
+}
+
+/// Update the genesis state and write to file
+fn update_and_write(genesis: &mut TmGenesis, app_state: &GenesisState, genesis_path: &Path) {
+    genesis.app_state = serde_json::to_value(app_state).unwrap();
+    let genesis_str = serde_json::to_vec_pretty(&genesis).unwrap();
+    fs::write(&genesis_path, &genesis_str).unwrap();
+    info!("genesis file written to {}", stringify_pathbuf(genesis_path));
 }
 
 #[derive(Serialize)]

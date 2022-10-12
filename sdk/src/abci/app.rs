@@ -35,8 +35,21 @@ impl tendermint_abci::Application for App {
     }
 
     /// Called once upon genesis.
-    fn init_chain(&self, _request: abci::RequestInitChain) -> abci::ResponseInitChain {
-        Default::default()
+    fn init_chain(&self, request: abci::RequestInitChain) -> abci::ResponseInitChain {
+        let (result_tx, result_rx) = channel();
+
+        self.cmd_tx
+            .send(AppCommand::InitChain {
+                app_state_bytes: request.app_state_bytes,
+                result_tx,
+            })
+            .unwrap();
+        let result = result_rx.recv().unwrap();
+
+        abci::ResponseInitChain {
+            app_hash: result.unwrap(),
+            ..Default::default()
+        }
     }
 
     /// Query the application for data at the current or past height.

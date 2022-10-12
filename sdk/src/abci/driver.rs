@@ -17,6 +17,10 @@ impl AppDriver {
                 AppCommand::Info {
                     result_tx,
                 } => result_tx.send(self.state.info()).unwrap(),
+                AppCommand::InitChain {
+                    app_state_bytes,
+                    result_tx,
+                } => result_tx.send(self.state.init_chain(&app_state_bytes)).unwrap(),
                 AppCommand::Query {
                     query_bytes,
                     result_tx,

@@ -55,11 +55,11 @@ impl State {
 
     /// Run genesis messages. Return app hash.
     /// TODO: Once a staking contract is created, return the genesis validator set as well.
-    pub fn init_chain(&mut self, genesis_state_bytes: &[u8]) -> Result<Vec<u8>, StateError> {
+    pub fn init_chain(&mut self, app_state_bytes: &[u8]) -> Result<Vec<u8>, StateError> {
         let GenesisState {
             deployer,
             gen_msgs,
-        } = serde_json::from_slice(genesis_state_bytes)?;
+        } = serde_json::from_slice(app_state_bytes)?;
 
         // TODO: validate deployer address
 

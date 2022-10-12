@@ -11,6 +11,10 @@ pub enum AppCommand {
     Info {
         result_tx: Sender<(u64, Vec<u8>)>,
     },
+    InitChain {
+        app_state_bytes: Vec<u8>,
+        result_tx: Sender<Result<Vec<u8>, StateError>>,
+    },
     Query {
         query_bytes: Vec<u8>,
         result_tx: Sender<Result<Vec<u8>, StateError>>,
