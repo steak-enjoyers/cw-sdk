@@ -8,14 +8,13 @@ use cosmwasm_vm::{
 };
 use thiserror::Error;
 
-use crate::{address, auth};
+use crate::{address, auth, wasm};
 use crate::hash::sha256;
 use crate::msg::{
     AccountResponse, CodeResponse, ContractResponse, GenesisState, SdkMsg,
     SdkQuery, Tx, WasmRawResponse, WasmSmartResponse,
 };
 use crate::store::ContractStore;
-use crate::wasm;
 
 /// The account type to be stored on-chain
 #[cw_serde]
@@ -260,7 +259,6 @@ impl State {
     }
 }
 
-
 impl State {
     fn store_code(
         &mut self,
@@ -473,7 +471,11 @@ impl State {
             .ok_or_else(|| StateError::contract_not_found(contract_addr))
     }
 
-    fn query_wasm_raw(&self, contract_addr: Addr, key: &[u8]) -> Result<WasmRawResponse, StateError> {
+    fn query_wasm_raw(
+        &self,
+        contract_addr: Addr,
+        key: &[u8],
+    ) -> Result<WasmRawResponse, StateError> {
         let storage = self
             .stores
             .get(&contract_addr)
@@ -486,7 +488,11 @@ impl State {
         })
     }
 
-    fn query_wasm_smart(&self, contract_addr: Addr, msg: &[u8]) -> Result<WasmSmartResponse, StateError> {
+    fn query_wasm_smart(
+        &self,
+        contract_addr: Addr,
+        msg: &[u8],
+    ) -> Result<WasmSmartResponse, StateError> {
         let storage = self
             .stores
             .get(&contract_addr)
@@ -548,7 +554,7 @@ pub enum StateError {
 
     #[error("no account found with address {address}")]
     AccountNotFound {
-        address: String
+        address: String,
     },
 
     #[error("no wasm binary code found with id {code_id}")]
