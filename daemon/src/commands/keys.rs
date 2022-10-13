@@ -29,6 +29,7 @@ pub enum KeysSubcmd {
         coin_type: u32,
     },
     /// Delete a given key
+    #[clap(alias = "rm")]
     Delete {
         /// Name of the key to delete
         name: String,
@@ -39,6 +40,7 @@ pub enum KeysSubcmd {
         name: String,
     },
     /// List all keys
+    #[clap(alias = "ls")]
     List,
 }
 
