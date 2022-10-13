@@ -4,6 +4,7 @@ use std::str::FromStr;
 
 use clap::{Args, Subcommand};
 use cosmwasm_std::ContractResult;
+use serde_json::Value;
 use tendermint::abci::transaction::Hash;
 use tendermint_rpc::{Client, HttpClient, Url};
 use tracing::{error, info};
@@ -164,26 +165,17 @@ impl QueryCmd {
 
                 match response.result {
                     ContractResult::Ok(bytes) => {
-                        println!("query successful with binary response:");
-                        print::hr();
-                        println!("{}", bytes.to_base64());
-
-                        match String::from_utf8(bytes.into()){ Ok(s) => {
-                            println!("\nresponse decoded as utf8:");
-                            print::hr();
-                            println!("{}", s);
+                        // attempt to decode the response as generic JSON
+                        match serde_json::from_slice::<Value>(bytes.as_slice()) {
+                            Ok(s) => {
+                                print::json(s);
+                            },
+                            Err(err) => {
+                                println!("query successful but failed to decode response: {}", err);
+                            },
                         }
-                        Err(err) => {
-                            println!("\nfailed to decode response as utf8:");
-                            print::hr();
-                            println!("{}", err);
-                        }}
                     },
-                    ContractResult::Err(err) => {
-                        println!("query failed with error message:");
-                        print::hr();
-                        println!("{}", err);
-                    },
+                    ContractResult::Err(err) => println!("query failed: {}", err),
                 }
             },
         };
