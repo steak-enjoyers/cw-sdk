@@ -97,7 +97,8 @@ impl QueryCmd {
                         address: address.clone(),
                     },
                 )
-                .await;
+                .await
+                .unwrap();
 
                 print::yaml(response);
             },
@@ -111,7 +112,8 @@ impl QueryCmd {
                         code_id: *code_id,
                     },
                 )
-                .await;
+                .await
+                .unwrap();
 
                 // only print the hash, not the bytecode
                 println!("hash: {}", response.hash);
@@ -131,7 +133,8 @@ impl QueryCmd {
                         contract: contract.clone(),
                     },
                 )
-                .await;
+                .await
+                .unwrap();
 
                 print::yaml(response);
             },
@@ -146,7 +149,8 @@ impl QueryCmd {
                         key: hex::decode(&key).unwrap().into(),
                     },
                 )
-                .await;
+                .await
+                .unwrap();
 
                 print::yaml(response);
             },
@@ -161,7 +165,8 @@ impl QueryCmd {
                         msg: msg.clone().into_bytes().into(),
                     },
                 )
-                .await;
+                .await
+                .unwrap();
 
                 match response.result {
                     ContractResult::Ok(bytes) => {

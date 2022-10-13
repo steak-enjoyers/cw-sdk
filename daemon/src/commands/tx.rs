@@ -103,16 +103,19 @@ impl TxCmd {
         // query the sender's sequence number if not provided
         let sequence = match self.sequence {
             None => {
-                let response: AccountResponse = do_abci_query(
+                let sequence = do_abci_query::<_, AccountResponse>(
                     &client,
                     SdkQuery::Account {
                         address: sender_addr.to_string(),
                     },
                 )
-                .await;
+                .await
+                .map(|res| res.sequence)
+                .unwrap_or(1);
+                
 
                 // needs to be 1 greater than the on-chain sequence
-                response.sequence + 1
+                sequence + 1
             },
             Some(sequence) => sequence,
         };
