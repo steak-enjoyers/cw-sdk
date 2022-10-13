@@ -659,7 +659,6 @@ dependencies = [
  "k256",
  "rand_core 0.6.4",
  "serde",
- "serde-json-wasm",
  "serde_json",
  "serde_yaml",
  "tendermint",

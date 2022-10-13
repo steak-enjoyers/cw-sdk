@@ -72,7 +72,7 @@ impl Key {
 
     /// Sign a tx body, returns the full tx.
     pub fn sign_tx(&self, body: &TxBody) -> Result<Tx, KeyError> {
-        let body_bytes = serde_json_wasm::to_vec(body)?;
+        let body_bytes = serde_json::to_vec(body)?;
         let signature = self.sign_bytes(&body_bytes);
         Ok(Tx {
             body: body.clone(),
@@ -116,17 +116,17 @@ impl TryFrom<JwtPayload> for Key {
 
 #[derive(Debug, Error)]
 pub enum KeyError {
-    #[error("{0}")]
+    #[error(transparent)]
     Bip32(#[from] bip32::Error),
 
-    #[error("{0}")]
+    #[error(transparent)]
     Ecdsa(#[from] k256::ecdsa::Error),
 
-    #[error("{0}")]
+    #[error(transparent)]
     FromHex(#[from] hex::FromHexError),
 
     #[error(transparent)]
-    Serialize(#[from] serde_json_wasm::ser::Error),
+    Serde(#[from] serde_json::Error),
 
     #[error("failed to cast JWT payload to key: {reason}")]
     MalformedPayload {

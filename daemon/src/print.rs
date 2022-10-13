@@ -48,8 +48,3 @@ pub fn json(data: impl serde::Serialize) {
     let data_str = serde_json::to_string_pretty(&data).unwrap();
     println!("{}", data_str);
 }
-
-/// Print a horizontal ruler
-pub fn hr() {
-    println!("--------------------");
-}

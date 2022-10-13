@@ -180,11 +180,11 @@ impl TxCmd {
         };
 
         let tx = key.sign_tx(&body).unwrap();
-        let tx_bytes = serde_json_wasm::to_vec(&tx).unwrap();
+        let tx_bytes = serde_json::to_vec(&tx).unwrap();
 
         println!();
         println!("successfully signed tx:");
-        print::hr();
+        println!("-----------------------");
         print::json(&tx);
         println!();
 

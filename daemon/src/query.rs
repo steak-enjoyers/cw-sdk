@@ -9,7 +9,7 @@ pub async fn do_abci_query<Q: Serialize, R: Serialize + DeserializeOwned>(
     query: Q,
 ) -> R {
     // serialize the query into binary
-    let query_bytes = serde_json_wasm::to_vec(&query).unwrap();
+    let query_bytes = serde_json::to_vec(&query).unwrap();
 
     // do query
     // must use "app" path
@@ -20,5 +20,5 @@ pub async fn do_abci_query<Q: Serialize, R: Serialize + DeserializeOwned>(
         .unwrap();
 
     // deserialize the response
-    serde_json_wasm::from_slice(&result.value).unwrap()
+    serde_json::from_slice(&result.value).unwrap()
 }
