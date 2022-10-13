@@ -74,7 +74,7 @@ impl KeysCmd {
                 print::key(&key);
 
                 if !recover {
-                    println!("**Important** write this mnemonic phrase in a safe place!");
+                    println!("\n**Important** write this mnemonic phrase in a safe place!");
                     println!("It is the only way to recover your account if you ever forget your password.");
                     println!();
                     print::mnemonic(mnemonic.phrase());
