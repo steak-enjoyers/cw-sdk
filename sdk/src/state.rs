@@ -1,45 +1,76 @@
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
-use cosmwasm_std::{Binary, Coin, ContractResult, Empty, Event, Response};
+use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{Binary, Coin, Addr, ContractResult, Empty, Event, Response};
 use cosmwasm_vm::testing::{mock_env, mock_info};
 use cosmwasm_vm::{
     call_execute, call_instantiate, call_query, Backend, Instance, InstanceOptions, Storage,
 };
 use thiserror::Error;
 
+use crate::{address, auth};
 use crate::hash::sha256;
 use crate::msg::{
-    Account, AccountResponse, Code, CodeResponse, Contract, ContractResponse, GenesisState, SdkMsg,
+    AccountResponse, CodeResponse, ContractResponse, GenesisState, SdkMsg,
     SdkQuery, Tx, WasmRawResponse, WasmSmartResponse,
 };
 use crate::store::ContractStore;
-use crate::{auth, wasm};
+use crate::wasm;
 
-/// The application's state and state transition rules. The core of the blockchain.
+/// The account type to be stored on-chain
+#[cw_serde]
+pub struct Account {
+    /// The account's secp256k1 public key
+    pub pubkey: Binary,
+    /// The account's sequence number, used to prevent replay attacks.
+    /// The first tx ever to be submitted by the account should come with the sequence of 1.
+    pub sequence: u64,
+}
+
+/// The code metadata and byte code to be stored on-chain
+#[cw_serde]
+pub struct Code {
+    /// Account who stored the code
+    pub creator: Addr,
+    /// The wasm byte code
+    pub wasm_byte_code: Binary,
+}
+
+/// The contract metadata to be stored on-chain
+#[cw_serde]
+pub struct Contract {
+    /// This contract's code id
+    pub code_id: u64,
+    /// A human readable name for the contract
+    pub label: String,
+    /// Account who is allowed to migrate the contract
+    pub admin: Option<Addr>,
+}
+
+/// This is mock, will be replaced by an actual database backend
 #[derive(Debug, Default)]
 pub struct State {
-    /// Current block height
-    pub height: u64,
-
     /// Identifier of the chain
     pub chain_id: String,
+
+    /// Current block height
+    pub height: u64,
     /// The total number of wasm byte codes stored
     pub code_count: u64,
     /// The total number of contracts instantiated
     pub contract_count: u64,
 
-    /// User accounts: Address -> Account
-    /// TODO: use &str instead of String as key?
-    pub accounts: BTreeMap<String, Account>,
+    /// Account address -> Account
+    pub accounts: HashMap<Addr, Account>,
 
-    /// Wasm byte codes indexed by the ids
-    pub codes: BTreeMap<u64, Code>,
+    /// Code id -> Code
+    pub codes: HashMap<u64, Code>,
 
-    /// The code id used by each contract
-    pub contracts: BTreeMap<u64, Contract>,
+    /// Contract address -> Contract
+    pub contracts: HashMap<Addr, Contract>,
 
-    /// Contract store
-    pub stores: BTreeMap<u64, ContractStore>,
+    /// Contract address -> ContractStore
+    pub stores: HashMap<Addr, ContractStore>,
 }
 
 // public functions for the state machine
@@ -61,14 +92,14 @@ impl State {
             gen_msgs,
         } = serde_json::from_slice(app_state_bytes)?;
 
-        // TODO: validate deployer address
+        let deployer_addr = address::validate(&deployer)?;
 
         for msg in gen_msgs {
             match msg {
                 SdkMsg::StoreCode {
                     wasm_byte_code,
                 } => {
-                    self.store_code(&deployer, wasm_byte_code)?;
+                    self.store_code(&deployer_addr, wasm_byte_code)?;
                 },
                 SdkMsg::Instantiate {
                     code_id,
@@ -77,21 +108,32 @@ impl State {
                     label,
                     admin,
                 } => {
-                    self.instantiate_contract(&deployer, code_id, msg.into(), funds, label, admin)?;
+                    let admin_addr = admin.map(|admin| address::validate(&admin)).transpose()?;
+                    self.instantiate_contract(
+                        &deployer_addr,
+                        code_id,
+                        msg.into(),
+                        funds,
+                        label,
+                        admin_addr,
+                        AddressGenerator::ByLabel,
+                    )?;
                 },
                 SdkMsg::Execute {
                     contract,
                     msg,
                     funds,
                 } => {
-                    self.execute_contract(&deployer, contract, msg.into(), funds)?;
+                    let contract_addr = address::validate(&contract)?;
+                    self.execute_contract(&deployer_addr, contract_addr, msg.into(), funds)?;
                 },
                 SdkMsg::Migrate {
                     contract,
                     code_id,
                     msg,
                 } => {
-                    self.migrate_contract(&deployer, contract, code_id, msg.into())?;
+                    let contract_addr = address::validate(&contract)?;
+                    self.migrate_contract(&deployer_addr, contract_addr, code_id, msg.into())?;
                 },
             }
         }
@@ -108,21 +150,33 @@ impl State {
         match query {
             SdkQuery::Account {
                 address,
-            } => serde_json::to_vec(&self.query_account(&address)?),
+            } => {
+                let addr = address::validate(&address)?;
+                serde_json::to_vec(&self.query_account(&addr)?)
+            },
             SdkQuery::Code {
                 code_id,
             } => serde_json::to_vec(&self.query_code(code_id)?),
             SdkQuery::Contract {
                 contract,
-            } => serde_json::to_vec(&self.query_contract(contract)?),
+            } => {
+                let contract_addr = address::validate(&contract)?;
+                serde_json::to_vec(&self.query_contract(contract_addr)?)
+            },
             SdkQuery::WasmRaw {
                 contract,
                 key,
-            } => serde_json::to_vec(&self.query_wasm_raw(contract, key.as_slice())?),
+            } => {
+                let contract_addr = address::validate(&contract)?;
+                serde_json::to_vec(&self.query_wasm_raw(contract_addr, key.as_slice())?)
+            },
             SdkQuery::WasmSmart {
                 contract,
                 msg,
-            } => serde_json::to_vec(&self.query_wasm_smart(contract, msg.as_slice())?),
+            } => {
+                let contract_addr = address::validate(&contract)?;
+                serde_json::to_vec(&self.query_wasm_smart(contract_addr, msg.as_slice())?)
+            },
         }
         .map_err(StateError::from)
     }
@@ -133,13 +187,14 @@ impl State {
         let tx: Tx = serde_json::from_slice(tx_bytes)?;
 
         // authenticate signature, chain id, sequence, etc.
-        let account = auth::authenticate_tx(&tx, self)?;
+        let (sender_addr, sender_acct) = auth::authenticate_tx(&tx, self)?;
 
         // increment the sender's sequence number
-        self.accounts.insert(tx.body.sender.clone(), account);
+        self.accounts.insert(sender_addr.clone(), sender_acct);
 
         let mut events = vec![];
 
+        // execute messages in the tx in order, and collect all the events emitted
         tx.body
             .msgs
             .into_iter()
@@ -147,7 +202,7 @@ impl State {
                 SdkMsg::StoreCode {
                     wasm_byte_code,
                 } => {
-                    let event = self.store_code(&tx.body.sender, wasm_byte_code)?;
+                    let event = self.store_code(&sender_addr, wasm_byte_code)?;
                     Ok(vec![event])
                 },
                 SdkMsg::Instantiate {
@@ -156,17 +211,34 @@ impl State {
                     funds,
                     label,
                     admin,
-                } => self.instantiate_contract(&tx.body.sender, code_id, msg.into(), funds, label, admin),
+                } => {
+                    let admin_addr = admin.map(|admin| address::validate(&admin)).transpose()?;
+                    self.instantiate_contract(
+                        &sender_addr,
+                        code_id,
+                        msg.into(),
+                        funds,
+                        label,
+                        admin_addr,
+                        AddressGenerator::ByIds,
+                    )
+                },
                 SdkMsg::Execute {
                     contract,
                     msg,
                     funds,
-                } => self.execute_contract(&tx.body.sender, contract, msg.into(), funds),
+                } => {
+                    let contract_addr = address::validate(&contract)?;
+                    self.execute_contract(&sender_addr, contract_addr, msg.into(), funds)
+                },
                 SdkMsg::Migrate {
                     contract,
                     code_id,
                     msg,
-                } => self.migrate_contract(&tx.body.sender, contract, code_id, msg.into()),
+                } => {
+                    let contract_addr = address::validate(&contract)?;
+                    self.migrate_contract(&sender_addr, contract_addr, code_id, msg.into())
+                },
             })
             .try_for_each(|res| -> Result<_, StateError> {
                 events.extend(res?);
@@ -188,11 +260,11 @@ impl State {
     }
 }
 
-// private functions for the state machine
+
 impl State {
     fn store_code(
         &mut self,
-        sender: &str,
+        sender_addr: &Addr,
         wasm_byte_code: Binary,
     ) -> Result<Event, StateError> {
         let hash = sha256(wasm_byte_code.as_slice());
@@ -206,27 +278,29 @@ impl State {
         self.codes.insert(
             code_id,
             Code {
-                creator: sender.into(),
+                creator: sender_addr.clone(),
                 wasm_byte_code,
             },
         );
 
         Ok(Event::new("store_code")
             .add_attribute("code_id", code_id.to_string())
-            .add_attribute("sender", sender)
+            .add_attribute("sender", sender_addr)
             .add_attribute("hash", hash_str))
     }
 
     /// TODO: need to check there is no collision between the contract address and account address
     /// before committing the newly instantiated contract to the store
+    #[allow(clippy::too_many_arguments)]
     fn instantiate_contract(
         &mut self,
-        sender: &str,
+        sender_addr: &Addr,
         code_id: u64,
         msg: Vec<u8>,
         funds: Vec<Coin>,
         label: String,
-        admin: Option<String>,
+        admin_addr: Option<Addr>,
+        address_generator: AddressGenerator,
     ) -> Result<Vec<Event>, StateError> {
         if !funds.is_empty() {
             return Err(StateError::FundsUnsupported);
@@ -246,7 +320,7 @@ impl State {
         let result: ContractResult<Response<Empty>> = call_instantiate(
             &mut instance,
             &mock_env(),
-            &mock_info(sender, &[]),
+            &mock_info(sender_addr.as_str(), &[]),
             &msg,
         )?;
 
@@ -264,23 +338,27 @@ impl State {
                 // increment contract count
                 self.contract_count += 1;
 
-                // for now, we just use a number as contract address
-                let contract_addr = self.contract_count;
+                // generate contract address
+                let contract_addr = match address_generator {
+                    AddressGenerator::ByLabel => address::derive_from_label(&label)?,
+                    AddressGenerator::ByIds => address::derive_from_ids(code_id, self.contract_count)?,
+                };
+
                 self.contracts.insert(
-                    contract_addr,
+                    contract_addr.clone(),
                     Contract {
                         code_id,
                         label,
-                        admin,
+                        admin: admin_addr,
                     },
                 );
-                self.stores.insert(contract_addr, storage);
+                self.stores.insert(contract_addr.clone(), storage);
 
                 // collect the events
                 let event = Event::new("instantiate_contract")
-                    .add_attribute("sender", sender)
+                    .add_attribute("sender", sender_addr)
                     .add_attribute("code_id", code_id.to_string())
-                    .add_attribute("contract_address", contract_addr.to_string())
+                    .add_attribute("contract", contract_addr)
                     .add_attributes(response.attributes);
 
                 Ok(prepend(event, response.events))
@@ -291,8 +369,8 @@ impl State {
 
     fn execute_contract(
         &mut self,
-        sender: &str,
-        contract_addr: u64,
+        sender_addr: &Addr,
+        contract_addr: Addr,
         msg: Vec<u8>,
         funds: Vec<Coin>,
     ) -> Result<Vec<Event>, StateError> {
@@ -303,7 +381,7 @@ impl State {
         let storage = self
             .stores
             .get(&contract_addr)
-            .ok_or_else(|| StateError::contract_not_found(contract_addr))?
+            .ok_or_else(|| StateError::contract_not_found(&contract_addr))?
             .clone();
         let contract = &self.contracts[&contract_addr];
         let code = &self.codes[&contract.code_id];
@@ -320,7 +398,7 @@ impl State {
         let result: ContractResult<Response<Empty>> = call_execute(
             &mut instance,
             &mock_env(),
-            &mock_info(sender, &[]),
+            &mock_info(sender_addr.as_str(), &[]),
             &msg,
         )?;
 
@@ -335,12 +413,12 @@ impl State {
                     return Err(StateError::SubmessagesUnsupported);
                 }
 
-                self.stores.insert(contract_addr, storage);
+                self.stores.insert(contract_addr.clone(), storage);
 
                 // collect the events
                 let event = Event::new("execute_contract")
-                    .add_attribute("sender", sender)
-                    .add_attribute("contract_address", contract_addr.to_string())
+                    .add_attribute("sender", sender_addr)
+                    .add_attribute("contract", contract_addr)
                     .add_attributes(response.attributes);
 
                 Ok(prepend(event, response.events))
@@ -351,44 +429,51 @@ impl State {
 
     fn migrate_contract(
         &self,
-        _sender: &str,
-        _contract_addr: u64,
+        _sender_addr: &Addr,
+        _contract_addr: Addr,
         _code_id: u64,
         _msg: Vec<u8>,
     ) -> Result<Vec<Event>, StateError> {
         Err(StateError::MigrationUnsupported)
     }
 
-    fn query_account(&self, address: &str) -> Result<AccountResponse, StateError> {
-        match self.accounts.get(address) {
-            Some(account) => Ok(AccountResponse {
-                address: address.into(),
-                pubkey: Some(account.pubkey.clone()),
+    fn query_account(&self, addr: &Addr) -> Result<AccountResponse, StateError> {
+        self.accounts
+            .get(addr)
+            .cloned()
+            .map(|account| AccountResponse {
+                address: addr.into(),
+                pubkey: account.pubkey,
                 sequence: account.sequence,
-            }),
-            None => Ok(AccountResponse {
-                address: address.into(),
-                pubkey: None,
-                sequence: 0,
-            }),
-        }
+            })
+            .ok_or_else(|| StateError::account_not_found(addr))
     }
 
     fn query_code(&self, code_id: u64) -> Result<CodeResponse, StateError> {
-        match self.codes.get(&code_id) {
-            Some(code) => Ok(code.clone().into()),
-            None => Err(StateError::code_not_found(code_id)),
-        }
+        self.codes
+            .get(&code_id)
+            .cloned()
+            .map(|code| CodeResponse {
+                creator: code.creator.into(),
+                hash: sha256(&code.wasm_byte_code).into(),
+                wasm_byte_code: code.wasm_byte_code,
+            })
+            .ok_or_else(|| StateError::code_not_found(code_id))
     }
 
-    fn query_contract(&self, contract_addr: u64) -> Result<ContractResponse, StateError> {
+    fn query_contract(&self, contract_addr: Addr) -> Result<ContractResponse, StateError> {
         self.contracts
             .get(&contract_addr)
             .cloned()
+            .map(|contract| ContractResponse {
+                code_id: contract.code_id,
+                label: contract.label.clone(),
+                admin: contract.admin.map(String::from),
+            })
             .ok_or_else(|| StateError::contract_not_found(contract_addr))
     }
 
-    fn query_wasm_raw(&self, contract_addr: u64, key: &[u8]) -> Result<WasmRawResponse, StateError> {
+    fn query_wasm_raw(&self, contract_addr: Addr, key: &[u8]) -> Result<WasmRawResponse, StateError> {
         let storage = self
             .stores
             .get(&contract_addr)
@@ -397,18 +482,16 @@ impl State {
         let (res, _) = storage.get(key);
         let value = res?;
         Ok(WasmRawResponse {
-            contract: contract_addr,
-            key: key.to_owned().into(),
             value: value.map(Binary),
         })
     }
 
-    fn query_wasm_smart(&self, contract_addr: u64, msg: &[u8]) -> Result<WasmSmartResponse, StateError> {
+    fn query_wasm_smart(&self, contract_addr: Addr, msg: &[u8]) -> Result<WasmSmartResponse, StateError> {
         let storage = self
             .stores
             .get(&contract_addr)
             .cloned()
-            .ok_or_else(|| StateError::contract_not_found(contract_addr))?;
+            .ok_or_else(|| StateError::contract_not_found(&contract_addr))?;
         let contract = &self.contracts[&contract_addr];
         let code = &self.codes[&contract.code_id];
         let backend = wasm::create_backend(storage);
@@ -423,10 +506,24 @@ impl State {
         )?;
         let result = call_query(&mut instance, &mock_env(), msg)?;
         Ok(WasmSmartResponse {
-            contract: contract_addr,
             result,
         })
     }
+}
+
+/// Insert an event to the front of an array of events.
+/// https://www.reddit.com/r/rust/comments/kul4qz/vec_prepend_insert_from_slice/
+fn prepend(event: Event, mut events: Vec<Event>) -> Vec<Event> {
+    events.splice(..0, vec![event]);
+    events
+}
+
+/// Represents which algorithm to use to derive contract addresses during instantiation.
+enum AddressGenerator {
+    /// Used during chain genesis
+    ByLabel,
+    /// Used post-genesis
+    ByIds,
 }
 
 #[derive(Debug, Error)]
@@ -441,19 +538,27 @@ pub enum StateError {
     Serde(#[from] serde_json::Error),
 
     #[error(transparent)]
+    Address(#[from] address::AddressError),
+
+    #[error(transparent)]
     Auth(#[from] auth::AuthError),
 
     #[error("contract emitted error: {0}")]
     Contract(String),
 
-    #[error("no wasm binary code found with the id {code_id}")]
+    #[error("no account found with address {address}")]
+    AccountNotFound {
+        address: String
+    },
+
+    #[error("no wasm binary code found with id {code_id}")]
     CodeNotFound {
         code_id: u64,
     },
 
-    #[error("no contract found under the address {address}")]
+    #[error("no contract found with address {address}")]
     ContractNotFound {
-        address: u64,
+        address: String,
     },
 
     #[error("contract response includes submessages, which is not supported yet")]
@@ -467,22 +572,21 @@ pub enum StateError {
 }
 
 impl StateError {
+    pub fn account_not_found(address: impl Into<String>) -> Self {
+        Self::AccountNotFound {
+            address: address.into(),
+        }
+    }
+
     pub fn code_not_found(code_id: u64) -> Self {
         Self::CodeNotFound {
             code_id,
         }
     }
 
-    pub fn contract_not_found(address: u64) -> Self {
+    pub fn contract_not_found(address: impl Into<String>) -> Self {
         Self::ContractNotFound {
-            address,
+            address: address.into(),
         }
     }
-}
-
-/// Insert an event to the front of an array of events.
-/// https://www.reddit.com/r/rust/comments/kul4qz/vec_prepend_insert_from_slice/
-fn prepend(event: Event, mut events: Vec<Event>) -> Vec<Event> {
-    events.splice(..0, vec![event]);
-    events
 }

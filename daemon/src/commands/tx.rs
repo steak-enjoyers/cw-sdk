@@ -6,7 +6,6 @@ use clap::{Args, Subcommand};
 use tendermint_rpc::{Client, HttpClient, Url};
 use tracing::error;
 
-use cw_sdk::auth::ACCOUNT_PREFIX;
 use cw_sdk::msg::{AccountResponse, SdkMsg, SdkQuery, TxBody};
 
 use crate::query::do_abci_query;
@@ -63,7 +62,7 @@ pub enum TxSubcmd {
     /// Execute a contract
     Execute {
         /// Contract address
-        contract: u64,
+        contract: String,
         /// Execute message in JSON format
         msg: String,
 
@@ -74,7 +73,7 @@ pub enum TxSubcmd {
     /// Migrate an existing contract to a new code id
     Migrate {
         /// Contract address
-        contract: u64,
+        contract: String,
         /// Code id which this contract will migrate to
         code_id: u64,
         /// Migrate message in JSON format
@@ -99,7 +98,7 @@ impl TxCmd {
 
         let keyring = Keyring::new(home_dir.join("keys")).unwrap();
         let key = keyring.get(&self.from).unwrap();
-        let sender = key.address().bech32(ACCOUNT_PREFIX).unwrap();
+        let sender_addr = key.address().unwrap();
 
         // query the sender's sequence number if not provided
         let sequence = match self.sequence {
@@ -107,7 +106,7 @@ impl TxCmd {
                 let response: AccountResponse = do_abci_query(
                     &client,
                     SdkQuery::Account {
-                        address: sender.clone(),
+                        address: sender_addr.to_string(),
                     },
                 )
                 .await;
@@ -157,7 +156,7 @@ impl TxCmd {
                     return;
                 }
                 SdkMsg::Execute {
-                    contract: *contract,
+                    contract: contract.clone(),
                     msg: msg.clone().into_bytes().into(),
                     funds: vec![],
                 }
@@ -167,14 +166,14 @@ impl TxCmd {
                 code_id,
                 msg,
             } => SdkMsg::Migrate {
-                contract: *contract,
+                contract: contract.clone(),
                 code_id: *code_id,
                 msg: msg.clone().into_bytes().into(),
             },
         };
 
         let body = TxBody {
-            sender,
+            sender: sender_addr.into(),
             msgs: vec![msg],
             chain_id: chain_id.into(),
             sequence,

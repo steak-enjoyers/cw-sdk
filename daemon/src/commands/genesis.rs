@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use clap::{Args, Subcommand};
+use cw_sdk::address;
 use cw_sdk::hash::sha256;
 use serde::Serialize;
 use tendermint::genesis::Genesis as TmGenesis;
@@ -56,7 +57,7 @@ pub enum GenesisSubcommand {
     /// Add an "execute contract" message to the genesis state
     Execute {
         /// Contract address
-        contract: u64,
+        contract: String,
         /// Execute message in JSON format
         msg: String,
 
@@ -140,7 +141,7 @@ impl GenesisCmd {
                     return;
                 }
                 app_state.gen_msgs.push(SdkMsg::Execute {
-                    contract: *contract,
+                    contract: contract.clone(),
                     msg: msg.clone().into_bytes().into(),
                     funds: vec![],
                 });
@@ -165,7 +166,6 @@ impl GenesisCmd {
                 print::yaml(&codes);
             },
             GenesisSubcommand::ListContracts => {
-                let mut contract_count = 0;
                 let mut contracts = vec![];
                 for msg in &app_state.gen_msgs {
                     if let SdkMsg::Instantiate {
@@ -175,9 +175,8 @@ impl GenesisCmd {
                         ..
                     } = msg
                     {
-                        contract_count += 1;
                         contracts.push(ContractInfo {
-                            address: contract_count,
+                            address: address::derive_from_label(label).unwrap().into(),
                             code_id: *code_id,
                             label: label.clone(),
                             admin: admin.clone(),
@@ -207,7 +206,7 @@ struct CodeInfo {
 
 #[derive(Serialize)]
 struct ContractInfo {
-    address: u64,
+    address: String,
     code_id: u64,
     label: String,
     admin: Option<String>,

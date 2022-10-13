@@ -49,19 +49,19 @@ pub enum QuerySubcmd {
     /// Query metadata of a contract
     Contract {
         /// Contract address
-        contract: u64,
+        contract: String,
     },
     /// Perform a wasm raw query
     WasmRaw {
         /// Contract address
-        contract: u64,
+        contract: String,
         /// The key to be queried in the contract store, in hex encoding
         key: String,
     },
     /// Perform a wasm smart query
     WasmSmart {
         /// Contract address
-        contract: u64,
+        contract: String,
         /// Query message in JSON format
         msg: String,
     },
@@ -127,7 +127,7 @@ impl QueryCmd {
                 let response: ContractResponse = do_abci_query(
                     &client,
                     SdkQuery::Contract {
-                        contract: *contract,
+                        contract: contract.clone(),
                     },
                 )
                 .await;
@@ -141,7 +141,7 @@ impl QueryCmd {
                 let response: WasmRawResponse = do_abci_query(
                     &client,
                     SdkQuery::WasmRaw {
-                        contract: *contract,
+                        contract: contract.clone(),
                         key: hex::decode(&key).unwrap().into(),
                     },
                 )
@@ -156,7 +156,7 @@ impl QueryCmd {
                 let response: WasmSmartResponse = do_abci_query(
                     &client,
                     SdkQuery::WasmSmart {
-                        contract: *contract,
+                        contract: contract.clone(),
                         msg: msg.clone().into_bytes().into(),
                     },
                 )

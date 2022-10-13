@@ -1,9 +1,10 @@
 use bip32::{Mnemonic, XPrv};
+use cosmwasm_std::Addr;
 use josekit::jwt::JwtPayload;
 use k256::ecdsa::{signature::Signer, Signature, SigningKey, VerifyingKey};
 use thiserror::Error;
 
-use cw_sdk::address::Address;
+use cw_sdk::address;
 use cw_sdk::msg::{Tx, TxBody};
 
 /// Represents a private key that is to be saved in the keyring.
@@ -60,8 +61,8 @@ impl Key {
 
     /// Return the key's address bytes, generated according to
     /// [ADR-028](https://docs.cosmos.network/v0.45/architecture/adr-028-public-key-addresses.html)
-    pub fn address(&self) -> Address {
-        Address::from_pubkey(self.pubkey().to_bytes().as_slice())
+    pub fn address(&self) -> Result<Addr, address::AddressError> {
+        address::derive_from_pubkey(self.pubkey().to_bytes().as_slice())
     }
 
     /// Sign an arbitrary byte array. The bytes are SHA-256 hashed before signing

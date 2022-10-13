@@ -1,5 +1,3 @@
-use cw_sdk::auth::ACCOUNT_PREFIX;
-
 use crate::Key;
 
 /// Print a signing key
@@ -8,7 +6,7 @@ use crate::Key;
 /// Go SDK?
 pub fn key(key: &Key) {
     println!("- name: {}", key.name);
-    println!("  address: {}", key.address().bech32(ACCOUNT_PREFIX).unwrap());
+    println!("  address: {}", key.address().unwrap());
     println!("  pubkey: {}", hex::encode(key.pubkey().to_bytes().as_slice()));
 }
 

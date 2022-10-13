@@ -1,7 +1,7 @@
 use std::sync::mpsc::Receiver;
 
-use super::AppCommand;
-use crate::State;
+use crate::abci::AppCommand;
+use crate::state::State;
 
 /// The driver is a wrapper around the actual state machine. It maintains a channel with the ABCI
 /// server, and performs actions or queries on the state machine on request for the ABCI server.
