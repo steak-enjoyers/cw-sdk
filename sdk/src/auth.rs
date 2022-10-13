@@ -1,5 +1,5 @@
 use cosmwasm_std::{Addr, Binary};
-use secp256k1::{ecdsa::Signature, hashes::sha256, Message, PublicKey, Secp256k1};
+use k256::ecdsa::{signature::Verifier, Signature, VerifyingKey};
 use thiserror::Error;
 
 use crate::address::{self, AddressError};
@@ -56,15 +56,10 @@ pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<(Addr, Account), AuthEr
     let body_bytes = serde_json::to_vec(&tx.body)?;
 
     // if the signature is valid, save the account, and return true; otherwise, return false
-    //
-    // this part of code is mostly copied from:
-    // https://github.com/nomic-io/orga/blob/dc864db8a6e42723afd26d1dea9245bb620fa488/src/plugins/signer.rs#L117-L141
-    let pubkey = PublicKey::from_slice(account.pubkey.as_slice())?;
-    let message = Message::from_hashed_data::<sha256::Hash>(&body_bytes);
-    let signature = Signature::from_compact(&tx.signature)?;
+    let pubkey = VerifyingKey::from_sec1_bytes(account.pubkey.as_slice())?;
+    let signature = Signature::from_der(tx.signature.as_slice())?;
 
-    Secp256k1::new()
-        .verify_ecdsa(&message, &signature, &pubkey)
+    pubkey.verify(&body_bytes, &signature)
         .map(|_| (sender_addr, account))
         .map_err(AuthError::from)
 }
@@ -75,7 +70,7 @@ pub enum AuthError {
     Serde(#[from] serde_json::Error),
 
     #[error(transparent)]
-    Secp256k1(#[from] secp256k1::Error),
+    Ecdsa(#[from] k256::ecdsa::Error),
 
     #[error(transparent)]
     Address(#[from] AddressError),
