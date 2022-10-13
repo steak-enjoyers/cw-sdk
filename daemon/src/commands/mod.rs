@@ -1,9 +1,11 @@
+mod genesis;
 mod init;
 mod keys;
 mod query;
 mod start;
 mod tx;
 
+pub use genesis::GenesisCmd;
 pub use init::InitCmd;
 pub use keys::KeysCmd;
 pub use query::QueryCmd;

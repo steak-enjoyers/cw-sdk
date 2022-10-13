@@ -1,19 +1,20 @@
-use cosmwasm_std::Binary;
-use secp256k1::{ecdsa::Signature, hashes::sha256::Hash as Sha256Hash, Message, PublicKey, Secp256k1};
+use cosmwasm_std::{Addr, Binary};
+use k256::ecdsa::{signature::Verifier, Signature, VerifyingKey};
 use thiserror::Error;
 
-use crate::address::Address;
-use crate::msg::{Account, Tx};
-use crate::State;
+use crate::address::{self, AddressError};
+use crate::msg::Tx;
+use crate::state::{Account, State};
 
-// TODO: include this in the chain's state
-pub const ACCOUNT_PREFIX: &str = "cw";
-
-/// Return the user's updated account info is authentication is successful; error if failed.
-pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<Account, AuthError> {
-    // find the user's account
+/// Authenticate the signer's address, pubkey, signature, sequence, and chain id.
+/// Return error if any one fails.
+/// Returns the sender address and account info if succeeds.
+pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<(Addr, Account), AuthError> {
     let sender = &tx.body.sender;
-    let mut account = match state.accounts.get(sender) {
+    let sender_addr = address::validate(&tx.body.sender)?;
+
+    // find the user's account
+    let mut account = match state.accounts.get(&sender_addr) {
         // if the account is found on-chain, its pubkey must match the one included in the tx
         Some(account) => {
             if let Some(pubkey) = &tx.pubkey {
@@ -26,14 +27,11 @@ pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<Account, AuthError> {
         // if None, use the pubkey provided by the tx and initialize sequence to be 0.
         // the pubkey must match the sender address.
         None => {
-            let pubkey = tx.pubkey.as_ref().ok_or_else(|| AuthError::AccountNotFound {
-                sender: sender.into(),
-            })?;
+            let pubkey = tx.pubkey.as_ref().ok_or_else(|| AuthError::account_not_found(sender))?;
 
-            let address = Address::from_pubkey(pubkey.as_slice());
-            let bech32_addr = address.bech32(ACCOUNT_PREFIX)?;
-            if *sender != bech32_addr {
-                return Err(AuthError::address_mismatch(bech32_addr, sender));
+            let address = address::derive_from_pubkey(pubkey.as_slice())?;
+            if *sender != address {
+                return Err(AuthError::address_mismatch(address, sender));
             }
 
             Account {
@@ -55,32 +53,27 @@ pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<Account, AuthError> {
     }
 
     // verify the signature. the content to be signed is (the sha256 hash of) the tx body
-    let body_bytes = serde_json_wasm::to_vec(&tx.body)?;
+    let body_bytes = serde_json::to_vec(&tx.body)?;
 
     // if the signature is valid, save the account, and return true; otherwise, return false
-    //
-    // this part of code is mostly copied from:
-    // https://github.com/nomic-io/orga/blob/dc864db8a6e42723afd26d1dea9245bb620fa488/src/plugins/signer.rs#L117-L141
-    let pubkey = PublicKey::from_slice(account.pubkey.as_slice())?;
-    let message = Message::from_hashed_data::<Sha256Hash>(&body_bytes);
-    let signature = Signature::from_compact(&tx.signature)?;
+    let pubkey = VerifyingKey::from_sec1_bytes(account.pubkey.as_slice())?;
+    let signature = Signature::try_from(tx.signature.as_slice())?;
 
-    match Secp256k1::new().verify_ecdsa(&message, &signature, &pubkey) {
-        Ok(()) => Ok(account),
-        Err(err) => Err(err.into()),
-    }
+    pubkey.verify(&body_bytes, &signature)
+        .map(|_| (sender_addr, account))
+        .map_err(AuthError::from)
 }
 
 #[derive(Debug, Error)]
 pub enum AuthError {
     #[error(transparent)]
-    Serialization(#[from] serde_json_wasm::ser::Error),
+    Serde(#[from] serde_json::Error),
 
     #[error(transparent)]
-    Secp256k1(#[from] secp256k1::Error),
+    Ecdsa(#[from] k256::ecdsa::Error),
 
     #[error(transparent)]
-    Bech32(#[from] bech32::Error),
+    Address(#[from] AddressError),
 
     #[error("pubkey for sender {sender} is neither provided in the tx nor stored on-chain")]
     AccountNotFound {
@@ -158,9 +151,4 @@ impl AuthError {
             found,
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    // TODO
 }

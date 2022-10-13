@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 use tracing_subscriber::filter::LevelFilter;
 
-use cw_daemon::commands::{InitCmd, KeysCmd, QueryCmd, StartCmd, TxCmd};
+use cw_daemon::commands::{GenesisCmd, InitCmd, KeysCmd, QueryCmd, StartCmd, TxCmd};
 use cw_daemon::default_home;
 
 #[derive(Parser)]
@@ -23,14 +23,22 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
+    /// Utilities for preparing the genesis state
+    Genesis(GenesisCmd),
+
     /// Initialize application home directory
     Init(InitCmd),
+
     /// Manage private keys
     Keys(KeysCmd),
+
     /// Query the application state
+    #[clap(alias = "q")]
     Query(QueryCmd),
+
     /// Start the ABCI server
     Start(StartCmd),
+
     /// Sign and broadcast transactions
     Tx(TxCmd),
 }
@@ -51,6 +59,7 @@ async fn main() {
     tracing_subscriber::fmt().with_max_level(log_level).init();
 
     match &cli.command {
+        Command::Genesis(cmd) => cmd.run(),
         Command::Init(cmd) => cmd.run(&home_dir),
         Command::Keys(cmd) => cmd.run(&home_dir),
         Command::Query(cmd) => cmd.run(&home_dir).await,

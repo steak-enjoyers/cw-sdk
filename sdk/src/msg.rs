@@ -1,6 +1,23 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Coin, ContractResult};
 
+/// This should be included as JSON inside `~/.tendermint/genesis.json`, under the `app_state`
+/// field. Tendermint will provide this as binary to the application in a InitChain request.
+#[derive(Default)]
+#[cw_serde]
+pub struct GenesisState {
+    /// Address of the account which will act as the sender of genesis messages.
+    ///
+    /// For example, if an "Instantiate" message in included in `gen_msgs`, then the deployer
+    /// address will be provided as `info.sender` in the instantiation call.
+    ///
+    /// Note that during genesis, no transaction verification is performed. The application
+    /// developers must provide a trust deployer account.
+    pub deployer: String,
+    /// Messages to be executed in order during the InitChain call.
+    pub gen_msgs: Vec<SdkMsg>,
+}
+
 #[cw_serde]
 pub struct Tx {
     /// Transaction body
@@ -33,19 +50,39 @@ pub enum SdkMsg {
     Instantiate {
         code_id: u64,
         msg: Binary,
+        funds: Vec<Coin>,
+        /// A human readable name for the contract. Must be unique.
+        //
+        /// Contracts deployed during genesis will have their addresses generated deterministically
+        /// according to the label, using the same algorithm that the Go SDK generates module
+        /// account addresses.
+        ///
+        /// There are several special labels, such as `bank`, `staking`, `gov`, `ibc`, etc., that
+        /// developers need to pay special attention to. For example,
+        ///
+        /// - the SDK invokes the "bank" contract to process gas fee payments
+        /// - IBC relayers will invoke the "ibc" contract to deliver packets
+        ///
+        /// For such labels, developers must make sure to deploy contracts that have compatible
+        /// execute/query/sudo methods implemented.
+        label: String,
+        /// Account who is allowed to migrate the contract.
+        /// To make the contract immutable, leave this field empty.
+        admin: Option<String>,
     },
     Execute {
-        contract: u64,
+        contract: String,
         msg: Binary,
         funds: Vec<Coin>,
     },
     Migrate {
-        contract: u64,
+        contract: String,
         code_id: u64,
         msg: Binary,
     },
 }
 
+// TODO: add 1) chain metadata, 2) enumerative queries for account, code, contract
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum SdkQuery {
@@ -59,41 +96,34 @@ pub enum SdkQuery {
     },
     #[returns(ContractResponse)]
     Contract {
-        contract: u64,
+        contract: String,
     },
     #[returns(WasmRawResponse)]
     WasmRaw {
-        contract: u64,
+        contract: String,
         key: Binary,
     },
     #[returns(WasmSmartResponse)]
     WasmSmart {
-        contract: u64,
+        contract: String,
         msg: Binary,
     },
 }
 
-/// This is the account type to be stored on-chain. Not to be confused with `AccountResponse`.
-#[cw_serde]
-pub struct Account {
-    /// The account's secp256k1 public key
-    pub pubkey: Binary,
-    /// The account's sequence number, used to prevent replay attacks.
-    /// The first tx ever to be submitted by the account should come with the sequence of 1.
-    pub sequence: u64,
-}
-
 #[cw_serde]
 pub struct AccountResponse {
+    /// Account address
     pub address: String,
     /// None is the account is not found
-    pub pubkey: Option<Binary>,
+    pub pubkey: Binary,
     /// Zero if account is not found
     pub sequence: u64,
 }
 
 #[cw_serde]
 pub struct CodeResponse {
+    /// Account who stored the code
+    pub creator: String,
     /// SHA-256 hash of the wasm byte code
     pub hash: Binary,
     /// The wasm byte code
@@ -104,22 +134,20 @@ pub struct CodeResponse {
 pub struct ContractResponse {
     /// This contract's code id
     pub code_id: u64,
+    /// A human readable name for the contract
+    pub label: String,
+    /// Account who is allowed to migrate the contract
+    pub admin: Option<String>,
 }
 
 #[cw_serde]
 pub struct WasmRawResponse {
-    /// Contract address
-    pub contract: u64,
-    /// The key
-    pub key: Binary,
     /// Raw value in the contract storage under the given key. None if the key does not exist.
     pub value: Option<Binary>,
 }
 
 #[cw_serde]
 pub struct WasmSmartResponse {
-    /// Contract address
-    pub contract: u64,
     /// Smart query result.
     /// The querying program is responsible for decoding the binary response into the correct type.
     pub result: ContractResult<Binary>,

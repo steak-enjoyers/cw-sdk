@@ -6,7 +6,7 @@ use tendermint_abci::ServerBuilder;
 use tracing::error;
 
 use cw_sdk::abci::{App, AppDriver};
-use cw_sdk::State;
+use cw_sdk::state::State;
 
 use crate::{stringify_pathbuf, AppConfig};
 

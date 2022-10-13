@@ -6,12 +6,10 @@ use clap::{Args, Subcommand};
 use tendermint_rpc::{Client, HttpClient, Url};
 use tracing::error;
 
-use cw_sdk::auth::ACCOUNT_PREFIX;
 use cw_sdk::msg::{AccountResponse, SdkMsg, SdkQuery, TxBody};
 
-use crate::print::{print_as_json, print_as_yaml};
 use crate::query::do_abci_query;
-use crate::{prompt, stringify_pathbuf, ClientConfig, Keyring};
+use crate::{print, prompt, stringify_pathbuf, ClientConfig, Keyring};
 
 #[derive(Args)]
 pub struct TxCmd {
@@ -48,18 +46,34 @@ pub enum TxSubcmd {
         code_id: u64,
         /// Instantiate message in JSON format
         msg: String,
+
+        /// A human readable name for the contract
+        #[clap(long)]
+        label: String,
+
+        /// Coins to be sent along the instantiate message
+        #[clap(long)]
+        funds: Option<String>,
+
+        /// Contract admin, the account who can migrate the contract
+        #[clap(long)]
+        admin: Option<String>,
     },
     /// Execute a contract
     Execute {
         /// Contract address
-        contract: u64,
+        contract: String,
         /// Execute message in JSON format
         msg: String,
+
+        /// Coins to be sent along the execute message
+        #[clap(long)]
+        funds: Option<String>,
     },
     /// Migrate an existing contract to a new code id
     Migrate {
         /// Contract address
-        contract: u64,
+        contract: String,
         /// Code id which this contract will migrate to
         code_id: u64,
         /// Migrate message in JSON format
@@ -84,21 +98,23 @@ impl TxCmd {
 
         let keyring = Keyring::new(home_dir.join("keys")).unwrap();
         let key = keyring.get(&self.from).unwrap();
-        let sender = key.address().bech32(ACCOUNT_PREFIX).unwrap();
+        let sender_addr = key.address().unwrap();
 
         // query the sender's sequence number if not provided
         let sequence = match self.sequence {
             None => {
-                let response: AccountResponse = do_abci_query(
+                let sequence = do_abci_query::<_, AccountResponse>(
                     &client,
                     SdkQuery::Account {
-                        address: sender.clone(),
+                        address: sender_addr.to_string(),
                     },
                 )
-                .await;
+                .await
+                .map(|res| res.sequence)
+                .unwrap_or(0);
 
                 // needs to be 1 greater than the on-chain sequence
-                response.sequence + 1
+                sequence + 1
             },
             Some(sequence) => sequence,
         };
@@ -107,6 +123,7 @@ impl TxCmd {
             TxSubcmd::Store {
                 wasm_byte_code_path,
             } => {
+                // TODO: check whether the file exists
                 let wasm_byte_code = fs::read(wasm_byte_code_path).unwrap();
                 SdkMsg::StoreCode {
                     wasm_byte_code: wasm_byte_code.into(),
@@ -115,49 +132,68 @@ impl TxCmd {
             TxSubcmd::Instantiate {
                 code_id,
                 msg,
-            } => SdkMsg::Instantiate {
-                code_id: *code_id,
-                msg: msg.clone().into_bytes().into(),
+                funds,
+                label,
+                admin
+            } => {
+                if funds.is_some() {
+                    error!("funds is not supported yet");
+                    return;
+                }
+                SdkMsg::Instantiate {
+                    code_id: *code_id,
+                    msg: msg.clone().into_bytes().into(),
+                    funds: vec![],
+                    label: label.clone(),
+                    admin: admin.clone(),
+                }
             },
             TxSubcmd::Execute {
                 contract,
                 msg,
-            } => SdkMsg::Execute {
-                contract: *contract,
-                msg: msg.clone().into_bytes().into(),
-                funds: vec![],
+                funds,
+            } => {
+                if funds.is_some() {
+                    error!("funds is not supported yet");
+                    return;
+                }
+                SdkMsg::Execute {
+                    contract: contract.clone(),
+                    msg: msg.clone().into_bytes().into(),
+                    funds: vec![],
+                }
             },
             TxSubcmd::Migrate {
                 contract,
                 code_id,
                 msg,
             } => SdkMsg::Migrate {
-                contract: *contract,
+                contract: contract.clone(),
                 code_id: *code_id,
                 msg: msg.clone().into_bytes().into(),
             },
         };
 
         let body = TxBody {
-            sender,
+            sender: sender_addr.into(),
             msgs: vec![msg],
             chain_id: chain_id.into(),
             sequence,
         };
 
         let tx = key.sign_tx(&body).unwrap();
-        let tx_bytes = serde_json_wasm::to_vec(&tx).unwrap();
+        let tx_bytes = serde_json::to_vec(&tx).unwrap();
 
         println!();
         println!("successfully signed tx:");
         println!("-----------------------");
-        print_as_json(&tx);
+        print::json(&tx);
         println!();
 
         if prompt::confirm("broadcast tx?").unwrap() {
             let response = client.broadcast_tx_async(tx_bytes.into()).await.unwrap();
             println!();
-            print_as_yaml(&response);
+            print::yaml(&response);
         }
     }
 }

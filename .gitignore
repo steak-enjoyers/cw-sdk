@@ -4,5 +4,8 @@ artifacts/
 # rust
 target/
 
+# test data
+testdata/
+
 # macos
 .DS_Store
