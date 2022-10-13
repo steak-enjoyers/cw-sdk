@@ -57,7 +57,7 @@ pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<(Addr, Account), AuthEr
 
     // if the signature is valid, save the account, and return true; otherwise, return false
     let pubkey = VerifyingKey::from_sec1_bytes(account.pubkey.as_slice())?;
-    let signature = Signature::from_der(tx.signature.as_slice())?;
+    let signature = Signature::try_from(tx.signature.as_slice())?;
 
     pubkey.verify(&body_bytes, &signature)
         .map(|_| (sender_addr, account))
