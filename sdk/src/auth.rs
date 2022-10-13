@@ -54,11 +54,11 @@ pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<(Addr, Account), AuthEr
 
     // verify the signature. the content to be signed is (the sha256 hash of) the tx body
     let body_bytes = serde_json::to_vec(&tx.body)?;
-
-    // if the signature is valid, save the account, and return true; otherwise, return false
     let pubkey = VerifyingKey::from_sec1_bytes(account.pubkey.as_slice())?;
     let signature = Signature::try_from(tx.signature.as_slice())?;
 
+    // if signature is valid, return the sender address and updated account info
+    // otherwise, return error
     pubkey.verify(&body_bytes, &signature)
         .map(|_| (sender_addr, account))
         .map_err(AuthError::from)
