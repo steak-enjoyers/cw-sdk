@@ -111,8 +111,7 @@ impl TxCmd {
                 )
                 .await
                 .map(|res| res.sequence)
-                .unwrap_or(1);
-                
+                .unwrap_or(0);
 
                 // needs to be 1 greater than the on-chain sequence
                 sequence + 1
