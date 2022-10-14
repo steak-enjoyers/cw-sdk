@@ -5,9 +5,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use josekit::{jwe, jwt};
-use thiserror::Error;
 
-use crate::{prompt, stringify_pathbuf, Key, KeyError};
+use crate::{path, prompt, DaemonError, Key};
 
 /// Keyring is a wrapper around a PathBuf, which represents the directory where the encrypted key
 /// files are to be saved.
@@ -15,7 +14,7 @@ pub struct Keyring(PathBuf);
 
 impl Keyring {
     /// Create a new keyring under the given directory
-    pub fn new(dir: PathBuf) -> Result<Self, KeyringError> {
+    pub fn new(dir: PathBuf) -> Result<Self, DaemonError> {
         if !dir.exists() {
             fs::create_dir_all(&dir)?;
         }
@@ -37,12 +36,12 @@ impl Keyring {
     /// Firstly, check whether a password hash file already exists:
     /// - If yes, prompt the user to enter the password, and check against the hash file;
     /// - If not, prompt the user to enter a new password, and save the hash to the file;
-    pub fn unlock(&self) -> Result<String, KeyringError> {
+    pub fn unlock(&self) -> Result<String, DaemonError> {
         let password_hash_path = self.dir().join("password_hash");
         if password_hash_path.exists() {
             let password = prompt::password(format!(
                 "enter the password to unlock keyring `{}`",
-                stringify_pathbuf(self.dir()),
+                path::stringify(self.dir())?,
             ))?;
 
             let password_hash_bytes = fs::read(&password_hash_path)?;
@@ -51,13 +50,13 @@ impl Keyring {
             if bcrypt::verify(&password, &password_hash)? {
                 Ok(password)
             } else {
-                Err(KeyringError::IncorrectPassword)
+                Err(DaemonError::IncorrectPassword)
             }
         } else {
             // TODO: ask the user to repeat the password?
             let password = prompt::password(format!(
                 "enter a password to encrypt the keyring `{}`",
-                stringify_pathbuf(self.dir()),
+                path::stringify(self.dir())?,
             ))?;
 
             // Go SDK uses a difficult of 2
@@ -70,10 +69,10 @@ impl Keyring {
     }
 
     /// Save a key in the keyring
-    pub fn set(&self, key: &Key) -> Result<(), KeyringError> {
+    pub fn set(&self, key: &Key) -> Result<(), DaemonError> {
         let filename = self.filename(&key.name);
         if filename.exists() {
-            return Err(KeyringError::file_exists(&filename));
+            return Err(DaemonError::file_exists(&filename));
         }
 
         // header
@@ -98,12 +97,12 @@ impl Keyring {
     }
 
     /// Read binary data stored in the keyring with the given name
-    pub fn get(&self, name: &str) -> Result<Key, KeyringError> {
+    pub fn get(&self, name: &str) -> Result<Key, DaemonError> {
         // load the file
         let token = {
             let filename = self.filename(name);
             if !filename.exists() {
-                return Err(KeyringError::file_not_found(&filename));
+                return Err(DaemonError::file_not_found(&filename));
             }
             fs::read(&filename)?
         };
@@ -114,11 +113,11 @@ impl Keyring {
         let (payload, _) = jwt::decode_with_decrypter(&token, &decrypter)?;
 
         // recover key from payload
-        payload.try_into().map_err(KeyringError::from)
+        payload.try_into().map_err(DaemonError::from)
     }
 
     /// Read binary data of all keys stored in the keyring
-    pub fn list(&self) -> Result<Vec<Key>, KeyringError> {
+    pub fn list(&self) -> Result<Vec<Key>, DaemonError> {
         let password = self.unlock()?;
         let decrypter = jwe::PBES2_HS256_A128KW.decrypter_from_bytes(password.as_bytes())?;
 
@@ -129,64 +128,19 @@ impl Keyring {
                 let entry = entry?;
                 let token = fs::read(entry.path())?;
                 let (payload, _) = jwt::decode_with_decrypter(&token, &decrypter)?;
-                payload.try_into().map_err(KeyringError::from)
+                payload.try_into().map_err(DaemonError::from)
             })
             .filter(|res| res.is_ok())
             .collect()
     }
 
     /// Delete a key
-    pub fn delete(&self, name: &str) -> Result<(), KeyringError> {
+    pub fn delete(&self, name: &str) -> Result<(), DaemonError> {
         let filename = self.filename(name);
         if filename.exists() {
-            fs::remove_file(filename).map_err(KeyringError::from)
+            fs::remove_file(filename).map_err(DaemonError::from)
         } else {
-            Err(KeyringError::file_not_found(&filename))
-        }
-    }
-}
-
-#[derive(Debug, Error)]
-pub enum KeyringError {
-    #[error("{0}")]
-    Io(#[from] std::io::Error),
-
-    #[error("{0}")]
-    FromUtf8(#[from] std::string::FromUtf8Error),
-
-    #[error("{0}")]
-    BCrypt(#[from] bcrypt::BcryptError),
-
-    #[error("{0}")]
-    Jose(#[from] josekit::JoseError),
-
-    #[error("{0}")]
-    Key(#[from] KeyError),
-
-    #[error("password is incorrect")]
-    IncorrectPassword,
-
-    #[error("file {filename} already exists")]
-    FileExists {
-        filename: String,
-    },
-
-    #[error("file {filename} not found")]
-    FileNotFound {
-        filename: String,
-    },
-}
-
-impl KeyringError {
-    pub fn file_exists(filename: &Path) -> Self {
-        Self::FileExists {
-            filename: stringify_pathbuf(filename),
-        }
-    }
-
-    pub fn file_not_found(filename: &Path) -> Self {
-        Self::FileNotFound {
-            filename: stringify_pathbuf(filename),
+            Err(DaemonError::file_not_found(&filename))
         }
     }
 }

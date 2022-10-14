@@ -4,12 +4,11 @@ use std::str::FromStr;
 
 use clap::{Args, Subcommand};
 use tendermint_rpc::{Client, HttpClient, Url};
-use tracing::error;
 
 use cw_sdk::msg::{AccountResponse, SdkMsg, SdkQuery, TxBody};
 
 use crate::query::do_abci_query;
-use crate::{print, prompt, stringify_pathbuf, ClientConfig, Keyring};
+use crate::{print, prompt, ClientConfig, DaemonError, Keyring};
 
 #[derive(Args)]
 pub struct TxCmd {
@@ -82,23 +81,22 @@ pub enum TxSubcmd {
 }
 
 impl TxCmd {
-    pub async fn run(&self, home_dir: &Path) {
+    pub async fn run(&self, home_dir: &Path) -> Result<(), DaemonError> {
         if !home_dir.exists() {
-            error!("home directory does not exist: {}", stringify_pathbuf(home_dir));
-            return;
+            return Err(DaemonError::file_not_found(home_dir));
         }
 
-        let client_cfg = ClientConfig::load(home_dir).unwrap();
+        let client_cfg = ClientConfig::load(home_dir)?;
 
         let chain_id = self.chain_id.as_ref().unwrap_or(&client_cfg.chain_id);
 
         let url_str = self.node.as_ref().unwrap_or(&client_cfg.node);
-        let url = Url::from_str(url_str).unwrap();
-        let client = HttpClient::new(url).unwrap();
+        let url = Url::from_str(url_str)?;
+        let client = HttpClient::new(url)?;
 
-        let keyring = Keyring::new(home_dir.join("keys")).unwrap();
-        let key = keyring.get(&self.from).unwrap();
-        let sender_addr = key.address().unwrap();
+        let keyring = Keyring::new(home_dir.join("keys"))?;
+        let key = keyring.get(&self.from)?;
+        let sender_addr = key.address()?;
 
         // query the sender's sequence number if not provided
         let sequence = match self.sequence {
@@ -124,7 +122,7 @@ impl TxCmd {
                 wasm_byte_code_path,
             } => {
                 // TODO: check whether the file exists
-                let wasm_byte_code = fs::read(wasm_byte_code_path).unwrap();
+                let wasm_byte_code = fs::read(wasm_byte_code_path)?;
                 SdkMsg::StoreCode {
                     wasm_byte_code: wasm_byte_code.into(),
                 }
@@ -137,8 +135,7 @@ impl TxCmd {
                 admin
             } => {
                 if funds.is_some() {
-                    error!("funds is not supported yet");
-                    return;
+                    return Err(DaemonError::unsupported_feature("sending funds"));
                 }
                 SdkMsg::Instantiate {
                     code_id: *code_id,
@@ -154,8 +151,7 @@ impl TxCmd {
                 funds,
             } => {
                 if funds.is_some() {
-                    error!("funds is not supported yet");
-                    return;
+                    return Err(DaemonError::unsupported_feature("sending funds"));
                 }
                 SdkMsg::Execute {
                     contract: contract.clone(),
@@ -181,19 +177,21 @@ impl TxCmd {
             sequence,
         };
 
-        let tx = key.sign_tx(&body).unwrap();
-        let tx_bytes = serde_json::to_vec(&tx).unwrap();
+        let tx = key.sign_tx(&body)?;
+        let tx_bytes = serde_json::to_vec(&tx)?;
 
         println!();
         println!("successfully signed tx:");
         println!("-----------------------");
-        print::json(&tx);
+        print::json(&tx)?;
         println!();
 
-        if prompt::confirm("broadcast tx?").unwrap() {
-            let response = client.broadcast_tx_async(tx_bytes.into()).await.unwrap();
+        if prompt::confirm("broadcast tx?")? {
+            let response = client.broadcast_tx_async(tx_bytes.into()).await?;
             println!();
-            print::yaml(&response);
+            print::yaml(&response)?;
         }
+
+        Ok(())
     }
 }

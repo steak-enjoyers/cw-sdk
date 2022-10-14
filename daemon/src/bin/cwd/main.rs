@@ -1,10 +1,11 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
+use tracing::error;
 use tracing_subscriber::filter::LevelFilter;
 
 use cw_daemon::commands::{GenesisCmd, InitCmd, KeysCmd, QueryCmd, StartCmd, TxCmd};
-use cw_daemon::default_home;
+use cw_daemon::{path, DaemonError};
 
 #[derive(Parser)]
 #[clap(author, version, about)]
@@ -43,12 +44,14 @@ pub enum Command {
     Tx(TxCmd),
 }
 
-#[tokio::main]
-async fn main() {
+async fn run() -> Result<(), DaemonError> {
     let cli = Cli::parse();
 
     // set home directory
-    let home_dir = cli.home.unwrap_or_else(default_home);
+    let home_dir = match &cli.home {
+        Some(home) => home.clone(),
+        None => path::default_app_home()?,
+    };
 
     // set log level
     let log_level = if cli.debug {
@@ -65,5 +68,12 @@ async fn main() {
         Command::Query(cmd) => cmd.run(&home_dir).await,
         Command::Start(cmd) => cmd.run(&home_dir),
         Command::Tx(cmd) => cmd.run(&home_dir).await,
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    if let Err(err) = run().await {
+        error!("command failed with error: {}", err);
     }
 }

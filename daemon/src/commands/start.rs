@@ -3,24 +3,22 @@ use std::sync::mpsc;
 
 use clap::Args;
 use tendermint_abci::ServerBuilder;
-use tracing::error;
 
 use cw_sdk::abci::{App, AppDriver};
 use cw_sdk::state::State;
 
-use crate::{stringify_pathbuf, AppConfig};
+use crate::{AppConfig, DaemonError};
 
 #[derive(Args)]
 pub struct StartCmd;
 
 impl StartCmd {
-    pub fn run(&self, home_dir: &Path) {
+    pub fn run(&self, home_dir: &Path) -> Result<(), DaemonError> {
         if !home_dir.exists() {
-            error!("home directory does not exist: {}", stringify_pathbuf(home_dir));
-            return;
+            return Err(DaemonError::file_not_found(home_dir));
         }
 
-        let app_cfg = AppConfig::load(home_dir).unwrap();
+        let app_cfg = AppConfig::load(home_dir)?;
 
         // TODO: currently we use an in-memory mock storage, and always start the default blank
         // state when starting the daemon.
@@ -35,7 +33,9 @@ impl StartCmd {
             cmd_rx,
         };
 
+        let server = ServerBuilder::default().bind(app_cfg.listen_addr, app)?;
+
         std::thread::spawn(move || driver.run());
-        ServerBuilder::default().bind(app_cfg.listen_addr, app).unwrap().listen().unwrap();
+        server.listen().map_err(DaemonError::from)
     }
 }

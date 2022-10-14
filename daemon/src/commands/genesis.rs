@@ -6,11 +6,11 @@ use cw_sdk::address;
 use cw_sdk::hash::sha256;
 use serde::Serialize;
 use tendermint::genesis::Genesis as TmGenesis;
-use tracing::{error, info};
+use tracing::info;
 
 use cw_sdk::msg::{GenesisState, SdkMsg};
 
-use crate::{print, stringify_pathbuf};
+use crate::{path, print, DaemonError};
 
 #[derive(Args)]
 pub struct GenesisCmd {
@@ -72,23 +72,23 @@ pub enum GenesisSubcommand {
 }
 
 impl GenesisCmd {
-    pub fn run(&self) {
-        let genesis_path = self
-            .tendermint_home
-            .clone()
-            .unwrap_or_else(|| home::home_dir().unwrap().join(".tendermint"))
-            .join("config/genesis.json");
+    pub fn run(&self) -> Result<(), DaemonError> {
+        let tm_home = match &self.tendermint_home {
+            None => path::default_tm_home()?,
+            Some(tm_home) => tm_home.clone(),
+        };
+
+        let genesis_path = tm_home.join("config/genesis.json");
 
         if !genesis_path.exists() {
-            error!("genesis file does not exist: {}", stringify_pathbuf(&genesis_path));
-            return;
+            return Err(DaemonError::file_not_found(&genesis_path));
         }
 
-        let genesis_bytes = fs::read(&genesis_path).unwrap();
+        let genesis_bytes = fs::read(&genesis_path)?;
 
         // TODO: If using `tendermint init` command, the `app_state` field is actually missing
         // in the genesis file, which causes the deserialization to fail
-        let mut genesis: TmGenesis = serde_json::from_slice(&genesis_bytes).unwrap();
+        let mut genesis: TmGenesis = serde_json::from_slice(&genesis_bytes)?;
 
         let mut app_state: GenesisState =
             serde_json::from_value(genesis.app_state.clone()).unwrap_or_default();
@@ -99,17 +99,17 @@ impl GenesisCmd {
             } => {
                 // TODO: validate deployer address
                 app_state.deployer = address.clone();
-                update_and_write(&mut genesis, &app_state, &genesis_path);
+                update_and_write(&mut genesis, &app_state, &genesis_path)
             },
             GenesisSubcommand::Store {
                 wasm_byte_code_path,
             } => {
                 // TODO: check whether the file exists
-                let wasm_byte_code = fs::read(wasm_byte_code_path).unwrap();
+                let wasm_byte_code = fs::read(wasm_byte_code_path)?;
                 app_state.gen_msgs.push(SdkMsg::StoreCode {
                     wasm_byte_code: wasm_byte_code.into(),
                 });
-                update_and_write(&mut genesis, &app_state, &genesis_path);
+                update_and_write(&mut genesis, &app_state, &genesis_path)
             },
             GenesisSubcommand::Instantiate {
                 code_id,
@@ -119,8 +119,7 @@ impl GenesisCmd {
                 admin,
             } => {
                 if funds.is_some() {
-                    error!("funds is not supported yet");
-                    return;
+                    return Err(DaemonError::unsupported_feature("sending funds"));
                 }
                 app_state.gen_msgs.push(SdkMsg::Instantiate {
                     code_id: *code_id,
@@ -129,7 +128,7 @@ impl GenesisCmd {
                     label: label.clone(),
                     admin: admin.clone(),
                 });
-                update_and_write(&mut genesis, &app_state, &genesis_path);
+                update_and_write(&mut genesis, &app_state, &genesis_path)
             },
             GenesisSubcommand::Execute {
                 contract,
@@ -137,15 +136,14 @@ impl GenesisCmd {
                 funds
             } => {
                 if funds.is_some() {
-                    error!("funds is not supported yet");
-                    return;
+                    return Err(DaemonError::unsupported_feature("sending funds"));
                 }
                 app_state.gen_msgs.push(SdkMsg::Execute {
                     contract: contract.clone(),
                     msg: msg.clone().into_bytes().into(),
                     funds: vec![],
                 });
-                update_and_write(&mut genesis, &app_state, &genesis_path);
+                update_and_write(&mut genesis, &app_state, &genesis_path)
             },
             GenesisSubcommand::ListCodes => {
                 let mut code_count = 0;
@@ -163,7 +161,7 @@ impl GenesisCmd {
                         });
                     }
                 }
-                print::yaml(&codes);
+                print::yaml(&codes)
             },
             GenesisSubcommand::ListContracts => {
                 let mut contracts = vec![];
@@ -176,25 +174,30 @@ impl GenesisCmd {
                     } = msg
                     {
                         contracts.push(ContractInfo {
-                            address: address::derive_from_label(label).unwrap().into(),
+                            address: address::derive_from_label(label)?.into(),
                             code_id: *code_id,
                             label: label.clone(),
                             admin: admin.clone(),
                         });
                     }
                 }
-                print::yaml(&contracts);
+                print::yaml(&contracts)
             },
         }
     }
 }
 
 /// Update the genesis state and write to file
-fn update_and_write(genesis: &mut TmGenesis, app_state: &GenesisState, genesis_path: &Path) {
-    genesis.app_state = serde_json::to_value(app_state).unwrap();
-    let genesis_str = serde_json::to_vec_pretty(&genesis).unwrap();
-    fs::write(&genesis_path, &genesis_str).unwrap();
-    info!("genesis file written to {}", stringify_pathbuf(genesis_path));
+fn update_and_write(
+    genesis: &mut TmGenesis,
+    app_state: &GenesisState,
+    genesis_path: &Path,
+) -> Result<(), DaemonError> {
+    genesis.app_state = serde_json::to_value(app_state)?;
+    let genesis_str = serde_json::to_vec_pretty(&genesis)?;
+    fs::write(&genesis_path, &genesis_str)?;
+    info!("genesis file written to {}", path::stringify(genesis_path)?);
+    Ok(())
 }
 
 #[derive(Serialize)]

@@ -3,9 +3,8 @@ use std::path::Path;
 use bip32::{Language, Mnemonic};
 use clap::{Args, Subcommand};
 use rand_core::OsRng;
-use tracing::error;
 
-use crate::{print, prompt, stringify_pathbuf, Key, Keyring};
+use crate::{print, prompt, DaemonError, Key, Keyring};
 
 #[derive(Args)]
 pub struct KeysCmd {
@@ -45,13 +44,12 @@ pub enum KeysSubcmd {
 }
 
 impl KeysCmd {
-    pub fn run(&self, home_dir: &Path) {
+    pub fn run(&self, home_dir: &Path) -> Result<(), DaemonError> {
         if !home_dir.exists() {
-            error!("home directory does not exist: {}", stringify_pathbuf(home_dir));
-            return;
+            return Err(DaemonError::file_not_found(home_dir));
         }
 
-        let keyring = Keyring::new(home_dir.join("keys")).unwrap();
+        let keyring = Keyring::new(home_dir.join("keys"))?;
 
         match &self.subcommand {
             KeysSubcmd::Add {
@@ -60,18 +58,18 @@ impl KeysCmd {
                 coin_type,
             } => {
                 let mnemonic = if *recover {
-                    let phrase: String = prompt::input("enter your BIP-39 mnemonic").unwrap();
+                    let phrase: String = prompt::input("enter your BIP-39 mnemonic")?;
                     println!("\n");
-                    Mnemonic::new(phrase, Language::English).unwrap()
+                    Mnemonic::new(phrase, Language::English)?
                 } else {
                     Mnemonic::random(&mut OsRng, Language::English)
                 };
 
-                let key = Key::from_mnemonic(name, &mnemonic, *coin_type).unwrap();
-                keyring.set(&key).unwrap();
+                let key = Key::from_mnemonic(name, &mnemonic, *coin_type)?;
+                keyring.set(&key)?;
 
                 println!();
-                print::key(&key);
+                print::key(&key)?;
 
                 if !recover {
                     println!("\n**Important** write this mnemonic phrase in a safe place!");
@@ -83,18 +81,20 @@ impl KeysCmd {
             KeysSubcmd::Show {
                 name,
             } => {
-                let key = keyring.get(name).unwrap();
+                let key = keyring.get(name)?;
                 println!();
-                print::key(&key);
+                print::key(&key)?;
             },
             KeysSubcmd::List => {
-                let keys = keyring.list().unwrap();
+                let keys = keyring.list()?;
                 println!();
-                print::keys(&keys);
+                print::keys(&keys)?;
             },
             KeysSubcmd::Delete {
                 name,
-            } => keyring.delete(name).unwrap(),
+            } => keyring.delete(name)?,
         }
+
+        Ok(())
     }
 }

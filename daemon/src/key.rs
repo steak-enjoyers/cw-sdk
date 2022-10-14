@@ -2,10 +2,11 @@ use bip32::{Mnemonic, XPrv};
 use cosmwasm_std::Addr;
 use josekit::jwt::JwtPayload;
 use k256::ecdsa::{signature::Signer, Signature, SigningKey, VerifyingKey};
-use thiserror::Error;
 
 use cw_sdk::address;
 use cw_sdk::msg::{Tx, TxBody};
+
+use crate::DaemonError;
 
 /// Represents a private key that is to be saved in the keyring.
 ///
@@ -26,7 +27,7 @@ impl Key {
         name: impl Into<String>,
         mnemonic: &Mnemonic,
         coin_type: u32,
-    ) -> Result<Self, KeyError> {
+    ) -> Result<Self, DaemonError> {
         // The `to_seed` function takes a password to generate salt. Here we just use an empty str.
         // For reference, both Terra Station and Keplr use an empty string as well:
         // - https://github.com/terra-money/terra.js/blob/v3.1.7/src/key/MnemonicKey.ts#L79
@@ -41,7 +42,7 @@ impl Key {
     }
 
     /// Create a new key instance from a given name and private key bytes
-    pub fn from_privkey_bytes(name: impl Into<String>, sk_bytes: &[u8]) -> Result<Self, KeyError> {
+    pub fn from_privkey_bytes(name: impl Into<String>, sk_bytes: &[u8]) -> Result<Self, DaemonError> {
         let sk = SigningKey::from_bytes(sk_bytes)?;
         Ok(Self {
             name: name.into(),
@@ -71,7 +72,7 @@ impl Key {
     }
 
     /// Sign a tx body, returns the full tx.
-    pub fn sign_tx(&self, body: &TxBody) -> Result<Tx, KeyError> {
+    pub fn sign_tx(&self, body: &TxBody) -> Result<Tx, DaemonError> {
         let body_bytes = serde_json::to_vec(body)?;
         let signature = self.sign_bytes(&body_bytes);
         Ok(Tx {
@@ -95,49 +96,21 @@ impl TryFrom<Key> for JwtPayload {
 }
 
 impl TryFrom<JwtPayload> for Key {
-    type Error = KeyError;
+    type Error = DaemonError;
 
     fn try_from(payload: JwtPayload) -> Result<Self, Self::Error> {
         let name = payload
             .claim("name")
-            .ok_or_else(|| KeyError::malformed_payload("key `name` not found"))?
+            .ok_or_else(|| DaemonError::malformed_payload("key `name` not found"))?
             .as_str()
-            .ok_or_else(|| KeyError::malformed_payload("incorrect JSON value type for `name`"))?;
+            .ok_or_else(|| DaemonError::malformed_payload("incorrect JSON value type for `name`"))?;
         let sk_str = payload
             .claim("sk")
-            .ok_or_else(|| KeyError::malformed_payload("key `sk` not found"))?
+            .ok_or_else(|| DaemonError::malformed_payload("key `sk` not found"))?
             .as_str()
-            .ok_or_else(|| KeyError::malformed_payload("incorrect JSON value type for `sk`"))?;
+            .ok_or_else(|| DaemonError::malformed_payload("incorrect JSON value type for `sk`"))?;
 
         let sk_bytes = hex::decode(sk_str)?;
         Key::from_privkey_bytes(name, &sk_bytes)
-    }
-}
-
-#[derive(Debug, Error)]
-pub enum KeyError {
-    #[error(transparent)]
-    Bip32(#[from] bip32::Error),
-
-    #[error(transparent)]
-    Ecdsa(#[from] k256::ecdsa::Error),
-
-    #[error(transparent)]
-    FromHex(#[from] hex::FromHexError),
-
-    #[error(transparent)]
-    Serde(#[from] serde_json::Error),
-
-    #[error("failed to cast JWT payload to key: {reason}")]
-    MalformedPayload {
-        reason: String,
-    },
-}
-
-impl KeyError {
-    pub fn malformed_payload(reason: impl Into<String>) -> Self {
-        Self::MalformedPayload {
-            reason: reason.into(),
-        }
     }
 }

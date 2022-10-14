@@ -1,26 +1,26 @@
 use std::path::{Path, PathBuf};
 
-/// Default app home directory under the system home directory.
-///
-/// TODO: how can we make this configurable? perhaps read an env var at compilation time?
-/// similar problem for bech32 account prefixes.
-pub const DEFAULT_HOME: &str = ".cw";
+use crate::DaemonError;
 
-/// Return the absolute path of the default application home directory.
-/// Panic if fails to get the system home directory.
-///
-/// TODO: perhaps this should return a Result instead of panicking
-pub fn default_home() -> PathBuf {
-    let sys_home = home::home_dir().expect("failed to get the system home directory");
-    sys_home.join(DEFAULT_HOME)
+/// Return the default application home directory
+pub fn default_app_home() -> Result<PathBuf, DaemonError> {
+    Ok(home::home_dir()
+        .ok_or(DaemonError::HomeDirFailed)?
+        .join(".cw"))
 }
 
-/// Converts a PathBuf to a string. Panic on failure.
-///
+/// Return the default Tendermint home directory
+pub fn default_tm_home() -> Result<PathBuf, DaemonError> {
+    Ok(home::home_dir()
+        .ok_or(DaemonError::HomeDirFailed)?
+        .join(".tendermint"))
+}
+
+/// Convert a `&Path` to a string.
 /// See: https://stackoverflow.com/questions/37388107/how-to-convert-the-pathbuf-to-string
-///
-/// TODO: this should be renamed to `stringify_path` instead of pathbuf
-/// TODO: perhaps this should return a Result instead of panicking
-pub fn stringify_pathbuf(path: &Path) -> String {
-    path.to_path_buf().into_os_string().into_string().unwrap()
+pub fn stringify(path: &Path) -> Result<String, DaemonError> {
+    path.to_path_buf()
+        .into_os_string()
+        .into_string()
+        .map_err(|_| DaemonError::PathFailed)
 }

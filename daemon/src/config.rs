@@ -2,7 +2,8 @@ use std::path::Path;
 use std::fs;
 
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
+
+use crate::DaemonError;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -20,10 +21,10 @@ impl Default for AppConfig {
 }
 
 impl AppConfig {
-    pub fn load(home_dir: &Path) -> Result<Self, ConfigError> {
+    pub fn load(home_dir: &Path) -> Result<Self, DaemonError> {
         let cfg_path = home_dir.join("config/app.toml");
         let cfg_bytes = fs::read(&cfg_path)?;
-        toml::from_slice(&cfg_bytes).map_err(ConfigError::from)
+        toml::from_slice(&cfg_bytes).map_err(DaemonError::from)
     }
 }
 
@@ -45,18 +46,9 @@ impl Default for ClientConfig {
 }
 
 impl ClientConfig {
-    pub fn load(home_dir: &Path) -> Result<Self, ConfigError> {
+    pub fn load(home_dir: &Path) -> Result<Self, DaemonError> {
         let cfg_path = home_dir.join("config/client.toml");
         let cfg_bytes = fs::read(&cfg_path)?;
-        toml::from_slice(&cfg_bytes).map_err(ConfigError::from)
+        toml::from_slice(&cfg_bytes).map_err(DaemonError::from)
     }
-}
-
-#[derive(Debug, Error)]
-pub enum ConfigError {
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-
-    #[error(transparent)]
-    Deserialize(#[from] toml::de::Error),
 }

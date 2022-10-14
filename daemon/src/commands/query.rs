@@ -7,14 +7,14 @@ use cosmwasm_std::ContractResult;
 use serde_json::Value;
 use tendermint::abci::transaction::Hash;
 use tendermint_rpc::{Client, HttpClient, Url};
-use tracing::{error, info};
+use tracing::info;
 
 use cw_sdk::msg::{
     AccountResponse, CodeResponse, ContractResponse, SdkQuery, WasmRawResponse, WasmSmartResponse,
 };
 
 use crate::query::do_abci_query;
-use crate::{print, stringify_pathbuf, ClientConfig};
+use crate::{path, print, ClientConfig, DaemonError};
 
 #[derive(Args)]
 pub struct QueryCmd {
@@ -69,24 +69,23 @@ pub enum QuerySubcmd {
 }
 
 impl QueryCmd {
-    pub async fn run(&self, home_dir: &Path) {
+    pub async fn run(&self, home_dir: &Path) -> Result<(), DaemonError> {
         if !home_dir.exists() {
-            error!("home directory does not exist: {}", stringify_pathbuf(home_dir));
-            return;
+            return Err(DaemonError::file_not_found(home_dir));
         }
 
-        let client_cfg = ClientConfig::load(home_dir).unwrap();
+        let client_cfg = ClientConfig::load(home_dir)?;
         let url_str = self.node.as_ref().unwrap_or(&client_cfg.node);
-        let url = Url::from_str(url_str).unwrap();
-        let client = HttpClient::new(url).unwrap();
+        let url = Url::from_str(url_str)?;
+        let client = HttpClient::new(url)?;
 
         match &self.subcommand {
             QuerySubcmd::Tx {
                 txhash,
             } => {
-                let hash = Hash::from_str(txhash).unwrap();
-                let response = client.tx(hash, false).await.unwrap();
-                print::json(&response);
+                let hash = Hash::from_str(txhash)?;
+                let response = client.tx(hash, false).await?;
+                print::json(&response)?;
             },
             QuerySubcmd::Account {
                 address,
@@ -97,10 +96,9 @@ impl QueryCmd {
                         address: address.clone(),
                     },
                 )
-                .await
-                .unwrap();
+                .await?;
 
-                print::yaml(response);
+                print::yaml(response)?;
             },
             QuerySubcmd::Code {
                 code_id,
@@ -112,16 +110,15 @@ impl QueryCmd {
                         code_id: *code_id,
                     },
                 )
-                .await
-                .unwrap();
+                .await?;
 
                 // only print the hash, not the bytecode
                 println!("hash: {}", response.hash);
 
                 // save the wasm byte code to file if an output path is specified
                 if let Some(output) = output {
-                    fs::write(output, response.wasm_byte_code.as_slice()).unwrap();
-                    info!("wasm byte code written to {}", stringify_pathbuf(output));
+                    fs::write(output, response.wasm_byte_code.as_slice())?;
+                    info!("wasm byte code written to {}", path::stringify(output)?);
                 }
             },
             QuerySubcmd::Contract {
@@ -133,10 +130,9 @@ impl QueryCmd {
                         contract: contract.clone(),
                     },
                 )
-                .await
-                .unwrap();
+                .await?;
 
-                print::yaml(response);
+                print::yaml(response)?;
             },
             QuerySubcmd::WasmRaw {
                 contract,
@@ -146,13 +142,12 @@ impl QueryCmd {
                     &client,
                     SdkQuery::WasmRaw {
                         contract: contract.clone(),
-                        key: hex::decode(&key).unwrap().into(),
+                        key: hex::decode(&key)?.into(),
                     },
                 )
-                .await
-                .unwrap();
+                .await?;
 
-                print::yaml(response);
+                print::yaml(response)?;
             },
             QuerySubcmd::WasmSmart {
                 contract,
@@ -165,15 +160,14 @@ impl QueryCmd {
                         msg: msg.clone().into_bytes().into(),
                     },
                 )
-                .await
-                .unwrap();
+                .await?;
 
                 match response.result {
                     ContractResult::Ok(bytes) => {
                         // attempt to decode the response as generic JSON
                         match serde_json::from_slice::<Value>(bytes.as_slice()) {
                             Ok(s) => {
-                                print::json(s);
+                                print::json(s)?;
                             },
                             Err(err) => {
                                 println!("query successful but failed to decode response: {}", err);
@@ -184,5 +178,7 @@ impl QueryCmd {
                 }
             },
         };
+
+        Ok(())
     }
 }
