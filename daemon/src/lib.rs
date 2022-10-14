@@ -9,7 +9,6 @@ pub mod prompt;
 pub mod query;
 
 pub use error::DaemonError;
-pub use path::*;
-pub use config::*;
+pub use config::{AppConfig, ClientConfig};
 pub use key::Key;
 pub use keyring::Keyring;
