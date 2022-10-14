@@ -121,8 +121,7 @@ impl Keyring {
         let password = self.unlock()?;
         let decrypter = jwe::PBES2_HS256_A128KW.decrypter_from_bytes(password.as_bytes())?;
 
-        self
-            .dir()
+        self.dir()
             .read_dir()?
             .map(|entry| {
                 let entry = entry?;

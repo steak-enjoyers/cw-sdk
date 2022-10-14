@@ -132,7 +132,7 @@ impl TxCmd {
                 msg,
                 funds,
                 label,
-                admin
+                admin,
             } => {
                 if funds.is_some() {
                     return Err(DaemonError::unsupported_feature("sending funds"));

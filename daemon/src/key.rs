@@ -42,7 +42,10 @@ impl Key {
     }
 
     /// Create a new key instance from a given name and private key bytes
-    pub fn from_privkey_bytes(name: impl Into<String>, sk_bytes: &[u8]) -> Result<Self, DaemonError> {
+    pub fn from_privkey_bytes(
+        name: impl Into<String>,
+        sk_bytes: &[u8],
+    ) -> Result<Self, DaemonError> {
         let sk = SigningKey::from_bytes(sk_bytes)?;
         Ok(Self {
             name: name.into(),

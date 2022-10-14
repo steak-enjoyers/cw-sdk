@@ -133,7 +133,7 @@ impl GenesisCmd {
             GenesisSubcommand::Execute {
                 contract,
                 msg,
-                funds
+                funds,
             } => {
                 if funds.is_some() {
                     return Err(DaemonError::unsupported_feature("sending funds"));

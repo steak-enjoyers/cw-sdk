@@ -1,4 +1,4 @@
-use crate::{Key, DaemonError};
+use crate::{DaemonError, Key};
 
 /// Print a BIP-38 mnemonic phrase
 pub fn mnemonic(phrase: &str) {

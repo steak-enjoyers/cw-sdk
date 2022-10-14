@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
-use serde::{Serialize, de::DeserializeOwned};
-use tendermint_rpc::{HttpClient, Client};
+use serde::{de::DeserializeOwned, Serialize};
 use tendermint::abci::Path;
+use tendermint_rpc::{Client, HttpClient};
 
 use crate::DaemonError;
 
