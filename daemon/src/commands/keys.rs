@@ -46,7 +46,7 @@ pub enum KeysSubcmd {
 impl KeysCmd {
     pub fn run(&self, home_dir: &Path) -> Result<(), DaemonError> {
         if !home_dir.exists() {
-            return Err(DaemonError::file_not_found(home_dir));
+            return Err(DaemonError::file_not_found(home_dir)?);
         }
 
         let keyring = Keyring::new(home_dir.join("keys"))?;

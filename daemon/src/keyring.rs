@@ -72,7 +72,7 @@ impl Keyring {
     pub fn set(&self, key: &Key) -> Result<(), DaemonError> {
         let filename = self.filename(&key.name);
         if filename.exists() {
-            return Err(DaemonError::file_exists(&filename));
+            return Err(DaemonError::file_exists(&filename)?);
         }
 
         // header
@@ -102,7 +102,7 @@ impl Keyring {
         let token = {
             let filename = self.filename(name);
             if !filename.exists() {
-                return Err(DaemonError::file_not_found(&filename));
+                return Err(DaemonError::file_not_found(&filename)?);
             }
             fs::read(&filename)?
         };
@@ -140,7 +140,7 @@ impl Keyring {
         if filename.exists() {
             fs::remove_file(filename).map_err(DaemonError::from)
         } else {
-            Err(DaemonError::file_not_found(&filename))
+            Err(DaemonError::file_not_found(&filename)?)
         }
     }
 }

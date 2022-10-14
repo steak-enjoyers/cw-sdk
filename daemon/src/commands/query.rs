@@ -71,7 +71,7 @@ pub enum QuerySubcmd {
 impl QueryCmd {
     pub async fn run(&self, home_dir: &Path) -> Result<(), DaemonError> {
         if !home_dir.exists() {
-            return Err(DaemonError::file_not_found(home_dir));
+            return Err(DaemonError::file_not_found(home_dir)?);
         }
 
         let client_cfg = ClientConfig::load(home_dir)?;

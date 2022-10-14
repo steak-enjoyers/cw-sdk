@@ -12,7 +12,7 @@ pub struct InitCmd;
 impl InitCmd {
     pub fn run(&self, home_dir: &Path) -> Result<(), DaemonError> {
         if home_dir.exists() {
-            return Err(DaemonError::file_exists(home_dir));
+            return Err(DaemonError::file_exists(home_dir)?);
         }
 
         fs::create_dir_all(home_dir.join("config"))?;

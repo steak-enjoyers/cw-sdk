@@ -81,7 +81,7 @@ impl GenesisCmd {
         let genesis_path = tm_home.join("config/genesis.json");
 
         if !genesis_path.exists() {
-            return Err(DaemonError::file_not_found(&genesis_path));
+            return Err(DaemonError::file_not_found(&genesis_path)?);
         }
 
         let genesis_bytes = fs::read(&genesis_path)?;

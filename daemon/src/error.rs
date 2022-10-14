@@ -82,18 +82,16 @@ pub enum DaemonError {
 }
 
 impl DaemonError {
-    pub fn file_exists(filename: &Path) -> Self {
-        Self::FileExists {
-            // TODO: can we avoid unwrapping here?
-            filename: path::stringify(filename).unwrap(),
-        }
+    pub fn file_exists(filename: &Path) -> Result<Self, Self> {
+        Ok(Self::FileExists {
+            filename: path::stringify(filename)?,
+        })
     }
 
-    pub fn file_not_found(filename: &Path) -> Self {
-        Self::FileNotFound {
-            // TODO: can we avoid unwrapping here?
-            filename: path::stringify(filename).unwrap(),
-        }
+    pub fn file_not_found(filename: &Path) -> Result<Self, Self> {
+        Ok(Self::FileNotFound {
+            filename: path::stringify(filename)?,
+        })
     }
 
     pub fn malformed_payload(reason: impl Into<String>) -> Self {
