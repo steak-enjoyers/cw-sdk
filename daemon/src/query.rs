@@ -6,7 +6,7 @@ use tendermint::abci::Path;
 
 use crate::DaemonError;
 
-pub async fn do_abci_query<Q: Serialize, R: Serialize + DeserializeOwned>(
+pub async fn do_abci_query<Q: Serialize, R: DeserializeOwned>(
     client: &HttpClient,
     query: Q,
 ) -> Result<R, DaemonError> {
