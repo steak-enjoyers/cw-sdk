@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use crate::address::{self, AddressError};
 use crate::msg::Tx;
-use crate::state::{Account, State};
+use crate::state::{Account, State, BaseAccount};
 
 /// Authenticate the signer's address, pubkey, signature, sequence, and chain id.
 /// Return error if any one fails.
@@ -17,12 +17,13 @@ pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<(Addr, Account), AuthEr
     let mut account = match state.accounts.get(&sender_addr) {
         // if the account is found on-chain, its pubkey must match the one included in the tx
         Some(account) => {
+            let base_account = account.get_base_account().ok_or(AuthError::InvalidAccountAddress)?;
             if let Some(pubkey) = &tx.pubkey {
-                if account.pubkey != *pubkey {
-                    return Err(AuthError::pubkey_mismatch(sender, &account.pubkey, pubkey));
+                if base_account.pubkey != *pubkey {
+                    return Err(AuthError::pubkey_mismatch(sender, &base_account.pubkey, pubkey));
                 }
             }
-            account.clone()
+            base_account.clone()
         },
         // if None, use the pubkey provided by the tx and initialize sequence to be 0.
         // the pubkey must match the sender address.
@@ -34,7 +35,7 @@ pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<(Addr, Account), AuthEr
                 return Err(AuthError::address_mismatch(address, sender));
             }
 
-            Account {
+            BaseAccount {
                 pubkey: pubkey.clone(),
                 sequence: 0,
             }
@@ -60,7 +61,7 @@ pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<(Addr, Account), AuthEr
     // if signature is valid, return the sender address and updated account info
     // otherwise, return error
     pubkey.verify(&body_bytes, &signature)
-        .map(|_| (sender_addr, account))
+        .map(|_| (sender_addr, account.into()))
         .map_err(AuthError::from)
 }
 
@@ -74,6 +75,9 @@ pub enum AuthError {
 
     #[error(transparent)]
     Address(#[from] AddressError),
+
+    #[error("account address cannot be a contract address")]
+    InvalidAccountAddress,
 
     #[error("pubkey for sender {sender} is neither provided in the tx nor stored on-chain")]
     AccountNotFound {

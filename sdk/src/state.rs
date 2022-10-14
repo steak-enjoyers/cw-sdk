@@ -18,8 +18,16 @@ use crate::store::ContractStore;
 
 /// The account type to be stored on-chain
 #[cw_serde]
-pub struct Account {
-    /// The account's secp256k1 public key
+pub enum Account {
+    Base(BaseAccount),
+    // doesn't need have any parameters because 1) SCs don't have pubkeys
+    // 2) SCs can't be the signer of txs, so they can't be replay-attacked, so no need to tract their sequences as well.
+    Contract
+}
+
+/// The account's secp256k1 public key
+ #[cw_serde]
+pub struct BaseAccount{
     pub pubkey: Binary,
     /// The account's sequence number, used to prevent replay attacks.
     /// The first tx ever to be submitted by the account should come with the sequence of 1.
@@ -350,6 +358,7 @@ impl State {
                         admin: admin_addr,
                     },
                 );
+                self.accounts.insert(contract_addr.clone(), Account::Contract);
                 self.stores.insert(contract_addr.clone(), storage);
 
                 // collect the events
@@ -438,11 +447,13 @@ impl State {
     fn query_account(&self, addr: &Addr) -> Result<AccountResponse, StateError> {
         self.accounts
             .get(addr)
-            .cloned()
-            .map(|account| AccountResponse {
+            .and_then(|account| {
+                let base_account = account.get_base_account()?;
+                Some(AccountResponse {
                 address: addr.into(),
-                pubkey: account.pubkey,
-                sequence: account.sequence,
+                pubkey: base_account.pubkey.clone(),
+                sequence: base_account.sequence,
+            })
             })
             .ok_or_else(|| StateError::account_not_found(addr))
     }
@@ -593,6 +604,20 @@ impl StateError {
     pub fn contract_not_found(address: impl Into<String>) -> Self {
         Self::ContractNotFound {
             address: address.into(),
+        }
+    }
+}
+
+impl From<BaseAccount> for Account {
+    fn from(base_account: BaseAccount) -> Self {
+        Self::Base(base_account)
+    }
+}
+impl Account {
+    pub fn get_base_account(&self) -> Option<&BaseAccount> {
+        match self {
+            Self::Base(base_account) => Some(base_account),
+            Self::Contract => None
         }
     }
 }
