@@ -453,7 +453,7 @@ impl State {
             .cloned()
             .map(|code| CodeResponse {
                 creator: code.creator.into(),
-                hash: sha256(&code.wasm_byte_code).into(),
+                hash: sha256(code.wasm_byte_code.as_slice()).into(),
                 wasm_byte_code: code.wasm_byte_code,
             })
             .ok_or_else(|| StateError::code_not_found(code_id))
