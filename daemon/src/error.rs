@@ -51,31 +51,31 @@ pub enum DaemonError {
     #[error(transparent)]
     Yaml(#[from] serde_yaml::Error),
 
-    #[error("file {filename} already exists")]
+    #[error("failed to determine system home directory")]
+    HomeDirFailed,
+
+    #[error("failed to stringify path")]
+    PathFailed,
+
+    #[error("password is incorrect")]
+    IncorrectPassword,
+
+    #[error("file already exists: {filename}")]
     FileExists {
         filename: String,
     },
 
-    #[error("file {filename} not found")]
+    #[error("file not found: {filename}")]
     FileNotFound {
         filename: String,
     },
-
-    #[error("failed to determine system home directory")]
-    HomeDirFailed,
-
-    #[error("password is incorrect")]
-    IncorrectPassword,
 
     #[error("failed to cast JWT payload to key: {reason}")]
     MalformedPayload {
         reason: String,
     },
 
-    #[error("failed to stringify path")]
-    PathFailed,
-
-    #[error("feature is unsupported yet: {feature}")]
+    #[error("feature is not supported yet: {feature}")]
     UnsupportedFeature {
         feature: String,
     },
