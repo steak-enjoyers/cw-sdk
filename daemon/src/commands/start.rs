@@ -4,8 +4,8 @@ use std::sync::mpsc;
 use clap::Args;
 use tendermint_abci::ServerBuilder;
 
-use cw_sdk::abci::{App, AppDriver};
 use cw_sdk::state::State;
+use cw_server::{App, AppDriver};
 
 use crate::{AppConfig, DaemonError};
 

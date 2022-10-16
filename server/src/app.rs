@@ -3,7 +3,7 @@ use std::sync::mpsc::{channel, Sender};
 use cosmwasm_std::{Attribute as WasmAttribute, Event as WasmEvent};
 use tendermint_proto::abci::{self, Event, EventAttribute};
 
-use super::AppCommand;
+use crate::AppCommand;
 
 #[derive(Clone, Debug)]
 pub struct App {

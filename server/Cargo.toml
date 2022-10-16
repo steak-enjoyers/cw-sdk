@@ -1,9 +1,9 @@
 [package]
-name        = "cw-sdk"
+name        = "cw-server"
 version     = "0.1.0"
 authors     = ["Larry Engineer <gm@larry.engineer>"]
 edition     = "2021"
-description = "State machine engine based on CosmWasm"
+description = "ABCI server implementation of CosmWasm SDK"
 readme      = "./README.md"
 homepage    = "https://larry.engineer"
 repository  = "https://github.com/steak-enjoyers/cw-sdk"
@@ -11,16 +11,9 @@ license     = "AGPL-v3-or-later"
 keywords    = ["blockchain", "cosmos", "cosmwasm"]
 
 [dependencies]
-base64 = "0.13"
-bech32 = "0.9"
-cosmwasm-schema = "1.1"
+cw-sdk = { path = "../sdk" }
+
 cosmwasm-std = "1.1"
-cosmwasm-vm = "1.1"
-hex = "0.4"
-k256 = "0.11"
-schemars = "0.8"
-serde = "1.0"
 serde_json = "1.0"
-sha2 = "0.10"
-thiserror = "1.0"
-# tracing = "0.1"
+tendermint-abci = "0.25"
+tendermint-proto = "0.25"

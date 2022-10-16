@@ -646,6 +646,7 @@ dependencies = [
  "clap",
  "cosmwasm-std",
  "cw-sdk",
+ "cw-server",
  "dialoguer",
  "hex",
  "home",
@@ -680,10 +681,18 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.6",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-server"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-std",
+ "cw-sdk",
+ "serde_json",
  "tendermint-abci",
  "tendermint-proto",
- "thiserror",
- "tracing",
 ]
 
 [[package]]

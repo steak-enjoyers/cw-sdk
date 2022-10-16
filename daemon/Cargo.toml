@@ -16,6 +16,7 @@ bip32 = "0.4"
 clap = { version = "3", features = ["derive"] }
 cosmwasm-std = "1.1"
 cw-sdk = { path = "../sdk" }
+cw-server = { path = "../server" }
 dialoguer = "0.10"
 hex = "0.4"
 home = "0.5"
