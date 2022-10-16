@@ -8,13 +8,14 @@ use cosmwasm_vm::{
 };
 use thiserror::Error;
 
-use crate::{address, auth, wasm};
+use cw_store::ContractStore;
+
 use crate::hash::sha256;
 use crate::msg::{
     AccountResponse, CodeResponse, ContractResponse, GenesisState, SdkMsg,
     SdkQuery, Tx, WasmRawResponse, WasmSmartResponse,
 };
-use crate::store::ContractStore;
+use crate::{address, auth, wasm};
 
 /// The account type to be stored on-chain
 #[cw_serde]

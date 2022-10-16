@@ -4,6 +4,7 @@ members = [
   "daemon",
   "sdk",
   "server",
+  "store",
 ]
 
 [profile.release]

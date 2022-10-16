@@ -675,6 +675,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-vm",
+ "cw-store",
  "hex",
  "k256",
  "schemars",
@@ -704,6 +705,24 @@ dependencies = [
  "cosmwasm-std",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "cw-store"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "bech32",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-vm",
+ "hex",
+ "k256",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sha2 0.10.6",
+ "thiserror",
 ]
 
 [[package]]

@@ -1,9 +1,9 @@
 [package]
-name        = "cw-sdk"
+name        = "cw-store"
 version     = "0.1.0"
 authors     = ["Larry Engineer <gm@larry.engineer>"]
 edition     = "2021"
-description = "State machine engine based on CosmWasm"
+description = "Storage data structure and database backend for CosmWasm SDK"
 readme      = "./README.md"
 homepage    = "https://larry.engineer"
 repository  = "https://github.com/steak-enjoyers/cw-sdk"
@@ -11,8 +11,6 @@ license     = "AGPL-v3-or-later"
 keywords    = ["blockchain", "cosmos", "cosmwasm"]
 
 [dependencies]
-cw-store = { path = "../store" }
-
 base64 = "0.13"
 bech32 = "0.9"
 cosmwasm-schema = "1.1"
