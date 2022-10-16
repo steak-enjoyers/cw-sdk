@@ -15,7 +15,7 @@ use crate::msg::{
     AccountResponse, CodeResponse, ContractResponse, GenesisState, SdkMsg,
     SdkQuery, Tx, WasmRawResponse, WasmSmartResponse,
 };
-use crate::{address, auth, wasm};
+use crate::{address, auth, backend};
 
 /// The account type to be stored on-chain
 #[cw_serde]
@@ -305,7 +305,7 @@ impl State {
             return Err(StateError::FundsUnsupported);
         }
 
-        let backend = wasm::create_backend(ContractStore::new());
+        let backend = backend::create(ContractStore::new());
         let code = &self.codes[&code_id];
         let mut instance = Instance::from_code(
             &code.wasm_byte_code,
@@ -384,7 +384,7 @@ impl State {
             .clone();
         let contract = &self.contracts[&contract_addr];
         let code = &self.codes[&contract.code_id];
-        let backend = wasm::create_backend(storage);
+        let backend = backend::create(storage);
         let mut instance = Instance::from_code(
             &code.wasm_byte_code,
             backend,
@@ -501,7 +501,7 @@ impl State {
             .ok_or_else(|| StateError::contract_not_found(&contract_addr))?;
         let contract = &self.contracts[&contract_addr];
         let code = &self.codes[&contract.code_id];
-        let backend = wasm::create_backend(storage);
+        let backend = backend::create(storage);
         let mut instance = Instance::from_code(
             &code.wasm_byte_code,
             backend,
