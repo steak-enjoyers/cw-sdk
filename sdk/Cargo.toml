@@ -10,9 +10,10 @@ repository  = "https://github.com/steak-enjoyers/cw-sdk"
 license     = "AGPL-v3-or-later"
 keywords    = ["blockchain", "cosmos", "cosmwasm"]
 
-[dependencies]
-cw-store = { path = "../store" }
+[dependencies.cw-store]
+path = "../store"
 
+[dependencies]
 base64 = "0.13"
 bech32 = "0.9"
 cosmwasm-schema = "1.1"

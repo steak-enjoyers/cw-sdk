@@ -10,9 +10,10 @@ repository  = "https://github.com/steak-enjoyers/cw-sdk"
 license     = "AGPL-v3-or-later"
 keywords    = ["blockchain", "cosmos", "cosmwasm"]
 
-[dependencies]
-cw-sdk = { path = "../sdk" }
+[dependencies.cw-sdk]
+path = "../sdk"
 
+[dependencies]
 cosmwasm-std = "1.1"
 serde_json = "1.0"
 tendermint-abci = "0.25"
