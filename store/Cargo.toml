@@ -1,15 +1,15 @@
 [package]
-name        = "cw-store"
-version     = "0.1.0"
-authors     = ["Larry Engineer <gm@larry.engineer>"]
-edition     = "2021"
-description = "Storage data structure and database backend for CosmWasm SDK"
-readme      = "./README.md"
-homepage    = "https://larry.engineer"
-repository  = "https://github.com/steak-enjoyers/cw-sdk"
-license     = "AGPL-v3-or-later"
-keywords    = ["blockchain", "cosmos", "cosmwasm"]
+name          = "cw-store"
+description   = "Storage data structure and database backend for CosmWasm SDK"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+homepage      = { workspace = true }
+repository    = { workspace = true }
+documentation = { workspace = true }
+keywords      = { workspace = true }
 
 [dependencies]
-cosmwasm-std = "1.1"
-cosmwasm-vm = "1.1"
+cosmwasm-std = { workspace = true }
+cosmwasm-vm  = { workspace = true }

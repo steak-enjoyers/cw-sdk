@@ -626,20 +626,18 @@ dependencies = [
 
 [[package]]
 name = "cw-bank"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus",
  "cw2",
- "schemars",
- "serde",
  "thiserror",
 ]
 
 [[package]]
 name = "cw-daemon"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "bcrypt",
  "bip32",
@@ -668,7 +666,7 @@ dependencies = [
 
 [[package]]
 name = "cw-sdk"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "base64",
  "bech32",
@@ -687,7 +685,7 @@ dependencies = [
 
 [[package]]
 name = "cw-server"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "cosmwasm-std",
  "cw-sdk",
@@ -709,7 +707,7 @@ dependencies = [
 
 [[package]]
 name = "cw-store"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "cosmwasm-std",
  "cosmwasm-vm",

@@ -1,14 +1,14 @@
 [package]
-name        = "cw-bank"
-version     = "0.1.0"
-authors     = ["Larry Engineer <gm@larry.engineer>"]
-edition     = "2021"
-description = "Bank contract responsible for handling multi-asset coin transfers between accounts"
-readme      = "./README.md"
-homepage    = "https://larry.engineer"
-repository  = "https://github.com/steak-enjoyers/cw-sdk"
-license     = "AGPL-v3-or-later"
-keywords    = ["blockchain", "cosmos", "cosmwasm"]
+name          = "cw-bank"
+description   = "Bank contract responsible for handling multi-asset coin transfers between accounts"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+homepage      = { workspace = true }
+repository    = { workspace = true }
+documentation = { workspace = true }
+keywords      = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -17,10 +17,8 @@ crate-type = ["cdylib", "rlib"]
 library = []
 
 [dependencies]
-cosmwasm-schema = "1.1"
-cosmwasm-std = "1.1"
-cw2 = "0.15"
-cw-storage-plus = "0.15"
-schemars = "0.8"
-serde = "1.0"
-thiserror = "1.0"
+cosmwasm-schema = { workspace = true }
+cosmwasm-std    = { workspace = true }
+cw2             = { workspace = true }
+cw-storage-plus = { workspace = true }
+thiserror       = { workspace = true }

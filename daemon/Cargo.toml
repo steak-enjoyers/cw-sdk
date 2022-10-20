@@ -1,40 +1,36 @@
 [package]
-name        = "cw-daemon"
-version     = "0.1.0"
-authors     = ["Larry Engineer <gm@larry.engineer>"]
-edition     = "2021"
-description = "Daemon software for the CosmWasm SDK blockchain"
-readme      = "./README.md"
-homepage    = "https://larry.engineer"
-repository  = "https://github.com/steak-enjoyers/cw-sdk"
-license     = "AGPL-v3-or-later"
-keywords    = ["blockchain", "cosmos", "cosmwasm"]
-
-[dependencies.cw-sdk]
-path = "../sdk"
-
-[dependencies.cw-server]
-path = "../server"
+name          = "cw-daemon"
+description   = "Daemon software for the CosmWasm SDK blockchain"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+homepage      = { workspace = true }
+repository    = { workspace = true }
+documentation = { workspace = true }
+keywords      = { workspace = true }
 
 [dependencies]
-bcrypt = "0.13"
-bip32 = "0.4"
-clap = { version = "3", features = ["derive"] }
-cosmwasm-std = "1.1"
-dialoguer = "0.10"
-hex = "0.4"
-home = "0.5"
-josekit = "0.8"
-k256 = "0.11"
-rand_core = "0.6"
-serde = "1.0"
-serde_json = "1.0"
-serde_yaml = "0.9"
-tendermint = "0.25"
-tendermint-abci = "0.25"
-tendermint-rpc = { version = "0.25", features = ["http-client"] }
-thiserror = "1.0"
-tokio = { version = "1", features = ["full"] }
-toml = "0.5"
-tracing = "0.1"
-tracing-subscriber = "0.2"
+bcrypt             = { workspace = true }
+bip32              = { workspace = true }
+clap               = { workspace = true, features = ["derive"] }
+cosmwasm-std       = { workspace = true }
+cw-sdk             = { workspace = true }
+cw-server          = { workspace = true }
+dialoguer          = { workspace = true }
+hex                = { workspace = true }
+home               = { workspace = true }
+josekit            = { workspace = true }
+k256               = { workspace = true }
+rand_core          = { workspace = true }
+serde              = { workspace = true }
+serde_json         = { workspace = true }
+serde_yaml         = { workspace = true }
+tendermint         = { workspace = true }
+tendermint-abci    = { workspace = true }
+tendermint-rpc     = { workspace = true, features = ["http-client"] }
+thiserror          = { workspace = true }
+tokio              = { workspace = true, features = ["full"] }
+toml               = { workspace = true }
+tracing            = { workspace = true }
+tracing-subscriber = { workspace = true }
