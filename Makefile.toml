@@ -73,10 +73,10 @@ script = """
 crates=(
   cw-bank
   cw-daemon
+  cw-sdk
   cw-server
   cw-state-machine
   cw-store
-  cw-types
 )
 
 for crate in ${crates[@]}; do

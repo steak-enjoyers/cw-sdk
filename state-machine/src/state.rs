@@ -8,13 +8,13 @@ use cosmwasm_vm::{
 };
 use thiserror::Error;
 
-use cw_store::ContractStore;
-use cw_types::address;
-use cw_types::hash::sha256;
-use cw_types::msg::{
+use cw_sdk::address;
+use cw_sdk::hash::sha256;
+use cw_sdk::msg::{
     AccountResponse, CodeResponse, ContractResponse, GenesisState, SdkMsg,
     SdkQuery, Tx, WasmRawResponse, WasmSmartResponse,
 };
+use cw_store::ContractStore;
 
 use crate::{auth, backend};
 

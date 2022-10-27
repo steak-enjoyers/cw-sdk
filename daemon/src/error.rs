@@ -7,7 +7,7 @@ use crate::path;
 #[derive(Debug, Error)]
 pub enum DaemonError {
     #[error(transparent)]
-    Address(#[from] cw_types::address::AddressError),
+    Address(#[from] cw_sdk::address::AddressError),
 
     #[error(transparent)]
     BCrypt(#[from] bcrypt::BcryptError),

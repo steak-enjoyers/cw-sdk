@@ -15,9 +15,9 @@ bcrypt             = { workspace = true }
 bip32              = { workspace = true }
 clap               = { workspace = true, features = ["derive"] }
 cosmwasm-std       = { workspace = true }
+cw-sdk             = { workspace = true }
 cw-server          = { workspace = true }
 cw-state-machine   = { workspace = true }
-cw-types           = { workspace = true }
 dialoguer          = { workspace = true }
 hex                = { workspace = true }
 home               = { workspace = true }

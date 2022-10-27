@@ -1,5 +1,5 @@
 [package]
-name          = "cw-types"
+name          = "cw-sdk"
 description   = "Common type definitions for CosmWasm SDK"
 version       = { workspace = true }
 authors       = { workspace = true }
@@ -9,11 +9,6 @@ homepage      = { workspace = true }
 repository    = { workspace = true }
 documentation = { workspace = true }
 keywords      = { workspace = true }
-
-[features]
-default = ["address", "hash"]
-address = []
-hash    = []
 
 [dependencies]
 bech32          = { workspace = true }

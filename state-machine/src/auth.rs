@@ -2,8 +2,8 @@ use cosmwasm_std::{Addr, Binary};
 use k256::ecdsa::{signature::Verifier, Signature, VerifyingKey};
 use thiserror::Error;
 
-use cw_types::address::{self, AddressError};
-use cw_types::msg::Tx;
+use cw_sdk::address::{self, AddressError};
+use cw_sdk::msg::Tx;
 
 use crate::state::{Account, State};
 

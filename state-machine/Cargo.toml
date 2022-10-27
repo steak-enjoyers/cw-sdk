@@ -16,8 +16,8 @@ bech32          = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cosmwasm-std    = { workspace = true }
 cosmwasm-vm     = { workspace = true }
+cw-sdk          = { workspace = true }
 cw-store        = { workspace = true }
-cw-types        = { workspace = true }
 hex             = { workspace = true }
 k256            = { workspace = true }
 schemars        = { workspace = true }

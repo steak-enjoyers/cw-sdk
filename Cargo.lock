@@ -643,9 +643,9 @@ dependencies = [
  "bip32",
  "clap",
  "cosmwasm-std",
+ "cw-sdk",
  "cw-server",
  "cw-state-machine",
- "cw-types",
  "dialoguer",
  "hex",
  "home",
@@ -663,6 +663,17 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "cw-sdk"
+version = "0.0.0"
+dependencies = [
+ "bech32",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "sha2 0.10.6",
+ "thiserror",
 ]
 
 [[package]]
@@ -685,8 +696,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-vm",
+ "cw-sdk",
  "cw-store",
- "cw-types",
  "hex",
  "k256",
  "schemars",
@@ -713,17 +724,6 @@ version = "0.0.0"
 dependencies = [
  "cosmwasm-std",
  "cosmwasm-vm",
-]
-
-[[package]]
-name = "cw-types"
-version = "0.0.0"
-dependencies = [
- "bech32",
- "cosmwasm-schema",
- "cosmwasm-std",
- "sha2 0.10.6",
- "thiserror",
 ]
 
 [[package]]
