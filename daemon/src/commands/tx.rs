@@ -198,7 +198,7 @@ impl TxCmd {
         if prompt::confirm("broadcast tx?")? {
             let response = client.broadcast_tx_async(tx_bytes.into()).await?;
             println!();
-            print::yaml(&response)?;
+            print::yaml(response)?;
         }
 
         Ok(())

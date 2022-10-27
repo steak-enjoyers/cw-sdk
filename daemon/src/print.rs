@@ -9,10 +9,10 @@ pub fn mnemonic(phrase: &str) {
         let end = (start + 4).min(word_amount);
         let slice = words[start..end]
             .iter()
-            .map(|word| format!("{: >8}", word))
+            .map(|word| format!("{word: >8}"))
             .collect::<Vec<_>>()
             .join(" ");
-        println!("{: >2} - {: >2}  {}", start + 1, end, slice,);
+        println!("{: >2} - {end: >2}  {slice}", start + 1);
         start = end;
     }
 }
@@ -39,13 +39,13 @@ pub fn keys(keys: &[Key]) -> Result<(), DaemonError> {
 /// Print a serializable object as YAML
 pub fn yaml(data: impl serde::Serialize) -> Result<(), DaemonError> {
     let data_str = serde_yaml::to_string(&data)?;
-    println!("{}", data_str);
+    println!("{data_str}");
     Ok(())
 }
 
 /// Print a serializable object as pretty JSON
 pub fn json(data: impl serde::Serialize) -> Result<(), DaemonError> {
     let data_str = serde_json::to_string_pretty(&data)?;
-    println!("{}", data_str);
+    println!("{data_str}");
     Ok(())
 }

@@ -32,7 +32,7 @@ impl Key {
         // - https://github.com/terra-money/terra.js/blob/v3.1.7/src/key/MnemonicKey.ts#L79
         // - https://github.com/chainapsis/keplr-wallet/blob/b6062a4d24f3dcb15dda063b1ece7d1fbffdbfc8/packages/crypto/src/mnemonic.ts#L63
         let seed = mnemonic.to_seed("");
-        let path = format!("m/44'/{}'/0'/0/0", coin_type);
+        let path = format!("m/44'/{coin_type}'/0'/0/0");
         let xprv = XPrv::derive_from_path(&seed, &path.parse()?)?;
         Ok(Self {
             name: name.into(),

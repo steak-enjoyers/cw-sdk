@@ -155,7 +155,7 @@ impl GenesisCmd {
                         let hash = sha256(wasm_byte_code.as_slice());
                         codes.push(CodeInfo {
                             code_id: code_count,
-                            hash: hex::encode(&hash),
+                            hash: hex::encode(hash),
                         });
                     }
                 }
@@ -193,7 +193,7 @@ fn update_and_write(
 ) -> Result<(), DaemonError> {
     genesis.app_state = serde_json::to_value(app_state)?;
     let genesis_str = serde_json::to_vec_pretty(&genesis)?;
-    fs::write(&genesis_path, &genesis_str)?;
+    fs::write(genesis_path, genesis_str)?;
     info!("genesis file written to {}", path::stringify(genesis_path)?);
     Ok(())
 }

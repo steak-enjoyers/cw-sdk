@@ -62,7 +62,7 @@ impl KeysCmd {
                     println!("\n");
                     Mnemonic::new(phrase, Language::English)?
                 } else {
-                    Mnemonic::random(&mut OsRng, Language::English)
+                    Mnemonic::random(OsRng, Language::English)
                 };
 
                 let key = Key::from_mnemonic(name, &mnemonic, *coin_type)?;

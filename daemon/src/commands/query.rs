@@ -80,7 +80,7 @@ impl QueryCmd {
             } => {
                 let hash = Hash::from_str(txhash)?;
                 let response = client.tx(hash, false).await?;
-                print::json(&response)?;
+                print::json(response)?;
             },
             QuerySubcmd::Account {
                 address,
@@ -129,7 +129,7 @@ impl QueryCmd {
                     &client,
                     SdkQuery::WasmRaw {
                         contract: contract.clone(),
-                        key: hex::decode(&key)?.into(),
+                        key: hex::decode(key)?.into(),
                     },
                 )
                 .await?;
@@ -157,11 +157,11 @@ impl QueryCmd {
                                 print::json(s)?;
                             },
                             Err(err) => {
-                                println!("query successful but failed to decode response: {}", err);
+                                println!("query successful but failed to decode response: {err}");
                             },
                         }
                     },
-                    ContractResult::Err(err) => println!("query failed: {}", err),
+                    ContractResult::Err(err) => println!("query failed: {err}"),
                 }
             },
         };

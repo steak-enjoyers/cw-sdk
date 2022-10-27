@@ -110,7 +110,7 @@ impl tendermint_abci::Application for App {
             },
             prefix => abci::ResponseQuery {
                 code: 1,
-                log: format!("unsupported query path prefix: {}", prefix),
+                log: format!("unsupported query path prefix: {prefix}"),
                 ..Default::default()
             },
         }

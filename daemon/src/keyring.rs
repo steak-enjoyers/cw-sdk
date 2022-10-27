@@ -28,7 +28,7 @@ impl Keyring {
 
     /// Return the absolute path of a key file given the key's name.
     pub fn filename(&self, name: &str) -> PathBuf {
-        let file = format!("{}.key", name);
+        let file = format!("{name}.key");
         self.dir().join(file)
     }
 
@@ -62,7 +62,7 @@ impl Keyring {
             // Go SDK uses a difficult of 2
             // We use 4 here which is smallest value allowed by the bcrypt library
             let password_hash = bcrypt::hash(&password, 4)?;
-            fs::write(&password_hash_path, &password_hash)?;
+            fs::write(&password_hash_path, password_hash)?;
 
             Ok(password)
         }
@@ -91,7 +91,7 @@ impl Keyring {
         let token = jwt::encode_with_encrypter(&payload, &header, &encrypter)?;
 
         // save the token to file
-        fs::write(filename, &token)?;
+        fs::write(filename, token)?;
 
         Ok(())
     }
@@ -110,7 +110,7 @@ impl Keyring {
         // decrypt { header, payload } from token
         let password = self.unlock()?;
         let decrypter = jwe::PBES2_HS256_A128KW.decrypter_from_bytes(password.as_bytes())?;
-        let (payload, _) = jwt::decode_with_decrypter(&token, &decrypter)?;
+        let (payload, _) = jwt::decode_with_decrypter(token, &decrypter)?;
 
         // recover key from payload
         payload.try_into().map_err(DaemonError::from)
@@ -126,7 +126,7 @@ impl Keyring {
             .map(|entry| {
                 let entry = entry?;
                 let token = fs::read(entry.path())?;
-                let (payload, _) = jwt::decode_with_decrypter(&token, &decrypter)?;
+                let (payload, _) = jwt::decode_with_decrypter(token, &decrypter)?;
                 payload.try_into().map_err(DaemonError::from)
             })
             .filter(|res| res.is_ok())

@@ -45,7 +45,7 @@ impl State {
     /// For now, our mock storage doesn't provide a method to generate the app hash. Instead, we
     /// simply return `sha256(height)` as a mock app hash.
     pub fn info(&self) -> (u64, Vec<u8>) {
-        let app_hash = sha256(&self.height.to_be_bytes());
+        let app_hash = sha256(self.height.to_be_bytes());
         (self.height, app_hash)
     }
 
@@ -241,7 +241,7 @@ impl State {
         wasm_byte_code: Binary,
     ) -> Result<Event, StateError> {
         let hash = sha256(wasm_byte_code.as_slice());
-        let hash_str = hex::encode(&hash);
+        let hash_str = hex::encode(hash);
 
         // increment code count
         self.code_count += 1;
