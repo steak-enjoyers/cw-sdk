@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Binary;
+use cosmwasm_std::{Addr, Binary};
 
 use crate::AddressLike;
 
@@ -28,4 +28,27 @@ pub enum Account<T: AddressLike> {
         /// Account who is allowed to migrate the contract
         admin: Option<T>,
     },
+}
+
+impl From<Account<Addr>> for Account<String> {
+    fn from(acct: Account<Addr>) -> Self {
+        match acct {
+            Account::Base {
+                pubkey,
+                sequence,
+            } => Account::Base {
+                pubkey,
+                sequence,
+            },
+            Account::Contract {
+                code_id,
+                label,
+                admin,
+            } => Account::Contract {
+                code_id,
+                label,
+                admin: admin.map(String::from),
+            },
+        }
+    }
 }

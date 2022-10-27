@@ -5,7 +5,7 @@ use std::str::FromStr;
 use clap::{Args, Subcommand};
 use tendermint_rpc::{Client, HttpClient, Url};
 
-use cw_sdk::msg::{AccountResponse, SdkMsg, SdkQuery, TxBody};
+use cw_sdk::{AccountResponse, SdkMsg, SdkQuery, TxBody, Account};
 
 use crate::query::do_abci_query;
 use crate::{print, prompt, ClientConfig, DaemonError, Keyring};
@@ -101,15 +101,24 @@ impl TxCmd {
         // query the sender's sequence number if not provided
         let sequence = match self.sequence {
             None => {
-                let sequence = do_abci_query::<_, AccountResponse>(
+                let resp = do_abci_query::<_, AccountResponse>(
                     &client,
                     SdkQuery::Account {
                         address: sender_addr.to_string(),
                     },
                 )
-                .await
-                .map(|res| res.sequence)
-                .unwrap_or(0);
+                .await?;
+
+                let sequence = match resp.account {
+                    None => 0,
+                    Some(Account::Base {
+                        sequence,
+                        ..
+                    }) => sequence,
+                    Some(Account::Contract {
+                        ..
+                    }) => return Err(DaemonError::sender_is_contract(&sender_addr)),
+                };
 
                 // needs to be 1 greater than the on-chain sequence
                 sequence + 1

@@ -1,52 +1,19 @@
 use std::collections::HashMap;
 
-use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Binary, Coin, Addr, ContractResult, Empty, Event, Response};
+use cosmwasm_std::{Addr, Binary, Coin, ContractResult, Empty, Event, Response};
 use cosmwasm_vm::testing::{mock_env, mock_info};
 use cosmwasm_vm::{
     call_execute, call_instantiate, call_query, Backend, Instance, InstanceOptions, Storage,
 };
 use thiserror::Error;
 
-use cw_sdk::address;
-use cw_sdk::hash::sha256;
-use cw_sdk::msg::{
-    AccountResponse, CodeResponse, ContractResponse, GenesisState, SdkMsg,
-    SdkQuery, Tx, WasmRawResponse, WasmSmartResponse,
+use cw_sdk::{
+    address, hash::sha256, AccountResponse, CodeResponse, GenesisState, SdkMsg, SdkQuery, Tx,
+    WasmRawResponse, WasmSmartResponse, Account,
 };
 use cw_store::ContractStore;
 
 use crate::{auth, backend};
-
-/// The account type to be stored on-chain
-#[cw_serde]
-pub struct Account {
-    /// The account's secp256k1 public key
-    pub pubkey: Binary,
-    /// The account's sequence number, used to prevent replay attacks.
-    /// The first tx ever to be submitted by the account should come with the sequence of 1.
-    pub sequence: u64,
-}
-
-/// The code metadata and byte code to be stored on-chain
-#[cw_serde]
-pub struct Code {
-    /// Account who stored the code
-    pub creator: Addr,
-    /// The wasm byte code
-    pub wasm_byte_code: Binary,
-}
-
-/// The contract metadata to be stored on-chain
-#[cw_serde]
-pub struct Contract {
-    /// This contract's code id
-    pub code_id: u64,
-    /// A human readable name for the contract
-    pub label: String,
-    /// Account who is allowed to migrate the contract
-    pub admin: Option<Addr>,
-}
 
 /// This is mock, will be replaced by an actual database backend
 #[derive(Debug, Default)]
@@ -61,14 +28,11 @@ pub struct State {
     /// The total number of contracts instantiated
     pub contract_count: u64,
 
-    /// Account address -> Account
-    pub accounts: HashMap<Addr, Account>,
+    /// Account address -> Account<Addr>
+    pub accounts: HashMap<Addr, Account<Addr>>,
 
-    /// Code id -> Code
-    pub codes: HashMap<u64, Code>,
-
-    /// Contract address -> Contract
-    pub contracts: HashMap<Addr, Contract>,
+    /// Code id -> Binary
+    pub codes: HashMap<u64, Binary>,
 
     /// Contract address -> ContractStore
     pub stores: HashMap<Addr, ContractStore>,
@@ -90,12 +54,12 @@ impl State {
     pub fn init_chain(&mut self, app_state_bytes: &[u8]) -> Result<Vec<u8>, StateError> {
         let GenesisState {
             deployer,
-            gen_msgs,
+            msgs,
         } = serde_json::from_slice(app_state_bytes)?;
 
         let deployer_addr = address::validate(&deployer)?;
 
-        for msg in gen_msgs {
+        for msg in msgs {
             match msg {
                 SdkMsg::StoreCode {
                     wasm_byte_code,
@@ -149,20 +113,29 @@ impl State {
         let query: SdkQuery = serde_json::from_slice(query_bytes)?;
 
         match query {
+            SdkQuery::Info {} => {
+                return Err(StateError::QueryUnsupported);
+            },
             SdkQuery::Account {
                 address,
             } => {
                 let addr = address::validate(&address)?;
-                serde_json::to_vec(&self.query_account(&addr)?)
+                serde_json::to_vec(&self.query_account(&addr))
+            },
+            SdkQuery::Accounts {
+                start_after: _,
+                limit: _,
+            } => {
+                return Err(StateError::QueryUnsupported);
             },
             SdkQuery::Code {
                 code_id,
-            } => serde_json::to_vec(&self.query_code(code_id)?),
-            SdkQuery::Contract {
-                contract,
+            } => serde_json::to_vec(&self.query_code(code_id)),
+            SdkQuery::Codes {
+                start_after: _,
+                limit: _,
             } => {
-                let contract_addr = address::validate(&contract)?;
-                serde_json::to_vec(&self.query_contract(contract_addr)?)
+                return Err(StateError::QueryUnsupported);
             },
             SdkQuery::WasmRaw {
                 contract,
@@ -188,10 +161,10 @@ impl State {
         let tx: Tx = serde_json::from_slice(tx_bytes)?;
 
         // authenticate signature, chain id, sequence, etc.
-        let (sender_addr, sender_acct) = auth::authenticate_tx(&tx, self)?;
+        let sender = auth::authenticate_tx(&tx, self)?;
 
         // increment the sender's sequence number
-        self.accounts.insert(sender_addr.clone(), sender_acct);
+        self.accounts.insert(sender.address.clone(), sender.account);
 
         let mut events = vec![];
 
@@ -203,7 +176,7 @@ impl State {
                 SdkMsg::StoreCode {
                     wasm_byte_code,
                 } => {
-                    let event = self.store_code(&sender_addr, wasm_byte_code)?;
+                    let event = self.store_code(&sender.address, wasm_byte_code)?;
                     Ok(vec![event])
                 },
                 SdkMsg::Instantiate {
@@ -215,7 +188,7 @@ impl State {
                 } => {
                     let admin_addr = admin.map(|admin| address::validate(&admin)).transpose()?;
                     self.instantiate_contract(
-                        &sender_addr,
+                        &sender.address,
                         code_id,
                         msg.into(),
                         funds,
@@ -230,7 +203,7 @@ impl State {
                     funds,
                 } => {
                     let contract_addr = address::validate(&contract)?;
-                    self.execute_contract(&sender_addr, contract_addr, msg.into(), funds)
+                    self.execute_contract(&sender.address, contract_addr, msg.into(), funds)
                 },
                 SdkMsg::Migrate {
                     contract,
@@ -238,7 +211,7 @@ impl State {
                     msg,
                 } => {
                     let contract_addr = address::validate(&contract)?;
-                    self.migrate_contract(&sender_addr, contract_addr, code_id, msg.into())
+                    self.migrate_contract(&sender.address, contract_addr, code_id, msg.into())
                 },
             })
             .try_for_each(|res| -> Result<_, StateError> {
@@ -275,13 +248,7 @@ impl State {
 
         // insert code into the map
         let code_id = self.code_count;
-        self.codes.insert(
-            code_id,
-            Code {
-                creator: sender_addr.clone(),
-                wasm_byte_code,
-            },
-        );
+        self.codes.insert(code_id, wasm_byte_code);
 
         Ok(Event::new("store_code")
             .add_attribute("code_id", code_id.to_string())
@@ -309,7 +276,7 @@ impl State {
         let backend = backend::create(ContractStore::new());
         let code = &self.codes[&code_id];
         let mut instance = Instance::from_code(
-            &code.wasm_byte_code,
+            code,
             backend,
             InstanceOptions {
                 gas_limit: u64::MAX,
@@ -344,9 +311,14 @@ impl State {
                     AddressGenerator::ByIds => address::derive_from_ids(code_id, self.contract_count)?,
                 };
 
-                self.contracts.insert(
+                // make sure there isn't already an account with the same address
+                if self.accounts.contains_key(&contract_addr) {
+                    return Err(StateError::account_found(contract_addr));
+                }
+
+                self.accounts.insert(
                     contract_addr.clone(),
-                    Contract {
+                    Account::Contract {
                         code_id,
                         label,
                         admin: admin_addr,
@@ -378,16 +350,28 @@ impl State {
             return Err(StateError::FundsUnsupported);
         }
 
+        // TODO: extract this to a helper function?
+        // this block is reused in the smart query method
+        let code_id = match self.accounts.get(&contract_addr) {
+            Some(Account::Contract {
+                code_id,
+                ..
+            }) => code_id,
+            Some(Account::Base {
+                ..
+            }) => return Err(StateError::account_is_not_contract(contract_addr)),
+            None => return Err(StateError::account_not_found(contract_addr)),
+        };
+
         let storage = self
             .stores
             .get(&contract_addr)
-            .ok_or_else(|| StateError::contract_not_found(&contract_addr))?
+            .ok_or_else(|| StateError::account_not_found(&contract_addr))?
             .clone();
-        let contract = &self.contracts[&contract_addr];
-        let code = &self.codes[&contract.code_id];
+        let code = &self.codes[code_id];
         let backend = backend::create(storage);
         let mut instance = Instance::from_code(
-            &code.wasm_byte_code,
+            code,
             backend,
             InstanceOptions {
                 gas_limit: u64::MAX,
@@ -437,40 +421,18 @@ impl State {
         Err(StateError::MigrationUnsupported)
     }
 
-    fn query_account(&self, addr: &Addr) -> Result<AccountResponse, StateError> {
-        self.accounts
-            .get(addr)
-            .cloned()
-            .map(|account| AccountResponse {
-                address: addr.into(),
-                pubkey: account.pubkey,
-                sequence: account.sequence,
-            })
-            .ok_or_else(|| StateError::account_not_found(addr))
+    fn query_account(&self, addr: &Addr) -> AccountResponse {
+        AccountResponse {
+            address: addr.into(),
+            account: self.accounts.get(addr).cloned().map(Account::from),
+        }
     }
 
-    fn query_code(&self, code_id: u64) -> Result<CodeResponse, StateError> {
-        self.codes
-            .get(&code_id)
-            .cloned()
-            .map(|code| CodeResponse {
-                creator: code.creator.into(),
-                hash: sha256(code.wasm_byte_code.as_slice()).into(),
-                wasm_byte_code: code.wasm_byte_code,
-            })
-            .ok_or_else(|| StateError::code_not_found(code_id))
-    }
-
-    fn query_contract(&self, contract_addr: Addr) -> Result<ContractResponse, StateError> {
-        self.contracts
-            .get(&contract_addr)
-            .cloned()
-            .map(|contract| ContractResponse {
-                code_id: contract.code_id,
-                label: contract.label.clone(),
-                admin: contract.admin.map(String::from),
-            })
-            .ok_or_else(|| StateError::contract_not_found(contract_addr))
+    fn query_code(&self, code_id: u64) -> CodeResponse {
+        CodeResponse {
+            code_id,
+            wasm_byte_code: self.codes.get(&code_id).cloned(),
+        }
     }
 
     fn query_wasm_raw(
@@ -482,7 +444,7 @@ impl State {
             .stores
             .get(&contract_addr)
             .cloned()
-            .ok_or_else(|| StateError::contract_not_found(contract_addr))?;
+            .ok_or_else(|| StateError::account_not_found(contract_addr))?;
         let (res, _) = storage.get(key);
         let value = res?;
         Ok(WasmRawResponse {
@@ -495,16 +457,27 @@ impl State {
         contract_addr: Addr,
         msg: &[u8],
     ) -> Result<WasmSmartResponse, StateError> {
+        let code_id = match self.accounts.get(&contract_addr) {
+            Some(Account::Contract {
+                code_id,
+                ..
+            }) => code_id,
+            Some(Account::Base {
+                ..
+            }) => return Err(StateError::account_is_not_contract(contract_addr)),
+            None => return Err(StateError::account_not_found(contract_addr)),
+        };
+
         let storage = self
             .stores
             .get(&contract_addr)
             .cloned()
-            .ok_or_else(|| StateError::contract_not_found(&contract_addr))?;
-        let contract = &self.contracts[&contract_addr];
-        let code = &self.codes[&contract.code_id];
+            .ok_or_else(|| StateError::account_not_found(&contract_addr))?;
+
+        let code = &self.codes[code_id];
         let backend = backend::create(storage);
         let mut instance = Instance::from_code(
-            &code.wasm_byte_code,
+            code,
             backend,
             InstanceOptions {
                 gas_limit: u64::MAX,
@@ -513,6 +486,7 @@ impl State {
             None,
         )?;
         let result = call_query(&mut instance, &mock_env(), msg)?;
+
         Ok(WasmSmartResponse {
             result,
         })
@@ -554,19 +528,24 @@ pub enum StateError {
     #[error("contract emitted error: {0}")]
     Contract(String),
 
-    #[error("no account found with address {address}")]
+    #[error("no account found with the address {address}")]
     AccountNotFound {
+        address: String,
+    },
+
+    #[error("an account already exists with the address {address}")]
+    AccountFound {
+        address: String,
+    },
+
+    #[error("the account associated with the address {address} is not a contract")]
+    AccountIsNotContract {
         address: String,
     },
 
     #[error("no wasm binary code found with id {code_id}")]
     CodeNotFound {
         code_id: u64,
-    },
-
-    #[error("no contract found with address {address}")]
-    ContractNotFound {
-        address: String,
     },
 
     #[error("contract response includes submessages, which is not supported yet")]
@@ -577,6 +556,9 @@ pub enum StateError {
 
     #[error("migrating contracts is not supported yet")]
     MigrationUnsupported,
+
+    #[error("this query is not supported yet")]
+    QueryUnsupported,
 }
 
 impl StateError {
@@ -586,15 +568,21 @@ impl StateError {
         }
     }
 
-    pub fn code_not_found(code_id: u64) -> Self {
-        Self::CodeNotFound {
-            code_id,
+    pub fn account_found(address: impl Into<String>) -> Self {
+        Self::AccountFound {
+            address: address.into(),
         }
     }
 
-    pub fn contract_not_found(address: impl Into<String>) -> Self {
-        Self::ContractNotFound {
+    pub fn account_is_not_contract(address: impl Into<String>) -> Self {
+        Self::AccountIsNotContract {
             address: address.into(),
+        }
+    }
+
+    pub fn code_not_found(code_id: u64) -> Self {
+        Self::CodeNotFound {
+            code_id,
         }
     }
 }

@@ -6,9 +6,7 @@ use serde::Serialize;
 use tendermint::genesis::Genesis as TmGenesis;
 use tracing::info;
 
-use cw_sdk::address;
-use cw_sdk::hash::sha256;
-use cw_sdk::msg::{GenesisState, SdkMsg};
+use cw_sdk::{address, hash::sha256, GenesisState, SdkMsg};
 
 use crate::{path, print, DaemonError};
 
@@ -106,7 +104,7 @@ impl GenesisCmd {
             } => {
                 // TODO: check whether the file exists
                 let wasm_byte_code = fs::read(wasm_byte_code_path)?;
-                app_state.gen_msgs.push(SdkMsg::StoreCode {
+                app_state.msgs.push(SdkMsg::StoreCode {
                     wasm_byte_code: wasm_byte_code.into(),
                 });
                 update_and_write(&mut genesis, &app_state, &genesis_path)
@@ -121,7 +119,7 @@ impl GenesisCmd {
                 if funds.is_some() {
                     return Err(DaemonError::unsupported_feature("sending funds"));
                 }
-                app_state.gen_msgs.push(SdkMsg::Instantiate {
+                app_state.msgs.push(SdkMsg::Instantiate {
                     code_id: *code_id,
                     msg: msg.clone().into_bytes().into(),
                     funds: vec![],
@@ -138,7 +136,7 @@ impl GenesisCmd {
                 if funds.is_some() {
                     return Err(DaemonError::unsupported_feature("sending funds"));
                 }
-                app_state.gen_msgs.push(SdkMsg::Execute {
+                app_state.msgs.push(SdkMsg::Execute {
                     contract: contract.clone(),
                     msg: msg.clone().into_bytes().into(),
                     funds: vec![],
@@ -148,7 +146,7 @@ impl GenesisCmd {
             GenesisSubcommand::ListCodes => {
                 let mut code_count = 0;
                 let mut codes = vec![];
-                for msg in &app_state.gen_msgs {
+                for msg in &app_state.msgs {
                     if let SdkMsg::StoreCode {
                         wasm_byte_code,
                     } = msg
@@ -165,7 +163,7 @@ impl GenesisCmd {
             },
             GenesisSubcommand::ListContracts => {
                 let mut contracts = vec![];
-                for msg in &app_state.gen_msgs {
+                for msg in &app_state.msgs {
                     if let SdkMsg::Instantiate {
                         code_id,
                         label,

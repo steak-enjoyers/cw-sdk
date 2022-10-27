@@ -75,6 +75,11 @@ pub enum DaemonError {
         reason: String,
     },
 
+    #[error("tx sender {address} is a contract account")]
+    SenderIsContract {
+        address: String,
+    },
+
     #[error("feature is not supported yet: {feature}")]
     UnsupportedFeature {
         feature: String,
@@ -97,6 +102,12 @@ impl DaemonError {
     pub fn malformed_payload(reason: impl Into<String>) -> Self {
         Self::MalformedPayload {
             reason: reason.into(),
+        }
+    }
+
+    pub fn sender_is_contract(address: impl Into<String>) -> Self {
+        Self::SenderIsContract {
+            address: address.into(),
         }
     }
 

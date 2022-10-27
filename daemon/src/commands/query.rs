@@ -3,14 +3,14 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use clap::{Args, Subcommand};
-use cosmwasm_std::ContractResult;
+use cosmwasm_std::{ContractResult, Binary};
 use serde_json::Value;
 use tendermint::abci::transaction::Hash;
 use tendermint_rpc::{Client, HttpClient, Url};
-use tracing::info;
+use tracing::{info, warn};
 
-use cw_sdk::msg::{
-    AccountResponse, CodeResponse, ContractResponse, SdkQuery, WasmRawResponse, WasmSmartResponse,
+use cw_sdk::{
+    hash::sha256, AccountResponse, CodeResponse, SdkQuery, WasmRawResponse, WasmSmartResponse,
 };
 
 use crate::query::do_abci_query;
@@ -46,11 +46,6 @@ pub enum QuerySubcmd {
         /// If given, then save the wasm byte code to this path
         #[clap(long)]
         output: Option<PathBuf>,
-    },
-    /// Query metadata of a contract
-    Contract {
-        /// Contract address
-        contract: String,
     },
     /// Perform a wasm raw query
     WasmRaw {
@@ -112,27 +107,19 @@ impl QueryCmd {
                 )
                 .await?;
 
-                // only print the hash, not the bytecode
-                println!("hash: {}", response.hash);
+                match response.wasm_byte_code {
+                    Some(bytes) => {
+                        // only print the hash, not the bytecode
+                        println!("hash: {}", Binary(sha256(bytes.as_slice())));
 
-                // save the wasm byte code to file if an output path is specified
-                if let Some(output) = output {
-                    fs::write(output, response.wasm_byte_code.as_slice())?;
-                    info!("wasm byte code written to {}", path::stringify(output)?);
-                }
-            },
-            QuerySubcmd::Contract {
-                contract,
-            } => {
-                let response: ContractResponse = do_abci_query(
-                    &client,
-                    SdkQuery::Contract {
-                        contract: contract.clone(),
+                        // save the wasm byte code to file if an output path is specified
+                        if let Some(output) = output {
+                            fs::write(output, bytes.as_slice())?;
+                            info!("wasm byte code written to {}", path::stringify(output)?);
+                        }
                     },
-                )
-                .await?;
-
-                print::yaml(response)?;
+                    None => warn!("wasm byte code not found with code id {}", code_id),
+                }
             },
             QuerySubcmd::WasmRaw {
                 contract,

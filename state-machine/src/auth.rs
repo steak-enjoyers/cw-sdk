@@ -3,30 +3,44 @@ use k256::ecdsa::{signature::Verifier, Signature, VerifyingKey};
 use thiserror::Error;
 
 use cw_sdk::address::{self, AddressError};
-use cw_sdk::msg::Tx;
+use cw_sdk::{Account, Tx};
 
-use crate::state::{Account, State};
+use crate::state::State;
 
 /// Authenticate the signer's address, pubkey, signature, sequence, and chain id.
 /// Return error if any one fails.
 /// Returns the sender address and account info if succeeds.
-pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<(Addr, Account), AuthError> {
+pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<Sender, AuthError> {
     let sender = &tx.body.sender;
-    let sender_addr = address::validate(&tx.body.sender)?;
+    let sender_addr = address::validate(sender)?;
 
     // find the user's account
-    let mut account = match state.accounts.get(&sender_addr) {
-        // if the account is found on-chain, its pubkey must match the one included in the tx
-        Some(account) => {
-            if let Some(pubkey) = &tx.pubkey {
-                if account.pubkey != *pubkey {
-                    return Err(AuthError::pubkey_mismatch(sender, &account.pubkey, pubkey));
+    let (pubkey, mut sequence) = match state.accounts.get(&sender_addr) {
+        // If the sender account is a contract, throw error because contracts can't sign txs.
+        Some(Account::Contract {
+            ..
+        }) => {
+            return Err(AuthError::AccountIsContract);
+        }
+
+        // If the account is found on chain, meaning the account has already sent at least one tx
+        // before, its pubkey must match the one included in the tx.
+        Some(Account::Base {
+            pubkey,
+            sequence,
+        }) => {
+            if let Some(sender_pubkey) = &tx.pubkey {
+                if pubkey != sender_pubkey {
+                    return Err(AuthError::pubkey_mismatch(sender, pubkey, sender_pubkey));
                 }
             }
-            account.clone()
+
+            (pubkey.clone(), *sequence)
         },
-        // if None, use the pubkey provided by the tx and initialize sequence to be 0.
-        // the pubkey must match the sender address.
+
+        // If not found, meaning it's the first time the account every sends a tx, use the pubkey
+        // provided by the tx and initialize sequence to be 0.
+        // Note, the pubkey must match the sender address.
         None => {
             let pubkey = tx.pubkey.as_ref().ok_or_else(|| AuthError::account_not_found(sender))?;
 
@@ -35,10 +49,7 @@ pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<(Addr, Account), AuthEr
                 return Err(AuthError::address_mismatch(address, sender));
             }
 
-            Account {
-                pubkey: pubkey.clone(),
-                sequence: 0,
-            }
+            (pubkey.clone(), 0)
         },
     };
 
@@ -48,21 +59,33 @@ pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<(Addr, Account), AuthEr
     }
 
     // the account sequence mush match
-    account.sequence += 1;
-    if account.sequence != tx.body.sequence {
-        return Err(AuthError::sequence_mismatch(sender, account.sequence, tx.body.sequence));
+    sequence += 1;
+    if sequence != tx.body.sequence {
+        return Err(AuthError::sequence_mismatch(sender, sequence, tx.body.sequence));
     }
 
-    // verify the signature. the content to be signed is (the sha256 hash of) the tx body
+    // verify the signature
+    // the content to be signed is (the sha256 hash of) the tx body
     let body_bytes = serde_json::to_vec(&tx.body)?;
-    let pubkey = VerifyingKey::from_sec1_bytes(account.pubkey.as_slice())?;
     let signature = Signature::try_from(tx.signature.as_slice())?;
 
     // if signature is valid, return the sender address and updated account info
     // otherwise, return error
-    pubkey.verify(&body_bytes, &signature)
-        .map(|_| (sender_addr, account))
+    VerifyingKey::from_sec1_bytes(pubkey.as_slice())?
+        .verify(&body_bytes, &signature)
+        .map(|_| Sender {
+            address: sender_addr,
+            account: Account::Base {
+                pubkey,
+                sequence,
+            },
+        })
         .map_err(AuthError::from)
+}
+
+pub struct Sender {
+    pub address: Addr,
+    pub account: Account<Addr>,
 }
 
 #[derive(Debug, Error)]
@@ -75,6 +98,9 @@ pub enum AuthError {
 
     #[error(transparent)]
     Address(#[from] AddressError),
+
+    #[error("sender account is a contract")]
+    AccountIsContract,
 
     #[error("pubkey for sender {sender} is neither provided in the tx nor stored on-chain")]
     AccountNotFound {
