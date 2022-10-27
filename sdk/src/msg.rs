@@ -57,41 +57,47 @@ pub enum SdkMsg {
     },
 }
 
-// TODO: add 1) chain metadata, 2) enumerative queries for account and code
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum SdkQuery {
+    /// Query the state machine's overall info, such as block height, chain id, etc.
     #[returns(InfoResponse)]
     Info {},
 
+    /// Query a single account by address
     #[returns(AccountResponse)]
     Account {
         address: String,
     },
 
+    /// Enumerate all accounts, with pagination
     #[returns(Vec<AccountResponse>)]
     Accounts {
         start_after: Option<String>,
         limit: Option<u32>,
     },
 
+    /// Query a single wasm byte code by id
     #[returns(CodeResponse)]
     Code {
         code_id: u64,
     },
 
+    /// Enumerate all wasm byte codes
     #[returns(Vec<CodeResponse>)]
     Codes {
         start_after: Option<u64>,
         limit: Option<u32>,
     },
 
+    /// Perform raw query on a wasm contract
     #[returns(WasmRawResponse)]
     WasmRaw {
         contract: String,
         key: Binary,
     },
 
+    /// Perform smart query on a wasm contract
     #[returns(WasmSmartResponse)]
     WasmSmart {
         contract: String,
