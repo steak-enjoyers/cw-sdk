@@ -1,0 +1,87 @@
+[config]
+# Set this to `false` to run the tasks at workspace root directory and not on the members
+default_to_workspace = false
+# Set this to `true` to avoid clashes with core commands (e.g. `cargo make publish` vs `cargo publish`)
+skip_core_tasks = true
+
+[tasks.fmt]
+command = "cargo"
+args = ["fmt", "--all", "--check"]
+
+[tasks.test]
+command = "cargo"
+args = ["test", "--locked"]
+
+[tasks.lint]
+command = "cargo"
+args = ["clippy", "--tests", "--", "-D", "warnings"]
+
+[tasks.build]
+command = "cargo"
+args = [
+  "build",
+  "--release",
+  "--locked",
+  "--target", "wasm32-unknown-unknown",
+]
+
+# This task requires the `cargo-udeps` package: https://crates.io/crates/cargo-udeps
+[tasks.udeps]
+toolchain = "nightly"
+command = "cargo"
+args = ["udeps"]
+
+# This task requires the `cosmwasm-check` package: https://crates.io/crates/cosmwasm-check
+[tasks.check]
+script = "cosmwasm-check artifacts/*.wasm"
+
+# This task requires Docker: https://docs.docker.com/get-docker/
+[tasks.optimize]
+script = """
+if [[ $(arch) == "arm64" ]]; then
+  image="cosmwasm/workspace-optimizer-arm64"
+else
+  image="cosmwasm/workspace-optimizer"
+fi
+
+docker run --rm -v "$(pwd)":/code \
+  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+  ${image}:0.12.9
+"""
+
+# Update the `contracts` array in the script to reflect the content of your project
+[tasks.schema]
+script = """
+rm -rf schemas
+mkdir schemas
+contracts=(
+  cw-bank
+)
+
+for contract in ${contracts[@]}; do
+  cargo run --example schema -p $contract
+  mv schema/$contract.json schemas
+done
+
+rm -rf schema
+"""
+
+# Update the `crates` array in the script to reflect the content of your project
+[tasks.publish]
+script = """
+crates=(
+  cw-bank
+  cw-daemon
+  cw-server
+  cw-state-machine
+  cw-store
+  cw-types
+)
+
+for crate in ${crates[@]}; do
+  cargo publish -p $crate
+  echo "💤 sleeping for 30 sec before publishing the next crate..."
+  sleep 30
+done
+"""
