@@ -1,4 +1,4 @@
-# cw-sdk
+# cw-store
 
 Storage data structure and database backend for [CosmWasm SDK](https://github.com/steak-enjoyers/cw-sdk)
 
