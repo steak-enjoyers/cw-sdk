@@ -10,7 +10,7 @@ members = [
 
 [workspace.package]
 version       = "0.0.0"
-authors       = ["Larry Engineer <gm@larry.engineer>"]
+authors       = ["Larry Engineer <gm@larry.engineer>", "Ethan Frey <ethanfrey@users.noreply.github.com>", "Matt Bell <mappum@gmail.com>"]
 edition       = "2021"
 license       = "AGPL-v3-or-later"
 homepage      = "https://larry.engineer"

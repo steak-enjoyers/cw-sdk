@@ -14,3 +14,6 @@ keywords      = { workspace = true }
 cosmwasm-std = { workspace = true }
 cosmwasm-vm  = { workspace = true }
 merk         = { workspace = true }
+
+[features]
+iterator = []

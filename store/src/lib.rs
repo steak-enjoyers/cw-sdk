@@ -2,7 +2,7 @@ mod cache;
 mod prefix;
 mod store;
 
-pub use cache::CacheStore;
+pub use cache::MemoryStorage;
 pub use prefix::PrefixStore;
 pub use store::Store;
 
