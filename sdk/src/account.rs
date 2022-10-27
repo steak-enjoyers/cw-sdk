@@ -1,9 +1,11 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary};
+use cosmwasm_std::Binary;
+
+use crate::AddressLike;
 
 /// The account type to be stored on-chain.
 #[cw_serde]
-pub enum Account {
+pub enum Account<T: AddressLike> {
     /// An account that is controlled by a single public/private key pair.
     /// Roughly synonymous to "externally-owned account" (EoA) in Ethereum.
     Base {
@@ -24,6 +26,6 @@ pub enum Account {
         label: String,
 
         /// Account who is allowed to migrate the contract
-        admin: Option<Addr>,
+        admin: Option<T>,
     },
 }

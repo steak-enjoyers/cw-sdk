@@ -110,7 +110,7 @@ pub struct InfoResponse {
 pub struct AccountResponse {
     pub address: String,
     /// None is the account is not found
-    pub account: Option<Account>,
+    pub account: Option<Account<String>>,
 }
 
 #[cw_serde]
