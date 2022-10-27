@@ -1,56 +1,26 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Coin, ContractResult};
 
-/// This should be included as JSON inside `~/.tendermint/genesis.json`, under the `app_state`
-/// field. Tendermint will provide this as binary to the application in a InitChain request.
-#[derive(Default)]
-#[cw_serde]
-pub struct GenesisState {
-    /// Address of the account which will act as the sender of genesis messages.
-    ///
-    /// For example, if an "Instantiate" message in included in `gen_msgs`, then the deployer
-    /// address will be provided as `info.sender` in the instantiation call.
-    ///
-    /// Note that during genesis, no transaction verification is performed. The application
-    /// developers must provide a trust deployer account.
-    pub deployer: String,
-    /// Messages to be executed in order during the InitChain call.
-    pub gen_msgs: Vec<SdkMsg>,
-}
-
-#[cw_serde]
-pub struct Tx {
-    /// Transaction body
-    pub body: TxBody,
-    /// The sender's secp256k1 public key. Optional if the accounts already exists in the state.
-    pub pubkey: Option<Binary>,
-    /// Secp256k1 signature; the content is `sha256(JSON.stringify(txbody))`, signed by the private
-    /// key corresponding to `pubkey`.
-    pub signature: Binary,
-}
-
-/// Body of the transaction. This is what the sender needs to sign.
-#[cw_serde]
-pub struct TxBody {
-    /// The sender's address
-    pub sender: String,
-    /// Wasm messages to be executed
-    pub msgs: Vec<SdkMsg>,
-    /// Identifier of the chain where this tx is to be broadcasted. Used to prevent reply attacks.
-    pub chain_id: String,
-    /// The sender's sequence number. Used to prvent replay attacks.
-    pub sequence: u64,
-}
+use crate::account::Account;
 
 #[cw_serde]
 pub enum SdkMsg {
+    /// Store a binary code to the blockchain's state.
     StoreCode {
         wasm_byte_code: Binary,
     },
+
+    /// Instantiate a new contract account.
     Instantiate {
+        /// Identifier of the wasm byte code to be associated with the contract
         code_id: u64,
+
+        /// JSON-encoded instantiate message
         msg: Binary,
+
+        /// Coins to be sent to the contract during instantiation
         funds: Vec<Coin>,
+
         /// A human readable name for the contract. Must be unique.
         //
         /// Contracts deployed during genesis will have their addresses generated deterministically
@@ -66,15 +36,20 @@ pub enum SdkMsg {
         /// For such labels, developers must make sure to deploy contracts that have compatible
         /// execute/query/sudo methods implemented.
         label: String,
+
         /// Account who is allowed to migrate the contract.
         /// To make the contract immutable, leave this field empty.
         admin: Option<String>,
     },
+
+    /// Execute a contract
     Execute {
         contract: String,
         msg: Binary,
         funds: Vec<Coin>,
     },
+
+    /// Migrate a contract to a new wasm byte code
     Migrate {
         contract: String,
         code_id: u64,
@@ -82,27 +57,41 @@ pub enum SdkMsg {
     },
 }
 
-// TODO: add 1) chain metadata, 2) enumerative queries for account, code, contract
+// TODO: add 1) chain metadata, 2) enumerative queries for account and code
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum SdkQuery {
+    #[returns(InfoResponse)]
+    Info {},
+
     #[returns(AccountResponse)]
     Account {
         address: String,
     },
+
+    #[returns(Vec<AccountResponse>)]
+    Accounts {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+
     #[returns(CodeResponse)]
     Code {
         code_id: u64,
     },
-    #[returns(ContractResponse)]
-    Contract {
-        contract: String,
+
+    #[returns(Vec<CodeResponse>)]
+    Codes {
+        start_after: Option<u64>,
+        limit: Option<u32>,
     },
+
     #[returns(WasmRawResponse)]
     WasmRaw {
         contract: String,
         key: Binary,
     },
+
     #[returns(WasmSmartResponse)]
     WasmSmart {
         contract: String,
@@ -111,38 +100,30 @@ pub enum SdkQuery {
 }
 
 #[cw_serde]
+pub struct InfoResponse {
+    pub chain_id: String,
+    pub height: u64,
+    pub code_count: u64,
+}
+
+#[cw_serde]
 pub struct AccountResponse {
-    /// Account address
     pub address: String,
     /// None is the account is not found
-    pub pubkey: Binary,
-    /// Zero if account is not found
-    pub sequence: u64,
+    pub account: Option<Account>,
 }
 
 #[cw_serde]
 pub struct CodeResponse {
-    /// Account who stored the code
-    pub creator: String,
-    /// SHA-256 hash of the wasm byte code
-    pub hash: Binary,
-    /// The wasm byte code
-    pub wasm_byte_code: Binary,
-}
-
-#[cw_serde]
-pub struct ContractResponse {
-    /// This contract's code id
     pub code_id: u64,
-    /// A human readable name for the contract
-    pub label: String,
-    /// Account who is allowed to migrate the contract
-    pub admin: Option<String>,
+    /// None if the code is not found
+    pub wasm_byte_code: Option<Binary>,
 }
 
 #[cw_serde]
 pub struct WasmRawResponse {
-    /// Raw value in the contract storage under the given key. None if the key does not exist.
+    /// Raw value in the contract storage under the given key.
+    /// None if the key is not found.
     pub value: Option<Binary>,
 }
 

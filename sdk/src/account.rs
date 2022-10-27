@@ -1,0 +1,29 @@
+use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{Addr, Binary};
+
+/// The account type to be stored on-chain.
+#[cw_serde]
+pub enum Account {
+    /// An account that is controlled by a single public/private key pair.
+    /// Roughly synonymous to "externally-owned account" (EoA) in Ethereum.
+    Base {
+        /// The account's secp256k1 public key
+        pubkey: Binary,
+
+        /// The account's sequence number, used to prevent replay attacks.
+        /// The first tx ever to be submitted by the account should come with the sequence of 1.
+        sequence: u64,
+    },
+
+    /// An account that is controlled by wasm code.
+    Contract {
+        /// Identifier of the wasm byte code associated with this contract.
+        code_id: u64,
+
+        /// A human readable name for the contract
+        label: String,
+
+        /// Account who is allowed to migrate the contract
+        admin: Option<Addr>,
+    },
+}
