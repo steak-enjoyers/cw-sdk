@@ -1,6 +1,25 @@
 on: push
 name: Rust CI
 jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout sources
+        uses: actions/checkout@v2
+      - name: install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: check for errors
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --locked
+        env:
+          RUST_BACKTRACE: 1
   test:
     name: test
     runs-on: ubuntu-latest
