@@ -2,8 +2,9 @@ use cosmwasm_std::{Addr, Binary};
 use k256::ecdsa::{signature::Verifier, Signature, VerifyingKey};
 use thiserror::Error;
 
-use crate::address::{self, AddressError};
-use crate::msg::Tx;
+use cw_types::address::{self, AddressError};
+use cw_types::msg::Tx;
+
 use crate::state::{Account, State};
 
 /// Authenticate the signer's address, pubkey, signature, sequence, and chain id.

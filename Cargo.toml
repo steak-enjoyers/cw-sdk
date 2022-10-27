@@ -5,6 +5,7 @@ members = [
   "server",
   "state-machine",
   "store",
+  "types",
 ]
 
 [workspace.package]
@@ -31,6 +32,7 @@ cw-server          = { path = "./server" }
 cw-state-machine   = { path = "./state-machine" }
 cw-storage-plus    = "0.15"
 cw-store           = { path = "./store" }
+cw-types           = { path = "./types" }
 dialoguer          = "0.10"
 hex                = "0.4"
 home               = "0.5"

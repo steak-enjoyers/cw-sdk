@@ -9,7 +9,7 @@ use tendermint::abci::transaction::Hash;
 use tendermint_rpc::{Client, HttpClient, Url};
 use tracing::info;
 
-use cw_state_machine::msg::{
+use cw_types::msg::{
     AccountResponse, CodeResponse, ContractResponse, SdkQuery, WasmRawResponse, WasmSmartResponse,
 };
 

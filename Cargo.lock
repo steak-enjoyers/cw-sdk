@@ -645,6 +645,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-server",
  "cw-state-machine",
+ "cw-types",
  "dialoguer",
  "hex",
  "home",
@@ -685,6 +686,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-vm",
  "cw-store",
+ "cw-types",
  "hex",
  "k256",
  "schemars",
@@ -711,6 +713,17 @@ version = "0.0.0"
 dependencies = [
  "cosmwasm-std",
  "cosmwasm-vm",
+]
+
+[[package]]
+name = "cw-types"
+version = "0.0.0"
+dependencies = [
+ "bech32",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "sha2 0.10.6",
+ "thiserror",
 ]
 
 [[package]]

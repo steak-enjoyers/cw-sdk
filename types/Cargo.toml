@@ -1,6 +1,6 @@
 [package]
-name          = "cw-state-machine"
-description   = "State machine engine based on CosmWasm"
+name          = "cw-types"
+description   = "Common type definitions for CosmWasm SDK"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -10,18 +10,14 @@ repository    = { workspace = true }
 documentation = { workspace = true }
 keywords      = { workspace = true }
 
+[features]
+default = ["address", "hash"]
+address = []
+hash    = []
+
 [dependencies]
-base64          = { workspace = true }
 bech32          = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cosmwasm-std    = { workspace = true }
-cosmwasm-vm     = { workspace = true }
-cw-store        = { workspace = true }
-cw-types        = { workspace = true }
-hex             = { workspace = true }
-k256            = { workspace = true }
-schemars        = { workspace = true }
-serde           = { workspace = true }
-serde_json      = { workspace = true }
 sha2            = { workspace = true }
 thiserror       = { workspace = true }

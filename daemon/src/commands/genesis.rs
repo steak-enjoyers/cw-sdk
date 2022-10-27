@@ -6,9 +6,9 @@ use serde::Serialize;
 use tendermint::genesis::Genesis as TmGenesis;
 use tracing::info;
 
-use cw_state_machine::address;
-use cw_state_machine::hash::sha256;
-use cw_state_machine::msg::{GenesisState, SdkMsg};
+use cw_types::address;
+use cw_types::hash::sha256;
+use cw_types::msg::{GenesisState, SdkMsg};
 
 use crate::{path, print, DaemonError};
 
