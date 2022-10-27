@@ -643,8 +643,8 @@ dependencies = [
  "bip32",
  "clap",
  "cosmwasm-std",
- "cw-sdk",
  "cw-server",
+ "cw-state-machine",
  "dialoguer",
  "hex",
  "home",
@@ -665,7 +665,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-sdk"
+name = "cw-server"
+version = "0.0.0"
+dependencies = [
+ "cosmwasm-std",
+ "cw-state-machine",
+ "serde_json",
+ "tendermint-abci",
+ "tendermint-proto",
+]
+
+[[package]]
+name = "cw-state-machine"
 version = "0.0.0"
 dependencies = [
  "base64",
@@ -681,17 +692,6 @@ dependencies = [
  "serde_json",
  "sha2 0.10.6",
  "thiserror",
-]
-
-[[package]]
-name = "cw-server"
-version = "0.0.0"
-dependencies = [
- "cosmwasm-std",
- "cw-sdk",
- "serde_json",
- "tendermint-abci",
- "tendermint-proto",
 ]
 
 [[package]]

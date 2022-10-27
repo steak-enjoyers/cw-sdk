@@ -3,8 +3,8 @@ use cosmwasm_std::Addr;
 use josekit::jwt::JwtPayload;
 use k256::ecdsa::{signature::Signer, Signature, SigningKey, VerifyingKey};
 
-use cw_sdk::address;
-use cw_sdk::msg::{Tx, TxBody};
+use cw_state_machine::address;
+use cw_state_machine::msg::{Tx, TxBody};
 
 use crate::DaemonError;
 

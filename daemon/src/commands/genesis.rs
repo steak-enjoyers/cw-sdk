@@ -2,13 +2,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use clap::{Args, Subcommand};
-use cw_sdk::address;
-use cw_sdk::hash::sha256;
 use serde::Serialize;
 use tendermint::genesis::Genesis as TmGenesis;
 use tracing::info;
 
-use cw_sdk::msg::{GenesisState, SdkMsg};
+use cw_state_machine::address;
+use cw_state_machine::hash::sha256;
+use cw_state_machine::msg::{GenesisState, SdkMsg};
 
 use crate::{path, print, DaemonError};
 

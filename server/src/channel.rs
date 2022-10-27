@@ -2,7 +2,7 @@ use std::sync::mpsc::Sender;
 
 use cosmwasm_std::Event;
 
-use cw_sdk::state::StateError;
+use cw_state_machine::state::StateError;
 
 /// The ABCI server and the driver maintains a channel between them, and communicate by sending
 /// commands. This enum defines the commands allowed to be transmitted through the channel.

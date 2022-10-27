@@ -1,5 +1,5 @@
 [package]
-name          = "cw-sdk"
+name          = "cw-state-machine"
 description   = "State machine engine based on CosmWasm"
 version       = { workspace = true }
 authors       = { workspace = true }

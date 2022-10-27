@@ -5,7 +5,7 @@ use std::str::FromStr;
 use clap::{Args, Subcommand};
 use tendermint_rpc::{Client, HttpClient, Url};
 
-use cw_sdk::msg::{AccountResponse, SdkMsg, SdkQuery, TxBody};
+use cw_state_machine::msg::{AccountResponse, SdkMsg, SdkQuery, TxBody};
 
 use crate::query::do_abci_query;
 use crate::{print, prompt, ClientConfig, DaemonError, Keyring};

@@ -1,6 +1,6 @@
 use std::sync::mpsc::Receiver;
 
-use cw_sdk::state::State;
+use cw_state_machine::state::State;
 
 use crate::AppCommand;
 
