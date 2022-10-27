@@ -13,3 +13,4 @@ keywords      = { workspace = true }
 [dependencies]
 cosmwasm-std = { workspace = true }
 cosmwasm-vm  = { workspace = true }
+merk         = { workspace = true }
