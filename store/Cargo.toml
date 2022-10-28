@@ -10,6 +10,11 @@ repository    = { workspace = true }
 documentation = { workspace = true }
 keywords      = { workspace = true }
 
+[features]
+# Including "mock" as a default feature for development purpose. For prod this should be removed.
+default = ["mock"]
+mock = []
+
 [dependencies]
 cosmwasm-std = { workspace = true }
 cosmwasm-vm  = { workspace = true }
