@@ -1,17 +1,13 @@
-#[cfg(feature = "iterator")]
-use core::ops::{Bound, RangeBounds};
-use cosmwasm_std::{Order, Record, Storage};
+use cosmwasm_std::Storage;
 use merk::{Error as MerkError, Merk, Op};
-#[cfg(feature = "iterator")]
-use std::iter;
-use std::{collections::BTreeMap, path::PathBuf};
 
-type PendingOps = BTreeMap<Vec<u8>, Op>;
+use std::path::PathBuf;
+
+use crate::cache::{Delta, LocalState};
 
 pub struct Store {
     merk: Merk,
     home: PathBuf,
-    pending: PendingOps,
 }
 
 /// First create a basic store
@@ -20,12 +16,10 @@ pub struct Store {
 impl Store {
     pub fn new(home: PathBuf) -> Self {
         let merk = Merk::open(&home.join("db")).unwrap();
-        let pending = PendingOps::new();
 
         Store {
             home,
             merk,
-            pending,
         }
     }
 
@@ -39,44 +33,72 @@ impl Store {
     }
 
     /// Flush to underlying store
-    /// our pending vec should already be the same
-    /// as BatchEntry, i.e. (Vec<u8>, Op)
+    /// NB BatchEntry == (Vec<u8>, Op)
     /// aux_batch is for meta, static config etc
-    pub fn write(&mut self, aux_batch: Vec<(Vec<u8>, Op)>) -> Result<(), MerkError> {
-        // first convert BTreeMap -> Vec
-        let pending_batch: Vec<(Vec<u8>, Op)> =
-            self.pending.into_iter().map(|(key, op)| (key, op)).collect();
+    /// NB apply_unchecked because (Mappum):
+    /// "Since you know all the keys are sorted and unique,
+    /// you can... skip the check in apply"
+    pub fn write(
+        &mut self,
+        pending_deltas: LocalState,
+        aux_batch: Vec<(Vec<u8>, Op)>,
+    ) -> Result<(), MerkError> {
+        let pending_batch: Vec<(Vec<u8>, Op)> = deltas_to_ops(pending_deltas);
+        Ok(self.merk.apply_unchecked(&pending_batch, &aux_batch)?)
+    }
 
-        // send to merk
-        self.merk.apply(&pending_batch, &aux_batch)?;
+    /// Flush to underlying store
+    /// this removes second argument so it fits the more generic interface
+    /// in transaction where the only args are Storage and Deltas
+    pub fn write_deltas(&mut self, pending_deltas: LocalState) -> Result<(), MerkError> {
+        let pending_batch: Vec<(Vec<u8>, Op)> = deltas_to_ops(pending_deltas);
+        Ok(self.merk.apply_unchecked(&pending_batch, &[])?)
+    }
 
-        // reset pending
-        self.pending = PendingOps::new();
+    /// Flush a collection of ops to store
+    /// we can't make assumptions, therefore apply, not apply_unchecked
+    pub fn commit(
+        &mut self,
+        pending_batch: Vec<(Vec<u8>, Op)>,
+        aux_batch: Vec<(Vec<u8>, Op)>,
+    ) -> Result<(), MerkError> {
+        Ok(self.merk.apply(&pending_batch, &aux_batch)?)
+    }
+}
 
-        Ok(())
+/// There's a subtle difference between merk Ops
+/// and the cw-storage style Ops
+/// this is a helper to account for that
+/// we could define on Delta, but better for each storage
+/// to just handle it with a match in its own scope
+fn deltas_to_ops(deltas: LocalState) -> Vec<(Vec<u8>, Op)> {
+    deltas.into_iter().map(|(key, delta)| (key, delta_to_op(delta, key))).collect()
+}
+
+fn delta_to_op(delta: Delta, key: Vec<u8>) -> Op {
+    match delta {
+        Delta::Set {
+            value,
+        } => Op::Put(value.to_vec()),
+        Delta::Delete {} => Op::Delete {},
     }
 }
 
 impl Storage for Store {
-    /// First try pending
-    /// then fall back to merk
+    /// Go direct to underlying merk
     fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
-        match self.pending.get(key) {
-            Some(Op::Put(value)) => Some(value.clone()),
-            Some(Op::Delete) => None,
-            None => match self.merk.get(key) {
-                Ok(res) => res,
-                Err(_) => None,
-            },
+        match self.merk.get(key) {
+            Ok(res) => res,
+            Err(_) => None,
         }
     }
 
     fn set(&mut self, key: &[u8], value: &[u8]) {
-        self.pending.insert(key.to_vec(), Op::Put(value.to_vec()));
+        self.merk.apply(&[(key.to_vec(), Op::Put(value.to_vec()))], &[]);
     }
 
     fn remove(&mut self, key: &[u8]) {
-        self.pending.insert(key.to_vec(), Op::Delete);
+        self.merk.apply(&[(key.to_vec(), Op::Delete)], &[]);
     }
 
     // #[cfg(feature = "iterator")]

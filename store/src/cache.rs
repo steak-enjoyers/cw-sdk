@@ -19,13 +19,35 @@ use anyhow::Result as AnyResult;
 /// This is internal as it can change any time if the map implementation is swapped out.
 type BTreeMapPairRef<'a, T = Vec<u8>> = (&'a Vec<u8>, &'a T);
 
+pub type LocalState = BTreeMap<Vec<u8>, Delta>;
+
+trait Commit {
+    fn commit(&self, storage: &mut dyn Storage);
+
+    fn prepare(&self) -> Vec<(Vec<u8>, Op)>;
+}
+
+impl Commit for LocalState {
+    fn commit(&self, storage: &mut dyn cosmwasm_std::Storage) {
+        let ops = self.prepare();
+        for (_, op) in ops {
+            op.apply(storage);
+        }
+    }
+
+    /// returns ops ready for writing
+    fn prepare(&self) -> Vec<(Vec<u8>, Op)> {
+        self.into_iter().map(|(key, delta)| (key.to_vec(), delta.to_op(key.to_vec()))).collect()
+    }
+}
+
 pub fn transactional<F, T>(base: &mut dyn Storage, action: F) -> AnyResult<T>
 where
     F: FnOnce(&mut dyn Storage, &dyn Storage) -> AnyResult<T>,
 {
     let mut cache = StorageTransaction::new(base);
     let res = action(&mut cache, base)?;
-    cache.prepare().commit(base);
+    cache.local_state().commit(base);
     Ok(res)
 }
 
@@ -33,9 +55,7 @@ pub struct StorageTransaction<'a> {
     /// read-only access to backing storage
     storage: &'a dyn Storage,
     /// these are local changes not flushed to backing storage
-    local_state: BTreeMap<Vec<u8>, Delta>,
-    /// a log of local changes not yet flushed to backing storage
-    rep_log: RepLog,
+    local_state: LocalState,
 }
 
 impl<'a> StorageTransaction<'a> {
@@ -43,13 +63,17 @@ impl<'a> StorageTransaction<'a> {
         StorageTransaction {
             storage,
             local_state: BTreeMap::new(),
-            rep_log: RepLog::new(),
         }
     }
 
-    /// prepares this transaction to be committed to storage
-    pub fn prepare(self) -> RepLog {
-        self.rep_log
+    /// clears the local_state
+    pub fn clear_state(self) {
+        self.local_state = BTreeMap::new()
+    }
+
+    /// returns the local cache ready for writing
+    pub fn local_state(self) -> LocalState {
+        self.local_state
     }
 }
 
@@ -72,7 +96,6 @@ impl<'a> Storage for StorageTransaction<'a> {
             value: value.to_vec(),
         };
         self.local_state.insert(key.to_vec(), op.to_delta());
-        self.rep_log.append(op);
     }
 
     fn remove(&mut self, key: &[u8]) {
@@ -80,7 +103,6 @@ impl<'a> Storage for StorageTransaction<'a> {
             key: key.to_vec(),
         };
         self.local_state.insert(key.to_vec(), op.to_delta());
-        self.rep_log.append(op);
     }
 
     #[cfg(feature = "iterator")]
@@ -113,31 +135,6 @@ impl<'a> Storage for StorageTransaction<'a> {
         let base = self.storage.range(start, end, order);
         let merged = MergeOverlay::new(local, base, order);
         Box::new(merged)
-    }
-}
-
-pub struct RepLog {
-    /// this is a list of changes to be written to backing storage upon commit
-    ops_log: Vec<Op>,
-}
-
-impl RepLog {
-    fn new() -> Self {
-        RepLog {
-            ops_log: vec![],
-        }
-    }
-
-    /// appends an op to the list of changes to be applied upon commit
-    fn append(&mut self, op: Op) {
-        self.ops_log.push(op);
-    }
-
-    /// applies the stored list of `Op`s to the provided `Storage`
-    pub fn commit(self, storage: &mut dyn Storage) {
-        for op in self.ops_log {
-            op.apply(storage);
-        }
     }
 }
 
@@ -187,11 +184,27 @@ impl Op {
 /// Delta is the changes, stored in the local transaction cache.
 /// This is either Set{value} or Delete{}. Note that this is the "value"
 /// part of a BTree, so the Key (from the Op) is stored separately.
-enum Delta {
+pub enum Delta {
     Set {
         value: Vec<u8>,
     },
     Delete {},
+}
+
+impl Delta {
+    pub fn to_op(&self, key: Vec<u8>) -> Op {
+        match self {
+            Delta::Set {
+                value,
+            } => Op::Set {
+                key,
+                value: value.to_vec(),
+            },
+            Delta::Delete {} => Op::Delete {
+                key,
+            },
+        }
+    }
 }
 
 #[cfg(feature = "iterator")]
@@ -300,7 +313,7 @@ mod test {
         wrap.set(b"foo", b"bar");
 
         assert_eq!(None, store.get(b"foo"));
-        wrap.prepare().commit(&mut store);
+        wrap.local_state().commit(&mut store);
         assert_eq!(Some(b"bar".to_vec()), store.get(b"foo"));
     }
 
@@ -312,7 +325,7 @@ mod test {
             let mut wrap = StorageTransaction::new(refer.deref());
             wrap.set(b"foo", b"bar");
             assert_eq!(None, store.borrow().get(b"foo"));
-            wrap.prepare()
+            wrap.local_state()
         };
         ops.commit(store.borrow_mut().deref_mut());
         assert_eq!(Some(b"bar".to_vec()), store.borrow().get(b"foo"));
@@ -325,7 +338,7 @@ mod test {
         wrap.set(b"foo", b"bar");
 
         assert_eq!(None, store.get(b"foo"));
-        wrap.prepare().commit(store.as_mut());
+        wrap.local_state().commit(store.as_mut());
         assert_eq!(Some(b"bar".to_vec()), store.get(b"foo"));
     }
 
@@ -336,7 +349,7 @@ mod test {
         wrap.set(b"foo", b"bar");
 
         assert_eq!(None, store.get(b"foo"));
-        wrap.prepare().commit(store.as_mut());
+        wrap.local_state().commit(store.as_mut());
         assert_eq!(Some(b"bar".to_vec()), store.get(b"foo"));
     }
 
@@ -354,7 +367,7 @@ mod test {
             wrap.set(b"foo", b"bar");
 
             assert_eq!(None, store.borrow().get(b"foo"));
-            wrap.prepare()
+            wrap.local_state()
         };
         ops.commit(store.borrow_mut().as_mut());
         assert_eq!(Some(b"bar".to_vec()), store.borrow().get(b"foo"));
@@ -500,7 +513,7 @@ mod test {
         assert_eq!(check.get(b"food"), Some(b"bank".to_vec()));
 
         // now commit to base and query there
-        check.prepare().commit(base.as_mut());
+        check.local_state().commit(base.as_mut());
         assert_eq!(base.get(b"foo"), None);
         assert_eq!(base.get(b"food"), Some(b"bank".to_vec()));
     }
@@ -517,7 +530,7 @@ mod test {
         assert_eq!(check.get(b"food"), Some(b"bank".to_vec()));
 
         // now commit to base and query there
-        check.prepare().commit(base.as_mut());
+        check.local_state().commit(base.as_mut());
         assert_eq!(base.get(b"foo"), None);
         assert_eq!(base.get(b"food"), Some(b"bank".to_vec()));
     }
@@ -559,7 +572,7 @@ mod test {
         let mut check = StorageTransaction::new(base.as_ref());
         assert_eq!(check.get(b"foo"), Some(b"bar".to_vec()));
         check.set(b"subtx", b"works");
-        check.prepare().commit(base.as_mut());
+        check.local_state().commit(base.as_mut());
 
         assert_eq!(base.get(b"subtx"), Some(b"works".to_vec()));
     }
@@ -579,7 +592,7 @@ mod test {
         // Can still read from base, txn is not yet committed
         assert_eq!(base.get(b"subtx"), None);
 
-        stxn1.prepare().commit(&mut base);
+        stxn1.local_state().commit(&mut base);
         assert_eq!(base.get(b"subtx"), Some(b"works".to_vec()));
     }
 
