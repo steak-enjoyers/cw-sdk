@@ -1,16 +1,17 @@
-use cosmwasm_std::Storage;
-use merk::{BatchEntry, Merk, Op};
-use std::{
-    mem::transmute,
-    path::{Path, PathBuf},
-};
+#[cfg(feature = "iterator")]
+use core::ops::{Bound, RangeBounds};
+use cosmwasm_std::{Order, Record, Storage};
+use merk::{Error as MerkError, Merk, Op};
+#[cfg(feature = "iterator")]
+use std::iter;
+use std::{collections::BTreeMap, path::PathBuf};
 
-use crate::cache::MemoryStorage;
+type PendingOps = BTreeMap<Vec<u8>, Op>;
 
 pub struct Store {
     merk: Merk,
     home: PathBuf,
-    cache: MemoryStorage,
+    pending: PendingOps,
 }
 
 /// First create a basic store
@@ -19,11 +20,12 @@ pub struct Store {
 impl Store {
     pub fn new(home: PathBuf) -> Self {
         let merk = Merk::open(&home.join("db")).unwrap();
+        let pending = PendingOps::new();
 
         Store {
             home,
             merk,
-            cache,
+            pending,
         }
     }
 
@@ -32,64 +34,94 @@ impl Store {
         self.home.join(name.to_string())
     }
 
-    /// Again, very similar to the orga implementation,
-    /// but modified to work on the signature of MemoryStorage;
-    /// we also omit the aux_batch for now
-    pub(super) fn write(&mut self) -> Result<()> {
-        // note that memory_storage is just a mapping
-        let memory_storage = self.cache.data.take().unwrap();
-
-        // re-init the MemoryStorage
-        self.cache = Some(MemoryStorage::new());
-
-        let batch = to_batch(memory_storage);
-
-        Ok(self
-            .merk
-            .as_mut()
-            .unwrap()
-            .apply(batch.as_ref())?)
-    }
-
     pub(super) fn merk(&self) -> &Merk {
-        self.merk.as_ref().unwrap()
+        &self.merk
     }
-}
 
-/// This collects a k/v iterator into a Vec
-/// which can then be used with merk.apply
-/// this is adapted from orga's state layer
-pub fn to_batch<I: IntoIterator<Item = (Vec<u8>, <Vec<u8>>)>>(i: I) -> Vec<BatchEntry> {
-    let mut batch = Vec::new();
-    for (key, val) in i {
-        match val {
-            Some(val) => batch.push((key, Op::Put(val))),
-            None => batch.push((key, Op::Delete)),
-        }
+    /// Flush to underlying store
+    /// our pending vec should already be the same
+    /// as BatchEntry, i.e. (Vec<u8>, Op)
+    /// aux_batch is for meta, static config etc
+    pub fn write(&mut self, aux_batch: Vec<(Vec<u8>, Op)>) -> Result<(), MerkError> {
+        // first convert BTreeMap -> Vec
+        let pending_batch: Vec<(Vec<u8>, Op)> =
+            self.pending.into_iter().map(|(key, op)| (key, op)).collect();
+
+        // send to merk
+        self.merk.apply(&pending_batch, &aux_batch)?;
+
+        // reset pending
+        self.pending = PendingOps::new();
+
+        Ok(())
     }
-    batch
 }
 
 impl Storage for Store {
+    /// First try pending
+    /// then fall back to merk
     fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.merk.as_ref().unwrap().get(key)
+        match self.pending.get(key) {
+            Some(Op::Put(value)) => Some(value.clone()),
+            Some(Op::Delete) => None,
+            None => match self.merk.get(key) {
+                Ok(res) => res,
+                Err(_) => None,
+            },
+        }
     }
 
     fn set(&mut self, key: &[u8], value: &[u8]) {
-        self.merk.as_mut().unwrap().insert(key, Some(value))
+        self.pending.insert(key.to_vec(), Op::Put(value.to_vec()));
     }
 
     fn remove(&mut self, key: &[u8]) {
-        self.merk.as_mut().unwrap().insert(key.to_vec(), None)
+        self.pending.insert(key.to_vec(), Op::Delete);
     }
 
     // #[cfg(feature = "iterator")]
+    // /// range allows iteration over a set of keys, either forwards or backwards
+    // /// uses standard rust range notation, and eg db.range(b"foo"..b"bar") also works reverse
     // fn range<'a>(
-    //       &'a self,
-    //       start: Option<&[u8]>,
-    //       end: Option<&[u8]>,
-    //       order: Order,
-    //   ) -> Box<dyn Iterator<Item = Record> + 'a> {
+    //     &'a self,
+    //     start: Option<&[u8]>,
+    //     end: Option<&[u8]>,
+    //     order: Order,
+    // ) -> Box<dyn Iterator<Item = Record> + 'a> {
+    //     let bounds = range_bounds(start, end);
 
+    //     // BTreeMap.range panics if range is start > end.
+    //     // However, this cases represent just empty range and we treat it as such.
+    //     match (bounds.start_bound(), bounds.end_bound()) {
+    //         (Bound::Included(start), Bound::Excluded(end)) if start > end => {
+    //             return Box::new(iter::empty());
+    //         },
+    //         _ => {},
+    //     }
+
+    //     let iter = self.pending.range(bounds);
+    //     match order {
+    //         Order::Ascending => Box::new(iter.map(clone_item)),
+    //         Order::Descending => Box::new(iter.rev().map(clone_item)),
+    //     }
     // }
 }
+
+// #[cfg(feature = "iterator")]
+// fn range_bounds(start: Option<&[u8]>, end: Option<&[u8]>) -> impl RangeBounds<Vec<u8>> {
+//     (
+//         start.map_or(Bound::Unbounded, |x| Bound::Included(x.to_vec())),
+//         end.map_or(Bound::Unbounded, |x| Bound::Excluded(x.to_vec())),
+//     )
+// }
+
+// #[cfg(feature = "iterator")]
+// /// The BTreeMap specific key-value pair reference type, as returned by BTreeMap<Vec<u8>, Vec<u8>>::range.
+// /// This is internal as it can change any time if the map implementation is swapped out.
+// type BTreeMapRecordRef<'a> = (&'a Vec<u8>, &'a Vec<u8>);
+
+// #[cfg(feature = "iterator")]
+// fn clone_item(item_ref: BTreeMapRecordRef) -> Record {
+//     let (key, value) = item_ref;
+//     (key.clone(), value.clone())
+// }
