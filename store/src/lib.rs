@@ -3,7 +3,7 @@ mod prefix;
 mod store;
 
 pub use cache::StorageTransaction;
-pub use prefix::PrefixStore;
+pub use prefix::PrefixedStorage;
 pub use store::Store;
 
 #[cfg(feature = "mock")]

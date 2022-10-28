@@ -11,8 +11,6 @@ pub struct Store {
 }
 
 /// First create a basic store
-/// this implementation closely mirrors
-/// what nomic do in orga
 impl Store {
     pub fn new(home: PathBuf) -> Self {
         let merk = Merk::open(&home.join("db")).unwrap();
@@ -33,7 +31,6 @@ impl Store {
     }
 
     /// Flush to underlying store
-    /// NB BatchEntry == (Vec<u8>, Op)
     /// aux_batch is for meta, static config etc
     /// NB apply_unchecked because (Mappum):
     /// "Since you know all the keys are sorted and unique,
@@ -45,14 +42,6 @@ impl Store {
     ) -> Result<(), MerkError> {
         let pending_batch: Vec<(Vec<u8>, Op)> = deltas_to_ops(pending_deltas);
         Ok(self.merk.apply_unchecked(&pending_batch, &aux_batch)?)
-    }
-
-    /// Flush to underlying store
-    /// this removes second argument so it fits the more generic interface
-    /// in transaction where the only args are Storage and Deltas
-    pub fn write_deltas(&mut self, pending_deltas: LocalState) -> Result<(), MerkError> {
-        let pending_batch: Vec<(Vec<u8>, Op)> = deltas_to_ops(pending_deltas);
-        Ok(self.merk.apply_unchecked(&pending_batch, &[])?)
     }
 
     /// Flush a collection of ops to store
@@ -68,9 +57,6 @@ impl Store {
 
 /// There's a subtle difference between merk Ops
 /// and the cw-storage style Ops
-/// this is a helper to account for that
-/// we could define on Delta, but better for each storage
-/// to just handle it with a match in its own scope
 fn deltas_to_ops(deltas: LocalState) -> Vec<(Vec<u8>, Op)> {
     deltas.into_iter().map(|(key, delta)| (key, delta_to_op(delta, key))).collect()
 }
