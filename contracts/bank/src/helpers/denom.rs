@@ -105,7 +105,7 @@ pub fn is_alphanumeric(s: &str) -> bool {
 
 /// Return whether the string starts with a number 0-9.
 pub fn starts_with_number(s: &str) -> bool {
-    s.chars().next().map(|ch| matches!(ch, '0'..='9')).unwrap_or(false)
+    s.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false)
 }
 
 /// Convert a `&Namespace` to a `&str` for use in error logging.
