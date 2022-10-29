@@ -39,8 +39,7 @@ pub fn validate_denom(denom: &str) -> Result<Denom, DenomError> {
         return Err(DenomError::leading_number(denom));
     }
 
-    let len = denom.len();
-    if !(MIN_LEN..=MAX_LEN).contains(&len) {
+    if !(MIN_LEN..=MAX_LEN).contains(&denom.len()) {
         return Err(DenomError::illegal_length(denom));
     }
 
