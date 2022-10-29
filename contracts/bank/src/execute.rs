@@ -1,14 +1,51 @@
+use std::collections::BTreeSet;
+
 use cosmwasm_std::{Addr, Coin, DepsMut, MessageInfo, Response, Uint128};
 
 use crate::error::ContractError;
-use crate::msg::Balance;
-use crate::state::{BALANCES, SUPPLIES};
+use crate::helpers::dup::DupChecker;
+use crate::helpers::denom::{validate_denom, validate_namespace, Namespace, namespace_to_attr, Denom};
+use crate::msg::{Balance, Minter, Config};
+use crate::state::{BALANCES, CONFIG, MINTER_NAMESPACES, SUPPLIES};
 
-pub fn init(deps: DepsMut, balances: Vec<Balance>) -> Result<Response, ContractError> {
-    for balance in &balances {
-        let addr = deps.api.addr_validate(&balance.address)?;
+pub fn init(
+    deps: DepsMut,
+    owner: String,
+    minters: Vec<Minter>,
+    balances: Vec<Balance>,
+) -> Result<Response, ContractError> {
+    // 1. initialize config
+    CONFIG.save(
+        deps.storage,
+        &Config {
+            owner: deps.api.addr_validate(&owner)?,
+        },
+    )?;
 
-        for coin in &balance.coins {
+    // 2. initialize minting authorizations
+    let mut dc = DupChecker::new("minter address");
+    for Minter {
+        address,
+        namespaces,
+    } in &minters {
+        dc.assert_no_dup(address)?;
+        let addr = deps.api.addr_validate(address)?;
+
+        namespaces.iter().try_for_each(validate_namespace)?;
+
+        MINTER_NAMESPACES.save(deps.storage, &addr, namespaces)?;
+    }
+
+    // 3. initialize coin balances
+    let mut dc = DupChecker::new("balance address");
+    for Balance {
+        address,
+        coins,
+    } in &balances {
+        dc.assert_no_dup(address)?;
+        let addr = deps.api.addr_validate(address)?;
+
+        for coin in coins {
             SUPPLIES.update(deps.storage, &coin.denom, |opt| {
                 opt
                     .unwrap_or_else(Uint128::zero)
@@ -28,14 +65,42 @@ pub fn init(deps: DepsMut, balances: Vec<Balance>) -> Result<Response, ContractE
     Ok(Response::default())
 }
 
+pub fn set_minter(
+    deps: DepsMut,
+    info: MessageInfo,
+    minter: String,
+    namespaces: BTreeSet<Namespace>,
+) -> Result<Response, ContractError> {
+    let cfg = CONFIG.load(deps.storage)?;
+    if info.sender != cfg.owner {
+        return Err(ContractError::NotOwner);
+    }
+
+    let minter_addr = deps.api.addr_validate(&minter)?;
+    namespaces.iter().try_for_each(validate_namespace)?;
+    MINTER_NAMESPACES.save(deps.storage, &minter_addr, &namespaces)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "bank/set_minter")
+        .add_attribute("minter", minter)
+        .add_attributes(namespaces.iter().map(namespace_to_attr)))
+}
+
 pub fn mint(
     deps: DepsMut,
     info: MessageInfo,
     to: String,
     amount: Coin,
 ) -> Result<Response, ContractError> {
-    // TODO: currently anyone can mint. need to implement a minter whitelist or a namespacing
-    // mechanism similar to x/tokenfactory's.
+    let Denom {
+        namespace,
+        ..
+    } = validate_denom(&amount.denom)?;
+
+    let namespaces = MINTER_NAMESPACES.may_load(deps.storage, &info.sender)?.unwrap_or_default();
+    if !namespaces.contains(&namespace) {
+        return Err(ContractError::not_minter(&namespace));
+    }
 
     let to_addr = deps.api.addr_validate(&to)?;
 

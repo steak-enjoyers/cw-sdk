@@ -630,6 +630,7 @@ version = "0.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-sdk",
  "cw-storage-plus",
  "cw2",
  "thiserror",

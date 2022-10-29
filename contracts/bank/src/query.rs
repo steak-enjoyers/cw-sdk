@@ -1,10 +1,48 @@
 use cosmwasm_std::{Coin, Deps, Order, StdResult, Uint128};
 use cw_storage_plus::Bound;
 
-use crate::state::{BALANCES, SUPPLIES};
+use crate::{state::{BALANCES, SUPPLIES, CONFIG, MINTER_NAMESPACES}, msg::{Config, Minter}};
 
 const DEFAULT_LIMIT: u32 = 10;
 const MAX_LIMIT: u32 = 30;
+
+pub fn config(deps: Deps) -> StdResult<Config<String>> {
+    let cfg = CONFIG.load(deps.storage)?;
+    Ok(Config {
+        owner: cfg.owner.into(),
+    })
+}
+
+pub fn minter(deps: Deps, minter: String) -> StdResult<Minter> {
+    let minter_addr = deps.api.addr_validate(&minter)?;
+    let namespaces = MINTER_NAMESPACES.may_load(deps.storage, &minter_addr)?.unwrap_or_default();
+    Ok(Minter {
+        address: minter,
+        namespaces,
+    })
+}
+
+pub fn minters(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<Vec<Minter>> {
+    // we skip the address validation because not necessary
+    let start = start_after.map(|minter| Bound::ExclusiveRaw(minter.into_bytes()));
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+
+    MINTER_NAMESPACES
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|item| {
+            let (address, namespaces) = item?;
+            Ok(Minter {
+                address: address.into(),
+                namespaces,
+            })
+        })
+        .collect()
+}
 
 pub fn supply(deps: Deps, denom: String) -> StdResult<Coin> {
     let amount = SUPPLIES.may_load(deps.storage, &denom)?.unwrap_or_else(Uint128::zero);

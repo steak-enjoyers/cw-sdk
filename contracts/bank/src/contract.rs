@@ -17,7 +17,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    execute::init(deps, msg.balances)
+    execute::init(deps, msg.owner, msg.minters, msg.balances)
 }
 
 #[entry_point]
@@ -28,6 +28,10 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::SetMinter {
+            address,
+            namespaces,
+        } => execute::set_minter(deps, info, address, namespaces),
         ExecuteMsg::Mint {
             to,
             amount,
@@ -42,6 +46,14 @@ pub fn execute(
 #[entry_point]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
+        QueryMsg::Config {} => to_binary(&query::config(deps)?),
+        QueryMsg::Minter {
+            address,
+        } => to_binary(&query::minter(deps, address)?),
+        QueryMsg::Minters {
+            start_after,
+            limit,
+        } => to_binary(&query::minters(deps, start_after, limit)?),
         QueryMsg::Supply {
             denom,
         } => to_binary(&query::supply(deps, denom)?),
