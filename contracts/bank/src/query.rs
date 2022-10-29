@@ -1,7 +1,10 @@
 use cosmwasm_std::{Coin, Deps, Order, StdResult, Uint128};
 use cw_storage_plus::Bound;
 
-use crate::{state::{BALANCES, SUPPLIES, CONFIG, MINTER_NAMESPACES}, msg::{Config, Minter}};
+use crate::{
+    msg::{Config, Minter},
+    state::{BALANCES, CONFIG, MINTER_NAMESPACES, SUPPLIES},
+};
 
 const DEFAULT_LIMIT: u32 = 10;
 const MAX_LIMIT: u32 = 30;

@@ -2,11 +2,15 @@ use std::collections::BTreeSet;
 
 use cosmwasm_std::{Addr, Coin, DepsMut, MessageInfo, Response, Uint128};
 
-use crate::error::ContractError;
-use crate::helpers::dup::DupChecker;
-use crate::helpers::denom::{validate_denom, validate_namespace, Namespace, namespace_to_attr, Denom};
-use crate::msg::{Balance, Minter, Config};
-use crate::state::{BALANCES, CONFIG, MINTER_NAMESPACES, SUPPLIES};
+use crate::{
+    error::ContractError,
+    helpers::{
+        denom::{namespace_to_attr, validate_denom, validate_namespace, Denom, Namespace},
+        dup::DupChecker,
+    },
+    msg::{Balance, Config, Minter},
+    state::{BALANCES, CONFIG, MINTER_NAMESPACES, SUPPLIES},
+};
 
 pub fn init(
     deps: DepsMut,
@@ -27,7 +31,8 @@ pub fn init(
     for Minter {
         address,
         namespaces,
-    } in &minters {
+    } in &minters
+    {
         dc.assert_no_dup(address)?;
         let addr = deps.api.addr_validate(address)?;
 
@@ -41,14 +46,14 @@ pub fn init(
     for Balance {
         address,
         coins,
-    } in &balances {
+    } in &balances
+    {
         dc.assert_no_dup(address)?;
         let addr = deps.api.addr_validate(address)?;
 
         for coin in coins {
             SUPPLIES.update(deps.storage, &coin.denom, |opt| {
-                opt
-                    .unwrap_or_else(Uint128::zero)
+                opt.unwrap_or_else(Uint128::zero)
                     .checked_add(coin.amount)
                     .map_err(ContractError::from)
             })?;
@@ -155,9 +160,5 @@ pub fn send(
 }
 
 pub fn stringify_coins(coins: &[Coin]) -> String {
-    coins
-        .iter()
-        .map(|coin| coin.to_string())
-        .collect::<Vec<_>>()
-        .join(",")
+    coins.iter().map(|coin| coin.to_string()).collect::<Vec<_>>().join(",")
 }

@@ -1,7 +1,10 @@
 use cosmwasm_std::{OverflowError, StdError};
 use thiserror::Error;
 
-use crate::helpers::{denom::{DenomError, Namespace, namespace_to_str}, dup::DuplicateError};
+use crate::helpers::{
+    denom::{namespace_to_str, DenomError, Namespace},
+    dup::DuplicateError,
+};
 
 #[derive(Error, Debug)]
 pub enum ContractError {

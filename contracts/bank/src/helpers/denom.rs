@@ -1,5 +1,3 @@
-
-
 use cosmwasm_std::{attr, Attribute};
 use thiserror::Error;
 
