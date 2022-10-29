@@ -42,11 +42,11 @@ pub fn validate_denom(denom: &str) -> Result<Denom, DenomError> {
     }
 
     let len = denom.len();
-    if len < MIN_LEN || len > MAX_LEN {
+    if !(MIN_LEN..=MAX_LEN).contains(&len) {
         return Err(DenomError::illegal_length(denom));
     }
 
-    let parts: Vec<&str> = denom.split("/").collect();
+    let parts: Vec<&str> = denom.split('/').collect();
     for part in &parts {
         if part.is_empty() {
             return Err(DenomError::empty_parts(denom));

@@ -37,7 +37,7 @@ impl ContractError {
 
     pub fn not_minter(namespace: &Namespace) -> Self {
         Self::NotMinter {
-            namespace: namespace_to_str(&namespace).into(),
+            namespace: namespace_to_str(namespace).into(),
         }
     }
 }
