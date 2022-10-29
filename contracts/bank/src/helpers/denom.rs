@@ -21,9 +21,9 @@ pub const MAX_LEN: usize = 128;
 /// This namespacing semantics allows us to efficiently manage coin minting authorizations.
 /// Specifically, each minter account is granted minting power under one or more namespaces.
 ///
-/// For example, the "ibc-transfer" contract may be granted minting power under the `"ibc"`
-/// namespace. The "token-factory" contract may be granted minting power under the `"factory"`
-/// namespace.
+/// For example,
+/// - the "ibc-transfer" contract may be granted minting power under the `"ibc"` namespace
+/// - The "token-factory" contract may be granted minting power under the `"factory"` namespace
 pub struct Denom {
     pub namespace: Namespace,
     pub subdenom: String,
