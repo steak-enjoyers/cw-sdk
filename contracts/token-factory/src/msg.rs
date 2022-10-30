@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Coin, Uint128};
+use cosmwasm_std::Coin;
 
 use crate::types::Config;
 
@@ -17,39 +17,49 @@ pub enum ExecuteMsg {
     /// If there is a token creation fee, the message must include sufficient amount of coins.
     CreateToken {
         subdenom: String,
-        /// Whereas admin can be removed later, it must be set during token creation
+        /// Whereas admin can be removed later, it must be set during token creation.
         admin: String,
+        /// See the comments on `crate::types::Token` on what this hook is.
         before_transfer_hook: Option<String>,
     },
 
     /// Update a token's admin account.
-    /// Only callable by the current admin.
+    /// Only callable by the token's current admin.
     SetAdmin {
+        denom: String,
         /// Set to `None` to remove the admin account, which permanently disables minting and
         /// burning of this token.
         admin: Option<String>,
     },
 
     /// Update a token's before transfer hook contract address.
-    /// Only callable by the current admin.
+    /// Only callable by the token's admin.
     SetBeforeTransferHook {
+        denom: String,
         /// Set to `None` to remove the hook.
         before_transfer_hook: Option<String>,
     },
 
-    /// Mint new tokens to the designated account
+    /// Mint new tokens to the designated account.
+    /// Only callable by the token's admin.
     Mint {
         to: String,
-        subdenom: String,
-        amount: Uint128,
+        amount: Coin,
     },
 
-    /// Burn tokens from from designated account's balance
+    /// Burn tokens from from designated account's balance.
+    /// Only callable by the token's admin.
     Burn {
         from: String,
-        subdenom: String,
-        /// Set to `None` to burn the account's entire balance
-        amount: Option<Uint128>,
+        amount: Coin,
+    },
+
+    /// Forcibly transfer tokens between two accounts.
+    /// Only callable by the token's admin.
+    ForceTransfer {
+        from: String,
+        to: String,
+        amount: Coin,
     },
 }
 
