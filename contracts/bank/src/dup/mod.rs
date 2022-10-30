@@ -1,4 +1,4 @@
-use std::{collections::BTreeSet, fmt::Display};
+use std::collections::BTreeSet;
 
 use thiserror::Error;
 
@@ -10,7 +10,7 @@ pub struct DupChecker<T> {
 
 impl<T> DupChecker<T>
 where
-    T: Ord + Display,
+    T: Ord + ToString,
 {
     /// Create a new instance of the duplicate checker
     pub fn new(ty: impl Into<String>) -> Self {

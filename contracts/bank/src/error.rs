@@ -1,8 +1,8 @@
 use cosmwasm_std::{OverflowError, StdError};
 use thiserror::Error;
 
-use crate::helpers::{
-    denom::{namespace_to_str, DenomError, Namespace},
+use crate::{
+    denom::{DenomError, Namespace},
     dup::DuplicateError,
 };
 
@@ -40,7 +40,7 @@ impl ContractError {
 
     pub fn not_minter(namespace: &Namespace) -> Self {
         Self::NotMinter {
-            namespace: namespace_to_str(namespace).into(),
+            namespace: namespace.to_string(),
         }
     }
 }

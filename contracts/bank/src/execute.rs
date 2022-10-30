@@ -4,7 +4,7 @@ use cosmwasm_std::{Addr, Coin, DepsMut, MessageInfo, Response, Uint128};
 
 use crate::{
     error::ContractError,
-    helpers::{
+    denom::{
         denom::{namespace_to_attr, validate_denom, validate_namespace, Denom, Namespace},
         dup::DupChecker,
     },

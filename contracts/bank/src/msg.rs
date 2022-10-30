@@ -1,11 +1,9 @@
-use std::collections::BTreeSet;
-
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Coin;
+use cosmwasm_std::{Coin, Uint128};
 
 use cw_sdk::AddressLike;
 
-use crate::helpers::denom::Namespace;
+use crate::denom::Namespace;
 
 #[cw_serde]
 pub struct Config<T: AddressLike> {
@@ -20,17 +18,16 @@ pub struct InstantiateMsg {
     /// Typically this is set to a governance contract.
     pub owner: String,
 
-    /// Minter addresses and the namespaces they are allowed to mint.
-    /// Check the comments of `Minter` struct for an explanation on denom namespacing.
+    /// Minter addresses and a namespaces they are allowed to mint.
     ///
-    /// NOTE: There must be no duplication in addresses, and for each address,
-    /// there must be no duplication in namespaces.
+    /// NOTE: There must be no duplication in namespaces.
     pub minters: Vec<Minter>,
 
     /// Initial balances of each account.
     ///
-    /// NOTE: There must be no duplication in addresses, and for each address,
-    /// there must be no duplication of coin denoms.
+    /// NOTE:
+    /// - There must be no duplication in addresses.
+    /// - For each address, there must be no duplication of coin denoms.
     pub balances: Vec<Balance>,
 }
 
@@ -43,32 +40,60 @@ pub struct Balance {
 #[cw_serde]
 pub struct Minter {
     pub address: String,
-    /// Denom namespaces under which this account is authorized to mint coins.
-    pub namespaces: BTreeSet<Namespace>,
+    pub namespace: Namespace,
+}
+
+// TODO: this should be in `cw-sdk` crate
+#[cw_serde]
+pub enum SudoMsg {
+    /// Forcibly transfer coins between designated accounts.
+    /// Callable by the state machine when handling gas fee payments and funds attached to messages.
+    Transfer {
+        from: String,
+        to: String,
+        coins: Vec<Coin>,
+    },
 }
 
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Set the minting authorization for an account.
-    /// Only callable by the owner.
-    SetMinter {
-        address: String,
-        /// Namespaces under which that this minter is allowed to mint coins.
-        /// There must be no duplications.
-        namespaces: BTreeSet<Namespace>,
-    },
-
-    /// Mint a coin to the designated recipient.
-    /// The minter must have been authorized to mint coins under the denom namespace.
-    Mint {
-        to: String,
-        amount: Coin,
+    /// Only callable by the contract owner or the namespace's current admin.
+    UpdateNamespace {
+        namespace: Namespace,
+        admin: Option<String>,
+        hookable: bool,
     },
 
     /// Send one or more coins to the given recipient.
     Send {
         to: String,
-        amount: Vec<Coin>,
+        coins: Vec<Coin>,
+    },
+
+    /// Mint a coin to the designated account's balance.
+    /// Only callable by the namespace's admin.
+    Mint {
+        to: String,
+        denom: String,
+        amount: Uint128,
+    },
+
+    /// Burn a coin from the designated account's balance.
+    /// Only callable by the namespace's admin.
+    Burn {
+        from: String,
+        denom: String,
+        amount: Uint128,
+    },
+
+    /// Forcibly transfer a coin between designated accounts.
+    /// Only callable by the namespace's admin.
+    ForceTransfer {
+        from: String,
+        to: String,
+        denom: String,
+        amount: Uint128,
     },
 }
 
@@ -79,16 +104,16 @@ pub enum QueryMsg {
     #[returns(Config<String>)]
     Config {},
 
-    /// Query a single minter by address
-    #[returns(Minter)]
-    Minter {
-        address: String,
+    /// Query the config of a single namespace
+    #[returns(NamespaceResponse)]
+    Namespace {
+        namespace: Namespace,
     },
 
-    /// Enumerate all minters
-    #[returns(Vec<Minter>)]
-    Minters {
-        start_after: Option<String>,
+    /// Enumerate all namespaces
+    #[returns(Vec<NamespaceResponse>)]
+    Namespaces {
+        start_after: Option<Namespace>,
         limit: Option<u32>,
     },
 
@@ -119,4 +144,11 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+}
+
+#[cw_serde]
+pub struct NamespaceResponse {
+    pub namespace: Namespace,
+    pub admin: Option<String>,
+    pub hookable: bool,
 }

@@ -2,8 +2,9 @@ use cosmwasm_std::{Coin, Deps, Order, StdResult, Uint128};
 use cw_storage_plus::Bound;
 
 use crate::{
-    msg::{Config, Minter},
-    state::{BALANCES, CONFIG, MINTER_NAMESPACES, SUPPLIES},
+    denom::Namespace,
+    msg::{Config, NamespaceResponse},
+    state::{BALANCES, CONFIG, NAMESPACE_CONFIGS, SUPPLIES},
 };
 
 const DEFAULT_LIMIT: u32 = 10;
@@ -16,32 +17,32 @@ pub fn config(deps: Deps) -> StdResult<Config<String>> {
     })
 }
 
-pub fn minter(deps: Deps, minter: String) -> StdResult<Minter> {
-    let minter_addr = deps.api.addr_validate(&minter)?;
-    let namespaces = MINTER_NAMESPACES.may_load(deps.storage, &minter_addr)?.unwrap_or_default();
-    Ok(Minter {
-        address: minter,
-        namespaces,
+pub fn namespace(deps: Deps, namespace: Namespace) -> StdResult<NamespaceResponse> {
+    let cfg = NAMESPACE_CONFIGS.load(deps.storage, &namespace)?;
+    Ok(NamespaceResponse {
+        namespace,
+        admin: cfg.admin.map(String::from),
+        hookable: cfg.hookable,
     })
 }
 
-pub fn minters(
+pub fn namespaces(
     deps: Deps,
-    start_after: Option<String>,
+    start_after: Option<Namespace>,
     limit: Option<u32>,
-) -> StdResult<Vec<Minter>> {
-    // we skip the address validation because not necessary
-    let start = start_after.map(|minter| Bound::ExclusiveRaw(minter.into_bytes()));
+) -> StdResult<Vec<NamespaceResponse>> {
+    let start = start_after.as_ref().map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
 
-    MINTER_NAMESPACES
+    NAMESPACE_CONFIGS
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|item| {
-            let (address, namespaces) = item?;
-            Ok(Minter {
-                address: address.into(),
-                namespaces,
+            let (namespace, cfg) = item?;
+            Ok(NamespaceResponse {
+                namespace,
+                admin: cfg.admin.map(String::from),
+                hookable: cfg.hookable,
             })
         })
         .collect()
