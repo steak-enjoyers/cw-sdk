@@ -1,15 +1,48 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Coin;
+use cosmwasm_std::{Addr, Coin, Uint128};
 
-use crate::types::Config;
+use cw_sdk::AddressLike;
+
+#[cw_serde]
+pub struct Config<T: AddressLike> {
+    /// The contract's owner
+    pub owner: T,
+
+    /// Address of the bank contract.
+    /// NOTE: The token factory contract must be appointed the admin of the "factory" namespace.
+    pub bank: T,
+
+    /// Address to which collected fees are to be sent to
+    pub fee_collector: T,
+
+    /// An optional fee for creating new denoms. Set to `None` to make it free.
+    pub token_creation_fee: Option<Coin>,
+}
+
+#[cw_serde]
+pub struct Token {
+    /// Admin is the account who can mint and burn tokens.
+    /// Set this to `None` will permanently disable any burning or minting of this token.
+    pub admin: Option<Addr>,
+
+    /// Any AfterTransfer messages sent by the bank contract will be forwarded to this address.
+    pub after_send_hook: Option<Addr>,
+}
+
+#[cw_serde]
+pub struct UpdateTokenMsg {
+    denom: String,
+    admin: Option<String>,
+    after_send_hook: Option<String>,
+}
 
 pub type InstantiateMsg = Config<String>;
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Set the fee for creating new denoms.
+    /// Update the fee for creating new denoms.
     /// Only callable by the owner.
-    SetFee {
+    UpdateFee {
         token_creation_fee: Option<Coin>,
     },
 
@@ -20,38 +53,27 @@ pub enum ExecuteMsg {
         /// Whereas admin can be removed later, it must be set during token creation.
         admin: String,
         /// See the comments on `crate::types::Token` on what this hook is.
-        before_transfer_hook: Option<String>,
+        after_send_hook: Option<String>,
     },
 
-    /// Update a token's admin account.
+    /// Update a token's configuration.
     /// Only callable by the token's current admin.
-    SetAdmin {
-        denom: String,
-        /// Set to `None` to remove the admin account, which permanently disables minting and
-        /// burning of this token.
-        admin: Option<String>,
-    },
-
-    /// Update a token's before transfer hook contract address.
-    /// Only callable by the token's admin.
-    SetBeforeTransferHook {
-        denom: String,
-        /// Set to `None` to remove the hook.
-        before_transfer_hook: Option<String>,
-    },
+    UpdateToken(UpdateTokenMsg),
 
     /// Mint new tokens to the designated account.
     /// Only callable by the token's admin.
     Mint {
         to: String,
-        amount: Coin,
+        denom: String,
+        amount: Uint128,
     },
 
     /// Burn tokens from from designated account's balance.
     /// Only callable by the token's admin.
     Burn {
         from: String,
-        amount: Coin,
+        denom: String,
+        amount: Uint128,
     },
 
     /// Forcibly transfer tokens between two accounts.
@@ -59,7 +81,8 @@ pub enum ExecuteMsg {
     ForceTransfer {
         from: String,
         to: String,
-        amount: Coin,
+        denom: String,
+        amount: Uint128,
     },
 }
 
@@ -84,9 +107,4 @@ pub enum QueryMsg {
     },
 }
 
-#[cw_serde]
-pub struct TokenResponse {
-    pub denom: String,
-    pub admin: Option<String>,
-    pub before_transfer_hook: Option<String>,
-}
+pub type TokenResponse = UpdateTokenMsg;
