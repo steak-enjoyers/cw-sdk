@@ -1,4 +1,5 @@
 use cosmwasm_schema::write_api;
+
 use cw_bank::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {

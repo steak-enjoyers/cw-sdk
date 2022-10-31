@@ -1,21 +1,34 @@
 {
   "contract_name": "cw-bank",
-  "contract_version": "0.1.0",
+  "contract_version": "0.0.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
-    "description": "The instantiate message is inspired by the x/bank module's genesis state: https://github.com/cosmos/cosmos-sdk/blob/v0.46.1/proto/cosmos/bank/v1beta1/genesis.proto",
     "type": "object",
     "required": [
-      "balances"
+      "balances",
+      "namespace_cfgs",
+      "owner"
     ],
     "properties": {
       "balances": {
+        "description": "Initial balances of each account.\n\nNOTE: - There must be no duplication in addresses. - For each address, there must be no duplication of coin denoms.",
         "type": "array",
         "items": {
           "$ref": "#/definitions/Balance"
         }
+      },
+      "namespace_cfgs": {
+        "description": "Minter addresses and a namespaces they are allowed to mint.\n\nNOTE: There must be no duplication in namespaces.",
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/UpdateNamespaceMsg"
+        }
+      },
+      "owner": {
+        "description": "The account who can call privileged methods of the contract. Typically this is set to a governance contract.",
+        "type": "string"
       }
     },
     "additionalProperties": false,
@@ -54,9 +67,40 @@
           }
         }
       },
+      "Namespace": {
+        "description": "Namespace is a prefix to denoms. If it is `None`, we say the denom is \"unnamespaced\", or is a \"top-level denom\". See the comments on `super::Denom` for a better explanation.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "Uint128": {
         "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
         "type": "string"
+      },
+      "UpdateNamespaceMsg": {
+        "type": "object",
+        "required": [
+          "namespace"
+        ],
+        "properties": {
+          "admin": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "after_send_hook": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "namespace": {
+            "$ref": "#/definitions/Namespace"
+          }
+        },
+        "additionalProperties": false
       }
     }
   },
@@ -65,20 +109,37 @@
     "title": "ExecuteMsg",
     "oneOf": [
       {
+        "description": "Set the minting authorization for an account. Only callable by the contract owner or the namespace's current admin.",
         "type": "object",
         "required": [
-          "mint"
+          "update_namespace"
         ],
         "properties": {
-          "mint": {
+          "update_namespace": {
+            "$ref": "#/definitions/UpdateNamespaceMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Send one or more coins to the given recipient.",
+        "type": "object",
+        "required": [
+          "send"
+        ],
+        "properties": {
+          "send": {
             "type": "object",
             "required": [
-              "amount",
+              "coins",
               "to"
             ],
             "properties": {
-              "amount": {
-                "$ref": "#/definitions/Coin"
+              "coins": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/Coin"
+                }
               },
               "to": {
                 "type": "string"
@@ -90,24 +151,86 @@
         "additionalProperties": false
       },
       {
+        "description": "Mint a coin to the designated account's balance. Only callable by the namespace's admin.",
         "type": "object",
         "required": [
-          "send"
+          "mint"
         ],
         "properties": {
-          "send": {
+          "mint": {
             "type": "object",
             "required": [
               "amount",
+              "denom",
+              "to"
+            ],
+            "properties": {
+              "amount": {
+                "$ref": "#/definitions/Uint128"
+              },
+              "denom": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Burn a coin from the designated account's balance. Only callable by the namespace's admin.",
+        "type": "object",
+        "required": [
+          "burn"
+        ],
+        "properties": {
+          "burn": {
+            "type": "object",
+            "required": [
+              "amount",
+              "denom",
+              "from"
+            ],
+            "properties": {
+              "amount": {
+                "$ref": "#/definitions/Uint128"
+              },
+              "denom": {
+                "type": "string"
+              },
+              "from": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Forcibly transfer a coin between designated accounts. Only callable by the namespace's admin.",
+        "type": "object",
+        "required": [
+          "force_transfer"
+        ],
+        "properties": {
+          "force_transfer": {
+            "type": "object",
+            "required": [
+              "amount",
+              "denom",
               "from",
               "to"
             ],
             "properties": {
               "amount": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/definitions/Coin"
-                }
+                "$ref": "#/definitions/Uint128"
+              },
+              "denom": {
+                "type": "string"
               },
               "from": {
                 "type": "string"
@@ -138,9 +261,40 @@
           }
         }
       },
+      "Namespace": {
+        "description": "Namespace is a prefix to denoms. If it is `None`, we say the denom is \"unnamespaced\", or is a \"top-level denom\". See the comments on `super::Denom` for a better explanation.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "Uint128": {
         "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
         "type": "string"
+      },
+      "UpdateNamespaceMsg": {
+        "type": "object",
+        "required": [
+          "namespace"
+        ],
+        "properties": {
+          "admin": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "after_send_hook": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "namespace": {
+            "$ref": "#/definitions/Namespace"
+          }
+        },
+        "additionalProperties": false
       }
     }
   },
@@ -148,6 +302,76 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "QueryMsg",
     "oneOf": [
+      {
+        "description": "Contract configurations",
+        "type": "object",
+        "required": [
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Query the config of a single namespace",
+        "type": "object",
+        "required": [
+          "namespace"
+        ],
+        "properties": {
+          "namespace": {
+            "type": "object",
+            "required": [
+              "namespace"
+            ],
+            "properties": {
+              "namespace": {
+                "$ref": "#/definitions/Namespace"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Enumerate all namespaces",
+        "type": "object",
+        "required": [
+          "namespaces"
+        ],
+        "properties": {
+          "namespaces": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Namespace"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
       {
         "description": "The total supply of a single coin",
         "type": "object",
@@ -262,7 +486,16 @@
         },
         "additionalProperties": false
       }
-    ]
+    ],
+    "definitions": {
+      "Namespace": {
+        "description": "Namespace is a prefix to denoms. If it is `None`, we say the denom is \"unnamespaced\", or is a \"top-level denom\". See the comments on `super::Denom` for a better explanation.",
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    }
   },
   "migrate": null,
   "sudo": null,
@@ -316,6 +549,96 @@
         "Uint128": {
           "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
           "type": "string"
+        }
+      }
+    },
+    "config": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Config_for_String",
+      "type": "object",
+      "required": [
+        "owner"
+      ],
+      "properties": {
+        "owner": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "namespace": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UpdateNamespaceMsg",
+      "type": "object",
+      "required": [
+        "namespace"
+      ],
+      "properties": {
+        "admin": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "after_send_hook": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "namespace": {
+          "$ref": "#/definitions/Namespace"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Namespace": {
+          "description": "Namespace is a prefix to denoms. If it is `None`, we say the denom is \"unnamespaced\", or is a \"top-level denom\". See the comments on `super::Denom` for a better explanation.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "namespaces": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_UpdateNamespaceMsg",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/UpdateNamespaceMsg"
+      },
+      "definitions": {
+        "Namespace": {
+          "description": "Namespace is a prefix to denoms. If it is `None`, we say the denom is \"unnamespaced\", or is a \"top-level denom\". See the comments on `super::Denom` for a better explanation.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "UpdateNamespaceMsg": {
+          "type": "object",
+          "required": [
+            "namespace"
+          ],
+          "properties": {
+            "admin": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "after_send_hook": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "namespace": {
+              "$ref": "#/definitions/Namespace"
+            }
+          },
+          "additionalProperties": false
         }
       }
     },
