@@ -94,7 +94,7 @@ pub fn update_namespace(
 
     // Only need to validate the namespace if the config does not exist, i.e. the namespace has not
     // been previously validated
-    NAMESPACE_CONFIGS.update(deps.storage,&namespace, |opt| -> Result<_, ContractError> {
+    NAMESPACE_CONFIGS.update(deps.storage, &namespace, |opt| -> Result<_, ContractError> {
         if opt.is_none() {
             namespace.validate()?;
         }
@@ -126,19 +126,13 @@ pub fn mint(
 
     // NOTE: We only need to validate the denom if this is the first time this denom is minted
     BALANCES.update(deps.storage, (&to_addr, &denom), |opt| {
-        opt
-            .unwrap_or_else(Uint128::zero)
-            .checked_add(amount)
-            .map_err(ContractError::from)
+        opt.unwrap_or_else(Uint128::zero).checked_add(amount).map_err(ContractError::from)
     })?;
     SUPPLIES.update(deps.storage, &denom, |opt| {
         if opt.is_none() {
             validate_denom(&denom)?;
         }
-        opt
-            .unwrap_or_else(Uint128::zero)
-            .checked_add(amount)
-            .map_err(ContractError::from)
+        opt.unwrap_or_else(Uint128::zero).checked_add(amount).map_err(ContractError::from)
     })?;
 
     Ok(Response::new()
@@ -162,16 +156,10 @@ pub fn burn(
     let from_addr = deps.api.addr_validate(&from)?;
 
     BALANCES.update(deps.storage, (&from_addr, &denom), |opt| {
-        opt
-            .unwrap_or_else(Uint128::zero)
-            .checked_sub(amount)
-            .map_err(ContractError::from)
+        opt.unwrap_or_else(Uint128::zero).checked_sub(amount).map_err(ContractError::from)
     })?;
     SUPPLIES.update(deps.storage, &denom, |opt| {
-        opt
-            .unwrap_or_else(Uint128::zero)
-            .checked_sub(amount)
-            .map_err(ContractError::from)
+        opt.unwrap_or_else(Uint128::zero).checked_sub(amount).map_err(ContractError::from)
     })?;
 
     Ok(Response::new()
@@ -250,16 +238,10 @@ fn transfer(
 
     for coin in coins {
         BALANCES.update(store, (from_addr, &coin.denom), |opt| {
-            opt
-                .unwrap_or_else(Uint128::zero)
-                .checked_sub(coin.amount)
-                .map_err(ContractError::from)
+            opt.unwrap_or_else(Uint128::zero).checked_sub(coin.amount).map_err(ContractError::from)
         })?;
         BALANCES.update(store, (to_addr, &coin.denom), |opt| {
-            opt
-                .unwrap_or_else(Uint128::zero)
-                .checked_add(coin.amount)
-                .map_err(ContractError::from)
+            opt.unwrap_or_else(Uint128::zero).checked_add(coin.amount).map_err(ContractError::from)
         })?;
 
         let namespace = Namespace::extract_from_denom(&coin.denom)?;
@@ -297,11 +279,7 @@ fn assert_namespace_admin(
 }
 
 fn stringify_coins(coins: &[Coin]) -> String {
-    coins
-        .iter()
-        .map(|coin| coin.to_string())
-        .collect::<Vec<_>>()
-        .join(",")
+    coins.iter().map(|coin| coin.to_string()).collect::<Vec<_>>().join(",")
 }
 
 fn stringify_option(opt: Option<impl ToString>) -> String {
