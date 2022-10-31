@@ -12,7 +12,7 @@ pub struct Config<T: AddressLike> {
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    /// The account who can call privileged methods of the contract.
+    /// The contract's owner.
     /// Typically this is set to a governance contract.
     pub owner: String,
 
@@ -23,7 +23,7 @@ pub struct InstantiateMsg {
     /// - For each address, there must be no duplication of coin denoms.
     pub balances: Vec<Balance>,
 
-    /// Minter addresses and a namespaces they are allowed to mint.
+    /// Configurations of namespaces.
     ///
     /// NOTE: There must be no duplication in namespaces.
     pub namespace_cfgs: Vec<UpdateNamespaceMsg>,
@@ -45,7 +45,7 @@ pub struct UpdateNamespaceMsg {
 // TODO: this should be in `cw-sdk` crate
 #[cw_serde]
 pub enum SudoMsg {
-    /// Forcibly transfer coins between designated accounts.
+    /// Forcibly transfer coins between two accounts.
     /// Callable by the state machine when handling gas fee payments and funds attached to messages.
     Transfer {
         from: String,
@@ -56,11 +56,11 @@ pub enum SudoMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Set the minting authorization for an account.
+    /// Update the configuration of a namespace.
     /// Only callable by the contract owner or the namespace's current admin.
     UpdateNamespace(UpdateNamespaceMsg),
 
-    /// Send one or more coins to the given recipient.
+    /// Send one or more coins to the specified recipient.
     Send {
         to: String,
         coins: Vec<Coin>,
@@ -95,7 +95,7 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    /// Contract configurations
+    /// Contract configuration
     #[returns(Config<String>)]
     Config {},
 
@@ -105,7 +105,7 @@ pub enum QueryMsg {
         namespace: Namespace,
     },
 
-    /// Enumerate all namespaces
+    /// Enumerate configs of all namespaces
     #[returns(Vec<NamespaceResponse>)]
     Namespaces {
         start_after: Option<Namespace>,
@@ -118,7 +118,7 @@ pub enum QueryMsg {
         denom: String,
     },
 
-    /// The total supply of all coins
+    /// Enumerate total supplies of all coins
     #[returns(Vec<Coin>)]
     Supplies {
         start_after: Option<String>,
