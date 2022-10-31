@@ -22,7 +22,7 @@ pub fn namespace(deps: Deps, namespace: Namespace) -> StdResult<NamespaceRespons
     Ok(NamespaceResponse {
         namespace,
         admin: cfg.admin.map(String::from),
-        hookable: cfg.hookable,
+        after_send_hook: cfg.after_send_hook.map(String::from),
     })
 }
 
@@ -42,7 +42,7 @@ pub fn namespaces(
             Ok(NamespaceResponse {
                 namespace,
                 admin: cfg.admin.map(String::from),
-                hookable: cfg.hookable,
+                after_send_hook: cfg.after_send_hook.map(String::from),
             })
         })
         .collect()

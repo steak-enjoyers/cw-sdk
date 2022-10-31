@@ -10,18 +10,11 @@ pub struct Config<T: AddressLike> {
     pub owner: T,
 }
 
-/// The instantiate message is inspired by the x/bank module's genesis state:
-/// https://github.com/cosmos/cosmos-sdk/blob/v0.46.1/proto/cosmos/bank/v1beta1/genesis.proto
 #[cw_serde]
 pub struct InstantiateMsg {
     /// The account who can call privileged methods of the contract.
     /// Typically this is set to a governance contract.
     pub owner: String,
-
-    /// Minter addresses and a namespaces they are allowed to mint.
-    ///
-    /// NOTE: There must be no duplication in namespaces.
-    pub minters: Vec<Minter>,
 
     /// Initial balances of each account.
     ///
@@ -29,6 +22,11 @@ pub struct InstantiateMsg {
     /// - There must be no duplication in addresses.
     /// - For each address, there must be no duplication of coin denoms.
     pub balances: Vec<Balance>,
+
+    /// Minter addresses and a namespaces they are allowed to mint.
+    ///
+    /// NOTE: There must be no duplication in namespaces.
+    pub namespace_cfgs: Vec<UpdateNamespaceMsg>,
 }
 
 #[cw_serde]
@@ -38,9 +36,10 @@ pub struct Balance {
 }
 
 #[cw_serde]
-pub struct Minter {
-    pub address: String,
+pub struct UpdateNamespaceMsg {
     pub namespace: Namespace,
+    pub admin: Option<String>,
+    pub after_send_hook: Option<String>,
 }
 
 // TODO: this should be in `cw-sdk` crate
@@ -59,11 +58,7 @@ pub enum SudoMsg {
 pub enum ExecuteMsg {
     /// Set the minting authorization for an account.
     /// Only callable by the contract owner or the namespace's current admin.
-    UpdateNamespace {
-        namespace: Namespace,
-        admin: Option<String>,
-        hookable: bool,
-    },
+    UpdateNamespace(UpdateNamespaceMsg),
 
     /// Send one or more coins to the given recipient.
     Send {
@@ -146,9 +141,4 @@ pub enum QueryMsg {
     },
 }
 
-#[cw_serde]
-pub struct NamespaceResponse {
-    pub namespace: Namespace,
-    pub admin: Option<String>,
-    pub hookable: bool,
-}
+pub type NamespaceResponse = UpdateNamespaceMsg;

@@ -1,7 +1,6 @@
 #[cfg(not(feature = "library"))]
 pub mod contract;
 pub mod denom;
-pub mod dup;
 pub mod error;
 pub mod execute;
 pub mod msg;

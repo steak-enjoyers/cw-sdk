@@ -10,7 +10,7 @@ use super::{is_alphanumeric, starts_with_number, DenomError};
 ///
 /// This is 2 characters shorter than `denom::MAX_LEN`, because the full denom is at least two
 /// characters longer than the namespace.
-pub const MAX_LEN: usize = 126;
+pub const MAX_NAMESPACE_LEN: usize = 126;
 
 /// Namespace is a prefix to denoms.
 /// If it is `None`, we say the denom is "unnamespaced", or is a "top-level denom".
@@ -19,10 +19,22 @@ pub const MAX_LEN: usize = 126;
 pub struct Namespace(Option<String>);
 
 impl Namespace {
+    /// Extract the namespace from a denom.
+    pub fn extract_from_denom(denom: &str) -> Result<Self, DenomError> {
+        let parts: Vec<&str> = denom.split('/').collect();
+        match parts.len() {
+            1 => Ok(Self(None)),
+            _ => {
+                let namespace = Self(Some(parts[0].to_owned()));
+                namespace.validate().map(|_| namespace)
+            },
+        }
+    }
+
     /// Validate a namespace.
     /// Typically called during instantiation and when handling the `set_namespace` execute msg.
     pub fn validate(&self) -> Result<(), DenomError> {
-        let ns = match self.0 {
+        let ns = match &self.0 {
             Some(ns) => ns,
             None => return Ok(()),
         };
@@ -31,15 +43,15 @@ impl Namespace {
             return Err(DenomError::empty_parts(ns));
         }
 
-        if ns.len() > MAX_LEN {
+        if ns.len() > MAX_NAMESPACE_LEN {
             return Err(DenomError::illegal_length(ns));
         }
 
-        if starts_with_number(&ns) {
+        if starts_with_number(ns) {
             return Err(DenomError::leading_number(ns));
         }
 
-        if !is_alphanumeric(&ns) {
+        if !is_alphanumeric(ns) {
             return Err(DenomError::not_alphanumeric(ns));
         }
 
@@ -47,9 +59,15 @@ impl Namespace {
     }
 }
 
+impl From<&Namespace> for String {
+    fn from(namespace: &Namespace) -> Self {
+        namespace.to_string()
+    }
+}
+
 impl fmt::Display for Namespace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0 {
+        match &self.0 {
             Some(ns) => write!(f, "\"{ns}\""),
             None => write!(f, "null"),
         }
@@ -72,7 +90,7 @@ impl<'a> PrimaryKey<'a> for &Namespace {
     type SuperSuffix = ();
 
     fn key(&self) -> Vec<Key> {
-        let bytes = match self.0 {
+        let bytes = match &self.0 {
             Some(ns) => ns.as_bytes(),
             None => &[],
         };
@@ -114,26 +132,19 @@ pub struct NamespaceConfig {
     /// The admin can be set to `None`, in which case no one is able to mint/burn/force transfer.
     pub admin: Option<Addr>,
 
-    /// If set to `true`, bank contract will invoke the admin contract with `NamespaceHook` messages
-    /// (defined in this file below) following coin minting/burning/trasnfer.
-    pub hookable: bool,
+    /// If set to `true`, bank contract will invoke the admin contract with the
+    /// `NamespaceAdminExecuteMsg::AfterTransfer` message (defined in this file below) following a
+    /// coin transfer.
+    pub after_send_hook: Option<Addr>,
 }
 
 /// This is the execute message that the admin contract is expected to implement if `hookable` is
 /// set to `true`.
 #[cw_serde]
-pub enum NamespaceHook {
-    AfterMint {
-        to: String,
-        amount: Coin,
-    },
-    AfterBurn {
-        from: String,
-        amount: Coin,
-    },
+pub enum NamespaceAdminExecuteMsg {
     AfterTransfer {
         from: String,
         to: String,
-        amount: Coin,
+        coin: Coin,
     },
 }

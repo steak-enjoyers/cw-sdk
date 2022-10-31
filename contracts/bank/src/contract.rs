@@ -3,7 +3,7 @@ use cosmwasm_std::{
 };
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg, UpdateNamespaceMsg};
 use crate::{execute, query};
 
 pub const CONTRACT_NAME: &str = "crates.io:cw-bank";
@@ -17,11 +17,11 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    execute::init(deps, msg.owner, msg.minters, msg.balances)
+    execute::init(deps, msg.owner, msg.balances, msg.namespace_cfgs)
 }
 
 #[entry_point]
-pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
+pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
     match msg {
         SudoMsg::Transfer {
             from,
@@ -39,11 +39,11 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::UpdateNamespace {
+        ExecuteMsg::UpdateNamespace(UpdateNamespaceMsg {
             namespace,
             admin,
-            hookable,
-        } => execute::set_minter(deps, info, namespace, admin, hookable),
+            after_send_hook,
+        }) => execute::update_namespace(deps, info, namespace, admin, after_send_hook),
         ExecuteMsg::Send {
             to,
             coins,
@@ -57,13 +57,13 @@ pub fn execute(
             from,
             denom,
             amount,
-        } => execute::send(deps, info, from, denom, amount),
+        } => execute::burn(deps, info, from, denom, amount),
         ExecuteMsg::ForceTransfer {
             from,
             to,
             denom,
             amount,
-        } => execute::force_transfer(deps, info, from, to, denom, amount),
+        } => execute::force_transfer(deps, from, to, denom, amount),
     }
 }
 
