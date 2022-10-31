@@ -92,14 +92,17 @@ pub fn update_namespace(
 
     namespace.validate()?;
 
-    NAMESPACE_CONFIGS.save(
-        deps.storage,
-        &namespace,
-        &NamespaceConfig {
+    // Only need to validate the namespace if the config does not exist, i.e. the namespace has not
+    // been previously validated
+    NAMESPACE_CONFIGS.update(deps.storage,&namespace, |opt| -> Result<_, ContractError> {
+        if opt.is_none() {
+            namespace.validate()?;
+        }
+        Ok(NamespaceConfig {
             admin: validate_optional_addr(deps.api, admin.as_ref())?,
             after_send_hook: validate_optional_addr(deps.api, after_send_hook.as_ref())?,
-        },
-    )?;
+        })
+    })?;
 
     Ok(Response::new()
         .add_attribute("action", "bank/update_namespace")
