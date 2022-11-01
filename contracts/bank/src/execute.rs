@@ -9,7 +9,10 @@ use crate::{
     denom::{Denom, Namespace, NamespaceAdminExecuteMsg, NamespaceConfig},
     error::ContractError,
     msg::{Balance, Config, UpdateNamespaceMsg},
-    state::{BALANCES, CONFIG, NAMESPACE_CONFIGS, SUPPLIES},
+    state::{
+        decrease_balance, decrease_supply, increase_balance, increase_supply, BALANCES, CONFIG,
+        NAMESPACE_CONFIGS,
+    },
 };
 
 pub fn init(
@@ -27,7 +30,8 @@ pub fn init(
     )?;
 
     // 2. Initialize balances
-    // NOTE: Must ensure that for each address, there is no duplication in coin denoms.
+    // NOTE: Must ensure that for each address, there is no duplication in coin denoms, and coin
+    // amount is non-zero.
     for Balance {
         address,
         coins,
@@ -36,14 +40,14 @@ pub fn init(
         let addr = deps.api.addr_validate(&address)?;
 
         for coin in coins {
+            if coin.amount.is_zero() {
+                return Err(ContractError::zero_init_balance(address, coin.denom));
+            }
+
             let denom = Denom::from_str(&coin.denom)?;
 
-            SUPPLIES.update(deps.storage, &denom, |supply| {
-                supply
-                    .unwrap_or_else(Uint128::zero)
-                    .checked_add(coin.amount)
-                    .map_err(ContractError::from)
-            })?;
+            increase_supply(deps.storage, &denom, coin.amount)?;
+
             BALANCES.update(deps.storage, (&addr, &denom), |balance| {
                 if balance.is_none() {
                     Ok(coin.amount)
@@ -124,13 +128,8 @@ pub fn mint(
 
     assert_namespace_admin(deps.storage, &ns, &info.sender)?;
 
-    // NOTE: We only need to validate the denom if this is the first time this denom is minted
-    BALANCES.update(deps.storage, (&to_addr, &d), |opt| {
-        opt.unwrap_or_else(Uint128::zero).checked_add(amount).map_err(ContractError::from)
-    })?;
-    SUPPLIES.update(deps.storage, &d, |opt| {
-        opt.unwrap_or_else(Uint128::zero).checked_add(amount).map_err(ContractError::from)
-    })?;
+    increase_supply(deps.storage, &d, amount)?;
+    increase_balance(deps.storage, &to_addr, &d, amount)?;
 
     Ok(Response::new()
         .add_attribute("action", "bank/mint")
@@ -152,12 +151,8 @@ pub fn burn(
 
     assert_namespace_admin(deps.storage, &ns, &info.sender)?;
 
-    BALANCES.update(deps.storage, (&from_addr, &d), |opt| {
-        opt.unwrap_or_else(Uint128::zero).checked_sub(amount).map_err(ContractError::from)
-    })?;
-    SUPPLIES.update(deps.storage, &d, |opt| {
-        opt.unwrap_or_else(Uint128::zero).checked_sub(amount).map_err(ContractError::from)
-    })?;
+    decrease_supply(deps.storage, &d, amount)?;
+    decrease_balance(deps.storage, &from_addr, &d, amount)?;
 
     Ok(Response::new()
         .add_attribute("action", "bank/burn")
@@ -237,12 +232,8 @@ fn transfer(
         let d = Denom::from_str(&coin.denom)?;
         let ns = (&d).into();
 
-        BALANCES.update(store, (from_addr, &d), |opt| {
-            opt.unwrap_or_else(Uint128::zero).checked_sub(coin.amount).map_err(ContractError::from)
-        })?;
-        BALANCES.update(store, (to_addr, &d), |opt| {
-            opt.unwrap_or_else(Uint128::zero).checked_add(coin.amount).map_err(ContractError::from)
-        })?;
+        decrease_balance(store, from_addr, &d, coin.amount)?;
+        increase_balance(store, to_addr, &d, coin.amount)?;
 
         if let Some(namespace_cfg) = NAMESPACE_CONFIGS.may_load(store, &ns)? {
             if let Some(after_send_hook) = namespace_cfg.after_send_hook {

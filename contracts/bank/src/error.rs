@@ -27,6 +27,12 @@ pub enum ContractError {
         ty: String,
         value: String,
     },
+
+    #[error("account {address} has zero initial balance for denom {denom}")]
+    ZeroInitBalance {
+        address: String,
+        denom: String,
+    },
 }
 
 impl ContractError {
@@ -47,6 +53,13 @@ impl ContractError {
         Self::Duplication {
             ty: "namespace".into(),
             value: namespace.into(),
+        }
+    }
+
+    pub fn zero_init_balance(address: impl Into<String>, denom: impl Into<String>) -> Self {
+        Self::ZeroInitBalance {
+            address: address.into(),
+            denom: denom.into(),
         }
     }
 }
