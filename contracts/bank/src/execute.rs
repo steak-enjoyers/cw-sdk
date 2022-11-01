@@ -167,14 +167,12 @@ pub fn send(
     to: String,
     coins: Vec<Coin>,
 ) -> Result<Response, ContractError> {
-    let to_addr = deps.api.addr_validate(&to)?;
-    let msgs = transfer(deps.storage, &info.sender, &to_addr, &coins)?;
-    Ok(Response::new()
-        .add_messages(msgs)
-        .add_attribute("action", "bank/send")
-        .add_attribute("from", info.sender)
-        .add_attribute("to", to)
-        .add_attribute("coins", stringify_coins(&coins)))
+    transfer(
+        deps.storage,
+        &info.sender,
+        &deps.api.addr_validate(&to)?,
+        &coins,
+    )
 }
 
 pub fn sudo_transfer(
@@ -183,15 +181,12 @@ pub fn sudo_transfer(
     to: String,
     coins: Vec<Coin>,
 ) -> Result<Response, ContractError> {
-    let from_addr = deps.api.addr_validate(&from)?;
-    let to_addr = deps.api.addr_validate(&to)?;
-    let msgs = transfer(deps.storage, &from_addr, &to_addr, &coins)?;
-    Ok(Response::new()
-        .add_messages(msgs)
-        .add_attribute("action", "bank/sudo_transfer")
-        .add_attribute("from", from)
-        .add_attribute("to", to)
-        .add_attribute("coins", stringify_coins(&coins)))
+    transfer(
+        deps.storage,
+        &deps.api.addr_validate(&from)?,
+        &deps.api.addr_validate(&to)?,
+        &coins,
+    )
 }
 
 pub fn force_transfer(
@@ -201,19 +196,15 @@ pub fn force_transfer(
     denom: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let coins = vec![Coin {
-        denom,
-        amount,
-    }];
-    let from_addr = deps.api.addr_validate(&from)?;
-    let to_addr = deps.api.addr_validate(&to)?;
-    let msgs = transfer(deps.storage, &from_addr, &to_addr, &coins)?;
-    Ok(Response::new()
-        .add_messages(msgs)
-        .add_attribute("action", "bank/force_transfer")
-        .add_attribute("from", from)
-        .add_attribute("to", to)
-        .add_attribute("coin", stringify_coins(&coins)))
+    transfer(
+        deps.storage,
+        &deps.api.addr_validate(&from)?,
+        &deps.api.addr_validate(&to)?,
+        &[Coin {
+            denom,
+            amount,
+        }],
+    )
 }
 
 /// Internal method: perform transfers of multiple coins.
@@ -225,7 +216,7 @@ fn transfer(
     from_addr: &Addr,
     to_addr: &Addr,
     coins: &[Coin],
-) -> Result<Vec<WasmMsg>, ContractError> {
+) -> Result<Response, ContractError> {
     let mut msgs = vec![];
 
     for coin in coins {
@@ -250,7 +241,12 @@ fn transfer(
         }
     }
 
-    Ok(msgs)
+    Ok(Response::new()
+        .add_messages(msgs)
+        .add_attribute("action", "bank/transfer")
+        .add_attribute("from", from_addr)
+        .add_attribute("to", to_addr)
+        .add_attribute("coins", stringify_coins(coins)))
 }
 
 fn assert_namespace_admin(
