@@ -17,8 +17,6 @@ pub const MAX_NAMESPACE_LEN: usize = 126;
 #[cw_serde]
 pub struct Namespace(String);
 
-
-
 impl FromStr for Namespace {
     type Err = DenomError;
 
