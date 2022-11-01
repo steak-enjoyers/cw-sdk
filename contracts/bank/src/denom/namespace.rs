@@ -1,10 +1,10 @@
-use std::fmt;
+use std::{fmt, str::FromStr};
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Attribute, Coin, StdResult};
+use cosmwasm_std::{Addr, Attribute, Coin, StdError, StdResult};
 use cw_storage_plus::{Key, KeyDeserialize, PrimaryKey};
 
-use super::{is_alphanumeric, starts_with_number, DenomError};
+use super::{is_alphanumeric, starts_with_number, Denom, DenomError};
 
 /// The maximum allowed length for namespaces.
 ///
@@ -12,65 +12,61 @@ use super::{is_alphanumeric, starts_with_number, DenomError};
 /// characters longer than the namespace.
 pub const MAX_NAMESPACE_LEN: usize = 126;
 
-/// Namespace is a prefix to denoms.
-/// If it is `None`, we say the denom is "unnamespaced", or is a "top-level denom".
-/// See the comments on `super::Denom` for a better explanation.
+/// Namespace is wrapper of `Option<String>`, representing a validate denom namespace,
+/// similar to how `cosmwasm_std::Addr` is a wrapper of `String` and represents a validated address.
 #[cw_serde]
-pub struct Namespace(Option<String>);
+pub struct Namespace(String);
 
-impl Namespace {
-    /// Extract the namespace from a denom.
-    pub fn extract_from_denom(denom: &str) -> Result<Self, DenomError> {
-        let parts: Vec<&str> = denom.split('/').collect();
-        match parts.len() {
-            1 => Ok(Self(None)),
-            _ => {
-                let namespace = Self(Some(parts[0].to_owned()));
-                namespace.validate().map(|_| namespace)
-            },
-        }
-    }
 
-    /// Validate a namespace.
-    /// Typically called during instantiation and when handling the `set_namespace` execute msg.
-    pub fn validate(&self) -> Result<(), DenomError> {
-        let ns = match &self.0 {
-            Some(ns) => ns,
-            None => return Ok(()),
-        };
 
-        if ns.is_empty() {
-            return Err(DenomError::empty_parts(ns));
+impl FromStr for Namespace {
+    type Err = DenomError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() > MAX_NAMESPACE_LEN {
+            return Err(DenomError::illegal_length(s));
         }
 
-        if ns.len() > MAX_NAMESPACE_LEN {
-            return Err(DenomError::illegal_length(ns));
+        if starts_with_number(s) {
+            return Err(DenomError::leading_number(s));
         }
 
-        if starts_with_number(ns) {
-            return Err(DenomError::leading_number(ns));
+        if !is_alphanumeric(s) {
+            return Err(DenomError::not_alphanumeric(s));
         }
 
-        if !is_alphanumeric(ns) {
-            return Err(DenomError::not_alphanumeric(ns));
-        }
-
-        Ok(())
+        Ok(Self(s.to_owned()))
     }
 }
 
-impl From<&Namespace> for String {
-    fn from(namespace: &Namespace) -> Self {
-        namespace.to_string()
+impl From<&Denom> for Namespace {
+    // If the denom is validated, we can safely assume the namespace is also valid.
+    // Therefore we don't need to validate it here.
+    fn from(denom: &Denom) -> Self {
+        let denom = denom.to_string();
+        let parts: Vec<_> = denom.split('/').collect();
+        match parts.len() {
+            1 => Self("".to_owned()),
+            _ => Self(parts[0].to_owned()),
+        }
     }
 }
 
 impl fmt::Display for Namespace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.0 {
-            Some(ns) => write!(f, "\"{ns}\""),
-            None => write!(f, "null"),
-        }
+        write!(f, "\"{}\"", self.0)
+    }
+}
+
+impl From<Namespace> for String {
+    fn from(ns: Namespace) -> Self {
+        ns.0
+    }
+}
+
+impl Namespace {
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.0.into()
     }
 }
 
@@ -90,11 +86,7 @@ impl<'a> PrimaryKey<'a> for &Namespace {
     type SuperSuffix = ();
 
     fn key(&self) -> Vec<Key> {
-        let bytes = match &self.0 {
-            Some(ns) => ns.as_bytes(),
-            None => &[],
-        };
-        vec![Key::Ref(bytes)]
+        vec![Key::Ref(self.0.as_bytes())]
     }
 }
 
@@ -102,12 +94,14 @@ impl KeyDeserialize for &Namespace {
     type Output = Namespace;
 
     fn from_vec(value: Vec<u8>) -> StdResult<Self::Output> {
-        if value.is_empty() {
-            Ok(Namespace(None))
-        } else {
-            let ns = String::from_utf8(value)?;
-            Ok(Namespace(Some(ns)))
-        }
+        String::from_utf8(value).map(Namespace).map_err(StdError::from)
+    }
+}
+
+#[cfg(test)]
+impl Namespace {
+    pub fn unchecked(s: impl Into<String>) -> Self {
+        Self(s.into())
     }
 }
 
@@ -147,4 +141,46 @@ pub enum NamespaceAdminExecuteMsg {
         to: String,
         coin: Coin,
     },
+}
+
+#[test]
+fn from_str() {
+    // invalid namespace: too long
+    let s = "abcdef1234567890".repeat(9); // 16 * 9 = 144 characters
+    assert_eq!(Namespace::from_str(&s), Err(DenomError::illegal_length(&s)));
+
+    // invalid namespace: starts with a number
+    let s = "123abc";
+    assert_eq!(Namespace::from_str(s), Err(DenomError::leading_number(s)));
+
+    // invalid namespace: contains non-alphanumeric characters
+    let s = "a!@/bc";
+    assert_eq!(Namespace::from_str(s), Err(DenomError::not_alphanumeric(s)));
+
+    // valid namespaces
+    assert!(Namespace::from_str("").is_ok());
+    assert!(Namespace::from_str("a1B2c3D4").is_ok());
+}
+
+#[test]
+fn from_denom() {
+    assert_eq!(Namespace::from(&Denom::unchecked("abc")), Namespace::unchecked(""));
+    assert_eq!(Namespace::from(&Denom::unchecked("abc/def/gh")), Namespace::unchecked("abc"));
+}
+
+#[test]
+fn primary_key() {
+    let namespace = Namespace::unchecked("abcd1234");
+    let namespace_ref = &namespace;
+    let path = namespace_ref.key();
+    assert_eq!(path.len(), 1);
+    assert_eq!(path[0].as_ref(), b"abcd1234");
+}
+
+#[test]
+fn key_deserialize() {
+    assert_eq!(
+        <&Namespace>::from_vec(b"abcd1234".to_vec()).unwrap(),
+        Namespace::unchecked("abcd1234"),
+    );
 }

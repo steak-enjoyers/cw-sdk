@@ -1,10 +1,12 @@
+use std::str::FromStr;
+
 use cosmwasm_std::{
     to_binary, Addr, Api, Coin, DepsMut, MessageInfo, Response, StdResult, Storage, Uint128,
     WasmMsg,
 };
 
 use crate::{
-    denom::{validate_denom, Namespace, NamespaceAdminExecuteMsg, NamespaceConfig},
+    denom::{Denom, Namespace, NamespaceAdminExecuteMsg, NamespaceConfig},
     error::ContractError,
     msg::{Balance, Config, UpdateNamespaceMsg},
     state::{BALANCES, CONFIG, NAMESPACE_CONFIGS, SUPPLIES},
@@ -34,17 +36,19 @@ pub fn init(
         let addr = deps.api.addr_validate(&address)?;
 
         for coin in coins {
-            SUPPLIES.update(deps.storage, &coin.denom, |supply| {
+            let denom = Denom::from_str(&coin.denom)?;
+
+            SUPPLIES.update(deps.storage, &denom, |supply| {
                 supply
                     .unwrap_or_else(Uint128::zero)
                     .checked_add(coin.amount)
                     .map_err(ContractError::from)
             })?;
-            BALANCES.update(deps.storage, (&addr, &coin.denom), |balance| {
+            BALANCES.update(deps.storage, (&addr, &denom), |balance| {
                 if balance.is_none() {
                     Ok(coin.amount)
                 } else {
-                    Err(ContractError::duplicate_denom(&coin.denom))
+                    Err(ContractError::duplicate_denom(denom.clone()))
                 }
             })?;
         }
@@ -59,16 +63,16 @@ pub fn init(
         after_send_hook,
     } in namespace_cfgs
     {
-        namespace.validate()?;
+        let ns = Namespace::from_str(&namespace)?;
 
-        NAMESPACE_CONFIGS.update(deps.storage, &namespace, |namespace_cfg| {
+        NAMESPACE_CONFIGS.update(deps.storage, &ns, |namespace_cfg| {
             if namespace_cfg.is_none() {
                 Ok(NamespaceConfig {
                     admin: validate_optional_addr(deps.api, admin.as_ref())?,
                     after_send_hook: validate_optional_addr(deps.api, after_send_hook.as_ref())?,
                 })
             } else {
-                Err(ContractError::duplicate_namespace(&namespace))
+                Err(ContractError::duplicate_namespace(ns.clone()))
             }
         })?;
     }
@@ -79,34 +83,30 @@ pub fn init(
 pub fn update_namespace(
     deps: DepsMut,
     info: MessageInfo,
-    namespace: Namespace,
+    namespace: String,
     admin: Option<String>,
     after_send_hook: Option<String>,
 ) -> Result<Response, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
+    let ns = Namespace::from_str(&namespace)?;
 
     // The sender must be either the contract owner or the namespace's admin
     if info.sender != cfg.owner {
-        assert_namespace_admin(deps.as_ref().storage, &namespace, &info.sender)?;
+        assert_namespace_admin(deps.as_ref().storage, &ns, &info.sender)?;
     }
 
-    namespace.validate()?;
-
-    // Only need to validate the namespace if the config does not exist, i.e. the namespace has not
-    // been previously validated
-    NAMESPACE_CONFIGS.update(deps.storage, &namespace, |opt| -> Result<_, ContractError> {
-        if opt.is_none() {
-            namespace.validate()?;
-        }
-        Ok(NamespaceConfig {
+    NAMESPACE_CONFIGS.save(
+        deps.storage,
+        &ns,
+        &NamespaceConfig {
             admin: validate_optional_addr(deps.api, admin.as_ref())?,
             after_send_hook: validate_optional_addr(deps.api, after_send_hook.as_ref())?,
-        })
-    })?;
+        },
+    )?;
 
     Ok(Response::new()
         .add_attribute("action", "bank/update_namespace")
-        .add_attribute("namespace", &namespace)
+        .add_attribute("namespace", namespace)
         .add_attribute("admin", stringify_option(admin))
         .add_attribute("after_send_hook", stringify_option(after_send_hook)))
 }
@@ -118,20 +118,17 @@ pub fn mint(
     denom: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let namespace = Namespace::extract_from_denom(&denom)?;
-
-    assert_namespace_admin(deps.as_ref().storage, &namespace, &info.sender)?;
-
+    let d = Denom::from_str(&denom)?;
+    let ns = (&d).into();
     let to_addr = deps.api.addr_validate(&to)?;
 
+    assert_namespace_admin(deps.storage, &ns, &info.sender)?;
+
     // NOTE: We only need to validate the denom if this is the first time this denom is minted
-    BALANCES.update(deps.storage, (&to_addr, &denom), |opt| {
+    BALANCES.update(deps.storage, (&to_addr, &d), |opt| {
         opt.unwrap_or_else(Uint128::zero).checked_add(amount).map_err(ContractError::from)
     })?;
-    SUPPLIES.update(deps.storage, &denom, |opt| {
-        if opt.is_none() {
-            validate_denom(&denom)?;
-        }
+    SUPPLIES.update(deps.storage, &d, |opt| {
         opt.unwrap_or_else(Uint128::zero).checked_add(amount).map_err(ContractError::from)
     })?;
 
@@ -149,16 +146,16 @@ pub fn burn(
     denom: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let namespace = Namespace::extract_from_denom(&denom)?;
-
-    assert_namespace_admin(deps.as_ref().storage, &namespace, &info.sender)?;
-
+    let d = Denom::from_str(&denom)?;
+    let ns = (&d).into();
     let from_addr = deps.api.addr_validate(&from)?;
 
-    BALANCES.update(deps.storage, (&from_addr, &denom), |opt| {
+    assert_namespace_admin(deps.storage, &ns, &info.sender)?;
+
+    BALANCES.update(deps.storage, (&from_addr, &d), |opt| {
         opt.unwrap_or_else(Uint128::zero).checked_sub(amount).map_err(ContractError::from)
     })?;
-    SUPPLIES.update(deps.storage, &denom, |opt| {
+    SUPPLIES.update(deps.storage, &d, |opt| {
         opt.unwrap_or_else(Uint128::zero).checked_sub(amount).map_err(ContractError::from)
     })?;
 
@@ -237,15 +234,17 @@ fn transfer(
     let mut msgs = vec![];
 
     for coin in coins {
-        BALANCES.update(store, (from_addr, &coin.denom), |opt| {
+        let d = Denom::from_str(&coin.denom)?;
+        let ns = (&d).into();
+
+        BALANCES.update(store, (from_addr, &d), |opt| {
             opt.unwrap_or_else(Uint128::zero).checked_sub(coin.amount).map_err(ContractError::from)
         })?;
-        BALANCES.update(store, (to_addr, &coin.denom), |opt| {
+        BALANCES.update(store, (to_addr, &d), |opt| {
             opt.unwrap_or_else(Uint128::zero).checked_add(coin.amount).map_err(ContractError::from)
         })?;
 
-        let namespace = Namespace::extract_from_denom(&coin.denom)?;
-        if let Some(namespace_cfg) = NAMESPACE_CONFIGS.may_load(store, &namespace)? {
+        if let Some(namespace_cfg) = NAMESPACE_CONFIGS.may_load(store, &ns)? {
             if let Some(after_send_hook) = namespace_cfg.after_send_hook {
                 msgs.push(WasmMsg::Execute {
                     contract_addr: after_send_hook.into(),

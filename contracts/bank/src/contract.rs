@@ -1,10 +1,11 @@
-use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-};
+use cosmwasm_std::{entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
-use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg, UpdateNamespaceMsg};
-use crate::{execute, query};
+use crate::{
+    error::ContractError,
+    execute,
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg, UpdateNamespaceMsg},
+    query,
+};
 
 pub const CONTRACT_NAME: &str = "crates.io:cw-bank";
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -68,7 +69,7 @@ pub fn execute(
 }
 
 #[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Config {} => to_binary(&query::config(deps)?),
         QueryMsg::Namespace {
@@ -95,4 +96,5 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             limit,
         } => to_binary(&query::balances(deps, address, start_after, limit)?),
     }
+    .map_err(ContractError::from)
 }

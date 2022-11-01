@@ -3,8 +3,6 @@ use cosmwasm_std::{Coin, Uint128};
 
 use cw_sdk::AddressLike;
 
-use crate::denom::Namespace;
-
 #[cw_serde]
 pub struct Config<T: AddressLike> {
     pub owner: T,
@@ -37,7 +35,7 @@ pub struct Balance {
 
 #[cw_serde]
 pub struct UpdateNamespaceMsg {
-    pub namespace: Namespace,
+    pub namespace: String,
     pub admin: Option<String>,
     pub after_send_hook: Option<String>,
 }
@@ -102,13 +100,13 @@ pub enum QueryMsg {
     /// Query the config of a single namespace
     #[returns(NamespaceResponse)]
     Namespace {
-        namespace: Namespace,
+        namespace: String,
     },
 
     /// Enumerate configs of all namespaces
     #[returns(Vec<NamespaceResponse>)]
     Namespaces {
-        start_after: Option<Namespace>,
+        start_after: Option<String>,
         limit: Option<u32>,
     },
 
