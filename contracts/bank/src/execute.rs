@@ -52,7 +52,7 @@ pub fn init(
                 if balance.is_none() {
                     Ok(coin.amount)
                 } else {
-                    Err(ContractError::duplicate_denom(denom.clone()))
+                    Err(ContractError::duplicate_balance(&addr, denom.clone()))
                 }
             })?;
         }

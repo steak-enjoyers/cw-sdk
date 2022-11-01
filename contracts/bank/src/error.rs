@@ -1,9 +1,12 @@
+use std::fmt::Display;
+
 use cosmwasm_std::{OverflowError, StdError};
 use thiserror::Error;
 
 use crate::denom::{DenomError, Namespace};
 
 #[derive(Error, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum ContractError {
     #[error(transparent)]
     Std(#[from] StdError),
@@ -42,10 +45,10 @@ impl ContractError {
         }
     }
 
-    pub fn duplicate_denom(denom: impl Into<String>) -> Self {
+    pub fn duplicate_balance(address: impl Display, denom: impl Display) -> Self {
         Self::Duplication {
-            ty: "denom".into(),
-            value: denom.into(),
+            ty: "balance".into(),
+            value: format!("account {address}, denom {denom}"),
         }
     }
 
