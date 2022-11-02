@@ -45,14 +45,14 @@ fn proper_instantiation() {
                 after_send_hook: None,
             },
             NamespaceResponse {
-                namespace: "ibc".into(),
-                admin: Some("ibc-transfer".into()),
-                after_send_hook: None,
-            },
-            NamespaceResponse {
                 namespace: "factory".into(),
                 admin: Some("token-factory".into()),
                 after_send_hook: Some("token-factory".into()),
+            },
+            NamespaceResponse {
+                namespace: "ibc".into(),
+                admin: Some("ibc-transfer".into()),
+                after_send_hook: None,
             },
         ],
     );
