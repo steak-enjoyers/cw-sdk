@@ -1,7 +1,7 @@
 use std::{fmt, str::FromStr};
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Attribute, Coin, StdError, StdResult};
+use cosmwasm_std::{Addr, Attribute, StdError, StdResult, Uint128};
 use cw_storage_plus::{Key, KeyDeserialize, PrimaryKey};
 
 use super::{is_alphanumeric, starts_with_number, Denom, DenomError};
@@ -135,7 +135,8 @@ pub enum NamespaceAdminExecuteMsg {
     AfterTransfer {
         from: String,
         to: String,
-        coin: Coin,
+        denom: String,
+        amount: Uint128,
     },
 }
 

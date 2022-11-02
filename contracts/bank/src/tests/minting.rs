@@ -1,25 +1,13 @@
-use cosmwasm_std::{
-    coin, testing::mock_info, Addr, OverflowError, OverflowOperation, StdError, Uint128, Deps
-};
+use cosmwasm_std::{testing::mock_info, Addr, OverflowError, OverflowOperation, StdError, Uint128};
 
 use crate::{
     denom::{Denom, DenomError, Namespace},
     error::ContractError,
-    execute, query,
+    execute,
     state::BALANCES,
 };
 
-use super::setup_test;
-
-fn assert_supply(deps: Deps, denom: &str, expected: u128) {
-    let supply = query::supply(deps, denom.into()).unwrap();
-    assert_eq!(supply, coin(expected, denom));
-}
-
-fn assert_balance(deps: Deps, user: &str, denom: &str, expected: u128) {
-    let balance = query::balance(deps, user.into(), denom.into()).unwrap();
-    assert_eq!(balance, coin(expected, denom));
-}
+use super::{assert_balance, assert_supply, setup_test};
 
 #[test]
 fn invalid_denom() {

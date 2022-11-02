@@ -237,7 +237,8 @@ fn transfer(
                     msg: to_binary(&NamespaceAdminExecuteMsg::AfterTransfer {
                         from: from_addr.to_string(),
                         to: to_addr.to_string(),
-                        coin: coin.clone(),
+                        denom: coin.denom.clone(),
+                        amount: coin.amount,
                     })?,
                     funds: vec![],
                 });

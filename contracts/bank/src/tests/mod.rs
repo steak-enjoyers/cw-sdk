@@ -1,16 +1,18 @@
 mod instantiation;
 mod minting;
 mod namespace;
+mod transfer;
 
 use cosmwasm_std::{
     coin,
     testing::{mock_dependencies, MockApi, MockQuerier, MockStorage},
-    Empty, OwnedDeps,
+    Deps, Empty, OwnedDeps,
 };
 
 use crate::{
     execute,
     msg::{Balance, UpdateNamespaceMsg},
+    query,
 };
 
 const OWNER: &str = "larry";
@@ -52,4 +54,14 @@ fn setup_test() -> OwnedDeps<MockStorage, MockApi, MockQuerier, Empty> {
     .unwrap();
 
     deps
+}
+
+fn assert_supply(deps: Deps, denom: &str, expected: u128) {
+    let supply = query::supply(deps, denom.into()).unwrap();
+    assert_eq!(supply, coin(expected, denom));
+}
+
+fn assert_balance(deps: Deps, user: &str, denom: &str, expected: u128) {
+    let balance = query::balance(deps, user.into(), denom.into()).unwrap();
+    assert_eq!(balance, coin(expected, denom));
 }
