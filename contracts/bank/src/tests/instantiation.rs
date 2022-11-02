@@ -26,14 +26,14 @@ fn proper_instantiation() {
     assert_eq!(
         supplies,
         vec![
+            coin(23456, "factory/osmo1234abcd/uastro"),
+            coin(45678, "ibc/12AB34CD"),
             coin(46912, "uatom"), // 12345 + 34567
-            coin(45678, "umars"),
-            coin(23456, "uosmo"),
         ],
     );
 
     let balances = query::balances(deps.as_ref(), "jake".into(), None, None).unwrap();
-    assert_eq!(balances, vec![coin(12345, "uatom"), coin(23456, "uosmo")]);
+    assert_eq!(balances, vec![coin(23456, "factory/osmo1234abcd/uastro"), coin(12345, "uatom")]);
 
     let namespace_cfgs = query::namespaces(deps.as_ref(), None, None).unwrap();
     assert_eq!(

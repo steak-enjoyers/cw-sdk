@@ -126,6 +126,7 @@ pub fn mint(
     let ns = (&d).into();
     let to_addr = deps.api.addr_validate(&to)?;
 
+    assert_non_zero_amount(&denom, amount)?;
     assert_namespace_admin(deps.storage, &ns, &info.sender)?;
 
     increase_supply(deps.storage, &d, amount)?;
@@ -149,6 +150,7 @@ pub fn burn(
     let ns = (&d).into();
     let from_addr = deps.api.addr_validate(&from)?;
 
+    assert_non_zero_amount(&denom, amount)?;
     assert_namespace_admin(deps.storage, &ns, &info.sender)?;
 
     decrease_supply(deps.storage, &d, amount)?;
@@ -223,6 +225,8 @@ fn transfer(
         let d = Denom::from_str(&coin.denom)?;
         let ns = (&d).into();
 
+        assert_non_zero_amount(&coin.denom, coin.amount)?;
+
         decrease_balance(store, from_addr, &d, coin.amount)?;
         increase_balance(store, to_addr, &d, coin.amount)?;
 
@@ -249,6 +253,14 @@ fn transfer(
         .add_attribute("coins", stringify_coins(coins)))
 }
 
+fn assert_non_zero_amount(denom: &str, amount: Uint128) -> Result<(), ContractError> {
+    if amount.is_zero() {
+        Err(ContractError::zero_amount(denom))
+    } else {
+        Ok(())
+    }
+}
+
 fn assert_namespace_admin(
     store: &dyn Storage,
     namespace: &Namespace,
@@ -260,8 +272,10 @@ fn assert_namespace_admin(
                 return Ok(());
             }
         }
+        Err(ContractError::not_namespace_admin(namespace))
+    } else {
+        Err(ContractError::non_exist_namespace(namespace))
     }
-    Err(ContractError::not_namespace_admin(namespace))
 }
 
 fn stringify_coins(coins: &[Coin]) -> String {

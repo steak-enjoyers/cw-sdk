@@ -1,4 +1,5 @@
 mod instantiation;
+mod minting;
 mod namespace;
 
 use cosmwasm_std::{
@@ -23,11 +24,11 @@ fn setup_test() -> OwnedDeps<MockStorage, MockApi, MockQuerier, Empty> {
         vec![
             Balance {
                 address: "jake".into(),
-                coins: vec![coin(12345, "uatom"), coin(23456, "uosmo")],
+                coins: vec![coin(12345, "uatom"), coin(23456, "factory/osmo1234abcd/uastro")],
             },
             Balance {
                 address: "pumpkin".into(),
-                coins: vec![coin(34567, "uatom"), coin(45678, "umars")],
+                coins: vec![coin(34567, "uatom"), coin(45678, "ibc/12AB34CD")],
             },
         ],
         vec![
