@@ -4,45 +4,15 @@ use crate::{
     denom::DenomError,
     error::ContractError,
     execute,
-    msg::{Balance, Config, UpdateNamespaceMsg},
+    msg::{Balance, Config, NamespaceResponse, UpdateNamespaceMsg},
     query,
 };
 
-pub const OWNER: &str = "larry";
+use super::{setup_test, OWNER};
 
 #[test]
 fn proper_instantiation() {
-    let mut deps = mock_dependencies();
-
-    let namespaces = vec![
-        UpdateNamespaceMsg {
-            namespace: "".into(),
-            admin: Some("gov".into()),
-            after_send_hook: None,
-        },
-        UpdateNamespaceMsg {
-            namespace: "factory".into(),
-            admin: Some("token-factory".into()),
-            after_send_hook: Some("token-factory".into()),
-        },
-    ];
-
-    execute::init(
-        deps.as_mut(),
-        OWNER.into(),
-        vec![
-            Balance {
-                address: "jake".into(),
-                coins: vec![coin(12345, "uatom"), coin(23456, "uosmo")],
-            },
-            Balance {
-                address: "pumpkin".into(),
-                coins: vec![coin(34567, "uatom"), coin(45678, "umars")],
-            },
-        ],
-        namespaces.clone(),
-    )
-    .unwrap();
+    let deps = setup_test();
 
     let cfg = query::config(deps.as_ref()).unwrap();
     assert_eq!(
@@ -66,7 +36,26 @@ fn proper_instantiation() {
     assert_eq!(balances, vec![coin(12345, "uatom"), coin(23456, "uosmo")]);
 
     let namespace_cfgs = query::namespaces(deps.as_ref(), None, None).unwrap();
-    assert_eq!(namespace_cfgs, namespaces);
+    assert_eq!(
+        namespace_cfgs,
+        vec![
+            NamespaceResponse {
+                namespace: "".into(),
+                admin: Some("gov".into()),
+                after_send_hook: None,
+            },
+            NamespaceResponse {
+                namespace: "ibc".into(),
+                admin: Some("ibc-transfer".into()),
+                after_send_hook: None,
+            },
+            NamespaceResponse {
+                namespace: "factory".into(),
+                admin: Some("token-factory".into()),
+                after_send_hook: Some("token-factory".into()),
+            },
+        ],
+    );
 }
 
 #[test]

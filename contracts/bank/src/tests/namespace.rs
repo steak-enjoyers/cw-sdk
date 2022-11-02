@@ -1,35 +1,8 @@
-use cosmwasm_std::{
-    testing::{mock_dependencies, mock_info, MockApi, MockQuerier, MockStorage},
-    Empty, OwnedDeps,
-};
+use cosmwasm_std::testing::mock_info;
 
-use crate::{
-    denom::DenomError,
-    error::ContractError,
-    execute,
-    msg::{NamespaceResponse, UpdateNamespaceMsg},
-    query,
-};
+use crate::{denom::DenomError, error::ContractError, execute, msg::NamespaceResponse, query};
 
-pub const OWNER: &str = "larry";
-
-fn setup_test() -> OwnedDeps<MockStorage, MockApi, MockQuerier, Empty> {
-    let mut deps = mock_dependencies();
-
-    execute::init(
-        deps.as_mut(),
-        OWNER.into(),
-        vec![],
-        vec![UpdateNamespaceMsg {
-            namespace: "ibc".into(),
-            admin: Some("ibc-transfer".into()),
-            after_send_hook: None,
-        }],
-    )
-    .unwrap();
-
-    deps
-}
+use super::{setup_test, OWNER};
 
 #[test]
 fn proper_update_namespace() {
