@@ -45,9 +45,33 @@ fn send() {
     )
     .unwrap();
 
-    assert_supply(deps.as_ref(), "uatom", 46912); // 12345 + 34567, unchanged by transfer
-    assert_supply(deps.as_ref(), "ibc/12AB34CD", 45678);
-    assert_supply(deps.as_ref(), "mars/uxmars", 69420);
+    assert_eq!(
+        res.messages,
+        vec![
+            SubMsg::new(WasmMsg::Execute {
+                contract_addr: "red-bank".into(),
+                msg: to_binary(&NamespaceAdminExecuteMsg::AfterTransfer {
+                    from: "jake".into(),
+                    to: "pumpkin".into(),
+                    denom: "mars/uxmars".into(),
+                    amount: Uint128::new(42069),
+                })
+                .unwrap(),
+                funds: vec![],
+            }),
+            SubMsg::new(WasmMsg::Execute {
+                contract_addr: "token-factory".into(),
+                msg: to_binary(&NamespaceAdminExecuteMsg::AfterTransfer {
+                    from: "jake".into(),
+                    to: "pumpkin".into(),
+                    denom: "factory/osmo1234abcd/uastro".into(),
+                    amount: Uint128::new(22222),
+                })
+                .unwrap(),
+                funds: vec![],
+            }),
+        ],
+    );
 
     let balances = query::balances(deps.as_ref(), "jake".into(), None, None).unwrap();
     assert_eq!(
@@ -69,31 +93,7 @@ fn send() {
         ],
     );
 
-    assert_eq!(
-        res.messages,
-        vec![
-            SubMsg::new(WasmMsg::Execute {
-                contract_addr: "red-bank".into(),
-                msg: to_binary(&NamespaceAdminExecuteMsg::AfterTransfer {
-                    from: "jake".into(),
-                    to: "pumpkin".into(),
-                    denom: "mars/uxmars".into(),
-                    amount: Uint128::new(42069)
-                })
-                .unwrap(),
-                funds: vec![],
-            }),
-            SubMsg::new(WasmMsg::Execute {
-                contract_addr: "token-factory".into(),
-                msg: to_binary(&NamespaceAdminExecuteMsg::AfterTransfer {
-                    from: "jake".into(),
-                    to: "pumpkin".into(),
-                    denom: "factory/osmo1234abcd/uastro".into(),
-                    amount: Uint128::new(22222)
-                })
-                .unwrap(),
-                funds: vec![],
-            }),
-        ],
-    )
+    assert_supply(deps.as_ref(), "uatom", 46912); // 12345 + 34567, unchanged by transfer
+    assert_supply(deps.as_ref(), "ibc/12AB34CD", 45678);
+    assert_supply(deps.as_ref(), "mars/uxmars", 69420);
 }
