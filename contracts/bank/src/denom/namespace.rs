@@ -12,7 +12,7 @@ use super::{is_alphanumeric, starts_with_number, Denom, DenomError};
 /// characters longer than the namespace.
 pub const MAX_NAMESPACE_LEN: usize = 126;
 
-/// Namespace is wrapper of `Option<String>`, representing a validate denom namespace,
+/// Namespace is wrapper of `String`, representing a validated namespace,
 /// similar to how `cosmwasm_std::Addr` is a wrapper of `String` and represents a validated address.
 #[cw_serde]
 pub struct Namespace(String);
@@ -62,12 +62,6 @@ impl From<Namespace> for String {
     }
 }
 
-impl Namespace {
-    pub fn into_bytes(self) -> Vec<u8> {
-        self.0.into()
-    }
-}
-
 impl From<Namespace> for Attribute {
     fn from(ns: Namespace) -> Attribute {
         Attribute {
@@ -96,8 +90,12 @@ impl KeyDeserialize for &Namespace {
     }
 }
 
-#[cfg(test)]
 impl Namespace {
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.0.into()
+    }
+
+    #[cfg(test)]
     pub fn unchecked(s: impl Into<String>) -> Self {
         Self(s.into())
     }

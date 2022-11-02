@@ -3,7 +3,7 @@ use std::fmt::Display;
 use cosmwasm_std::{OverflowError, StdError};
 use thiserror::Error;
 
-use crate::denom::{DenomError, Namespace};
+use crate::denom::DenomError;
 
 #[derive(Error, Debug)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -39,7 +39,7 @@ pub enum ContractError {
 }
 
 impl ContractError {
-    pub fn not_namespace_admin(namespace: &Namespace) -> Self {
+    pub fn not_namespace_admin(namespace: impl Display) -> Self {
         Self::NotNamespaceAdmin {
             namespace: namespace.to_string(),
         }

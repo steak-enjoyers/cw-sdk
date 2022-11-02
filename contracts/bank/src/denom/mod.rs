@@ -1,16 +1,16 @@
 //! Each coin denom consists of two components: the "namespace" and the "subdenom", separated by a
 //! forward slash (`/`).
 //!
-//! The namespace is optional. If the namespace is `None`, we say this is a "top-level" denom,
+//! The namespace can be an empty string, in which case we say this is a "top-level" denom,
 //! i.e. it is not namespaced.
 //!
 //! For example, consider the following denoms:
 //!
-//! | denom                         | namespace         | subdenom                |
-//! | ----------------------------- | ----------------- | ----------------------- |
-//! | `uatom`                       | `None`            | `"uatom"`               |
-//! | `ibc/1234ABCD`                | `Some("ibc")`     | `"1234ABCD"`            |
-//! | `factory/osmo1234abcd/uastro` | `Some("factory")` | `"osmo1234abcd/uastro"` |
+//! | denom                         | namespace   | subdenom                |
+//! | ----------------------------- | ----------- | ----------------------- |
+//! | `uatom`                       | `""`        | `"uatom"`               |
+//! | `ibc/1234ABCD`                | `"ibc"`     | `"1234ABCD"`            |
+//! | `factory/osmo1234abcd/uastro` | `"factory"` | `"osmo1234abcd/uastro"` |
 //!
 //! This namespacing semantics allows us to efficiently manage coin minting authorizations.
 //! Specifically, each minter account is granted minting power under one or more namespaces.
@@ -77,12 +77,6 @@ impl From<Denom> for String {
     }
 }
 
-impl Denom {
-    pub fn into_bytes(self) -> Vec<u8> {
-        self.0.into()
-    }
-}
-
 impl<'a> PrimaryKey<'a> for &Denom {
     type Prefix = ();
     type SubPrefix = ();
@@ -102,8 +96,13 @@ impl KeyDeserialize for &Denom {
     }
 }
 
-#[cfg(test)]
+
 impl Denom {
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.0.into()
+    }
+
+    #[cfg(test)]
     pub fn unchecked(s: impl Into<String>) -> Self {
         Self(s.into())
     }

@@ -8,6 +8,8 @@ use crate::{
     query,
 };
 
+pub const OWNER: &str = "larry";
+
 #[test]
 fn proper_instantiation() {
     let mut deps = mock_dependencies();
@@ -27,7 +29,7 @@ fn proper_instantiation() {
 
     execute::init(
         deps.as_mut(),
-        "larry".into(),
+        OWNER.into(),
         vec![
             Balance {
                 address: "jake".into(),
@@ -46,7 +48,7 @@ fn proper_instantiation() {
     assert_eq!(
         cfg,
         Config {
-            owner: "larry".into(),
+            owner: OWNER.into(),
         },
     );
 
@@ -73,7 +75,7 @@ fn zero_balance() {
 
     let err = execute::init(
         deps.as_mut(),
-        "larry".into(),
+        OWNER.into(),
         vec![Balance {
             address: "jake".into(),
             coins: vec![coin(12345, "uatom"), coin(0, "uosmo")],
@@ -91,7 +93,7 @@ fn duplicate_balance() {
 
     let err = execute::init(
         deps.as_mut(),
-        "larry".into(),
+        OWNER.into(),
         vec![
             Balance {
                 address: "jake".into(),
@@ -119,7 +121,7 @@ fn duplicate_namespace() {
 
     let err = execute::init(
         deps.as_mut(),
-        "larry".into(),
+        OWNER.into(),
         vec![],
         vec![
             UpdateNamespaceMsg {
@@ -150,7 +152,7 @@ fn invalid_denom() {
 
     let err = execute::init(
         deps.as_mut(),
-        "larry".into(),
+        OWNER.into(),
         vec![Balance {
             address: "jake".into(),
             coins: vec![coin(12345, "uatom"), coin(23456, "123abc"), coin(34567, "uosmo")],
@@ -168,7 +170,7 @@ fn invalid_namespace() {
 
     let err = execute::init(
         deps.as_mut(),
-        "larry".into(),
+        OWNER.into(),
         vec![],
         vec![UpdateNamespaceMsg {
             namespace: "123abc".into(),
