@@ -23,7 +23,7 @@ use std::{fmt, str::FromStr};
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{StdError, StdResult};
-use cw_storage_plus::{PrimaryKey, Key, KeyDeserialize};
+use cw_storage_plus::{Key, KeyDeserialize, PrimaryKey};
 
 mod error;
 mod namespace;
@@ -96,7 +96,6 @@ impl KeyDeserialize for &Denom {
     }
 }
 
-
 impl Denom {
     pub fn into_bytes(self) -> Vec<u8> {
         self.0.into()
@@ -152,4 +151,18 @@ fn from_str() {
     assert!(Denom::from_str("abc").is_ok());
     assert!(Denom::from_str("a/b").is_ok());
     assert!(Denom::from_str("az4Z5z/b1C2d/e2E3e4E5e6").is_ok());
+}
+
+#[test]
+fn primary_key() {
+    let denom = "a/b/c/d";
+    let denom_ref = &denom;
+    let path = denom_ref.key();
+    assert_eq!(path.len(), 1);
+    assert_eq!(path[0].as_ref(), b"a/b/c/d");
+}
+
+#[test]
+fn key_deserialize() {
+    assert_eq!(<&Denom>::from_vec(b"a/b/c/d".to_vec()).unwrap(), Denom::unchecked("a/b/c/d"));
 }
