@@ -47,7 +47,7 @@ fn non_exist_namespace() {
         deps.as_mut(),
         mock_info("gov", &[]),
         "jake".into(),
-        format!("market/utoken"),
+        "market/utoken".into(),
         Uint128::new(12345),
     )
     .unwrap_err();

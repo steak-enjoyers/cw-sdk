@@ -124,11 +124,11 @@ fn starts_with_number(s: &str) -> bool {
 fn from_str() {
     // invalid denom: starts with a number
     let denom = "123abc/def";
-    assert_eq!(Denom::from_str(&denom), Err(DenomError::leading_number(denom)));
+    assert_eq!(Denom::from_str(denom), Err(DenomError::leading_number(denom)));
 
     // invalid denom: too short
     let denom = "ab";
-    assert_eq!(Denom::from_str(&denom), Err(DenomError::illegal_length(denom)));
+    assert_eq!(Denom::from_str(denom), Err(DenomError::illegal_length(denom)));
 
     // invalid denom: too long
     let namespace = "abcedf1234567890".repeat(8); // 128 characters
@@ -138,15 +138,15 @@ fn from_str() {
 
     // invalid denom: contains empty parts
     let denom = "/ccc";
-    assert_eq!(Denom::from_str(&denom), Err(DenomError::empty_parts(denom)));
+    assert_eq!(Denom::from_str(denom), Err(DenomError::empty_parts(denom)));
     let denom = "ab/";
-    assert_eq!(Denom::from_str(&denom), Err(DenomError::empty_parts(denom)));
+    assert_eq!(Denom::from_str(denom), Err(DenomError::empty_parts(denom)));
     let denom = "ab//c";
-    assert_eq!(Denom::from_str(&denom), Err(DenomError::empty_parts(denom)));
+    assert_eq!(Denom::from_str(denom), Err(DenomError::empty_parts(denom)));
 
     // invalid denom: contains non-alphanumeric characters
     let denom = "ibc/1234@#$%abcd";
-    assert_eq!(Denom::from_str(&denom), Err(DenomError::not_alphanumeric(denom)));
+    assert_eq!(Denom::from_str(denom), Err(DenomError::not_alphanumeric(denom)));
 
     // valid denoms
     assert!(Denom::from_str("abc").is_ok());
