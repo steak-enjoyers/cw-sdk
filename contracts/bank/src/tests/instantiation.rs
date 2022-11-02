@@ -6,9 +6,8 @@ use crate::{
     execute,
     msg::{Balance, Config, NamespaceResponse, UpdateNamespaceMsg},
     query,
+    tests::{setup_test, OWNER},
 };
-
-use super::{setup_test, OWNER};
 
 #[test]
 fn proper_instantiation() {

@@ -5,9 +5,8 @@ use crate::{
     error::ContractError,
     execute,
     state::BALANCES,
+    tests::{assert_balance, assert_supply, setup_test},
 };
-
-use super::{assert_balance, assert_supply, setup_test};
 
 #[test]
 fn invalid_denom() {

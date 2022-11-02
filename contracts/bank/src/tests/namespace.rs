@@ -1,8 +1,13 @@
 use cosmwasm_std::testing::mock_info;
 
-use crate::{denom::DenomError, error::ContractError, execute, msg::NamespaceResponse, query};
-
-use super::{setup_test, OWNER};
+use crate::{
+    denom::DenomError,
+    error::ContractError,
+    execute,
+    msg::NamespaceResponse,
+    query,
+    tests::{setup_test, OWNER},
+};
 
 #[test]
 fn proper_update_namespace() {
