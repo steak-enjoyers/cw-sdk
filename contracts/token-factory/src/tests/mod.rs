@@ -1,4 +1,5 @@
 mod fee;
+mod hook;
 mod instantiation;
 mod mocks;
 
