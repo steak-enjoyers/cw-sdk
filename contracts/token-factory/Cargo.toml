@@ -16,6 +16,7 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 library = []
+integration-test = []
 
 [dependencies]
 cosmwasm-schema = { workspace = true }
@@ -28,4 +29,6 @@ cw-utils        = { workspace = true }
 thiserror       = { workspace = true }
 
 [dev-dependencies]
-cw-bank = { workspace = true, features = ["library", "integration-test"] }
+cw-bank          = { workspace = true, features = ["integration-test"] }
+cw-multi-test    = { workspace = true }
+cw-token-factory = { workspace = true, features = ["integration-test"] }

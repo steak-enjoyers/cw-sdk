@@ -5,7 +5,7 @@ pub mod msg;
 pub mod query;
 pub mod state;
 
-#[cfg(not(feature = "library"))]
+#[cfg(any(feature = "integration-test", not(feature = "library")))]
 pub mod contract;
 
 #[cfg(test)]

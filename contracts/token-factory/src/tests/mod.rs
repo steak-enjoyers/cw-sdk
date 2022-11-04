@@ -1,13 +1,10 @@
 mod fee;
 mod hook;
 mod instantiation;
-mod mocks;
-
-use std::marker::PhantomData;
 
 use cosmwasm_std::{
     coin,
-    testing::{MockApi, MockStorage},
+    testing::{mock_dependencies, MockApi, MockQuerier, MockStorage},
     Empty, OwnedDeps,
 };
 
@@ -16,13 +13,8 @@ use crate::{execute, msg::Config};
 const OWNER: &str = "larry";
 const BANK: &str = "bank";
 
-fn setup_test() -> OwnedDeps<MockStorage, MockApi, mocks::MockQuerier, Empty> {
-    let mut deps = OwnedDeps {
-        storage: MockStorage::default(),
-        api: MockApi::default(),
-        querier: mocks::MockQuerier::default(),
-        custom_query_type: PhantomData,
-    };
+fn setup_test() -> OwnedDeps<MockStorage, MockApi, MockQuerier, Empty> {
+    let mut deps = mock_dependencies();
 
     execute::init(
         deps.as_mut(),
