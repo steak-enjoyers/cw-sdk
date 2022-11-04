@@ -26,3 +26,6 @@ cw-sdk          = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils        = { workspace = true }
 thiserror       = { workspace = true }
+
+[dev-dependencies]
+cw-bank = { workspace = true, features = ["library", "integration-test"] }

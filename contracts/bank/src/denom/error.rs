@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(test, feature = "integration-test"), derive(PartialEq))]
 pub enum DenomError {
     #[error("invalid denom or namespace `{denom}`: contains empty parts")]
     EmptyParts {
