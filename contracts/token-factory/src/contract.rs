@@ -5,7 +5,7 @@ use cosmwasm_std::{
 use crate::{
     error::ContractError,
     execute,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, UpdateTokenMsg},
     query,
 };
 
@@ -18,7 +18,7 @@ pub fn instantiate(
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     execute::init(deps, msg)
 }
@@ -31,35 +31,38 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::SetFee {
+        ExecuteMsg::UpdateFee {
             token_creation_fee,
-        } => execute::set_fee(deps, info, token_creation_fee),
+        } => execute::update_fee(deps, info, token_creation_fee),
+        ExecuteMsg::WithdrawFee {
+            to,
+        } => execute::withdraw_fee(deps, env, info, to),
         ExecuteMsg::CreateToken {
-            subdenom,
+            nonce,
             admin,
-            before_transfer_hook,
-        } => execute::create_token(deps, info, subdenom, admin, before_transfer_hook),
-        ExecuteMsg::SetAdmin {
+            after_send_hook,
+        } => execute::create_token(deps, info, nonce, admin, after_send_hook),
+        ExecuteMsg::UpdateToken(UpdateTokenMsg {
             denom,
             admin,
-        } => execute::set_admin(deps, info, denom, admin),
-        ExecuteMsg::SetBeforeTransferHook {
-            denom,
-            before_transfer_hook,
-        } => execute::set_before_transfer_hook(deps, info, denom, before_transfer_hook),
+            after_send_hook,
+        }) => execute::update_token(deps, info, denom, admin),
         ExecuteMsg::Mint {
             to,
+            denom,
             amount,
-        } => execute::mint(deps, info, to, amount),
+        } => execute::mint(deps, info, to, denom, amount),
         ExecuteMsg::Burn {
             from,
+            denom,
             amount,
-        } => execute::burn(deps, info, from, amount),
+        } => execute::burn(deps, info, from, denom, amount),
         ExecuteMsg::ForceTransfer {
             from,
             to,
+            denom,
             amount,
-        } => execute::force_transfer(deps, info, from, to, amount),
+        } => execute::force_transfer(deps, info, from, to, denom, amount),
     }
 }
 

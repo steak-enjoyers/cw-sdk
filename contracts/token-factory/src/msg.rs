@@ -3,29 +3,28 @@ use cosmwasm_std::{Addr, Coin, Uint128};
 
 use cw_sdk::AddressLike;
 
+/// The namespace that the token factory contract must be assigned as admin at the bank contract.
+pub const NAMESPACE: &str = "factory";
+
 #[cw_serde]
 pub struct Config<T: AddressLike> {
     /// The contract's owner
     pub owner: T,
 
     /// Address of the bank contract.
-    /// NOTE: The token factory contract must be appointed the admin of the "factory" namespace.
     pub bank: T,
-
-    /// Address to which collected fees are to be sent to
-    pub fee_collector: T,
 
     /// An optional fee for creating new denoms. Set to `None` to make it free.
     pub token_creation_fee: Option<Coin>,
 }
 
 #[cw_serde]
-pub struct Token {
+pub struct TokenConfig {
     /// Admin is the account who can mint and burn tokens.
     /// Set this to `None` will permanently disable any burning or minting of this token.
     pub admin: Option<Addr>,
 
-    /// Any AfterTransfer messages sent by the bank contract will be forwarded to this address.
+    /// Any AfterSend hook message sent by the bank contract will be forwarded to this address.
     pub after_send_hook: Option<Addr>,
 }
 
@@ -46,12 +45,25 @@ pub enum ExecuteMsg {
         token_creation_fee: Option<Coin>,
     },
 
-    /// Create a new token with the given subdenom.
+    /// Withdraw fees collected in the contract.
+    /// Only callable by the owner.
+    WithdrawFee {
+        /// Address to which the fees are to be sent.
+        /// Default to the owner if not provided.
+        to: Option<String>,
+    },
+
+    /// Create a new token with the given nonce.
     /// If there is a token creation fee, the message must include sufficient amount of coins.
     CreateToken {
-        subdenom: String,
-        /// Whereas admin can be removed later, it must be set during token creation.
+        nonce: String,
+
+        /// We require that the admin must be specified during token creation.
+        /// It doesn't make sense to create a token with no admin, because then no one would be able
+        /// to ever mint it.
+        /// However, the admin can be set to `None` later.
         admin: String,
+
         /// See the comments on `crate::types::Token` on what this hook is.
         after_send_hook: Option<String>,
     },
@@ -93,13 +105,13 @@ pub enum QueryMsg {
     #[returns(Config<String>)]
     Config {},
 
-    /// Query a single token by denom
+    /// Query the configuration of a single token by denom
     #[returns(TokenResponse)]
     Token {
         denom: String,
     },
 
-    /// Enumerate all tokens by denoms
+    /// Enumerate the config of all tokens
     #[returns(Vec<TokenResponse>)]
     Tokens {
         start_after: Option<String>,

@@ -1,10 +1,10 @@
 use cosmwasm_std::Addr;
-use cw_storage_plus::{Map, Item};
+use cw_storage_plus::{Item, Map};
 
-use crate::types::{Token, Config};
+use crate::msg::{Config, TokenConfig};
 
 /// The contract's configuration
 pub const CONFIG: Item<Config<Addr>> = Item::new("config");
 
-/// Tokens indexed by creator address and subdenom
-pub const TOKENS: Map<(&Addr, &str), Token<Addr>> = Map::new("tokens");
+/// Configuration of tokens indexed by creator address and subdenom
+pub const TOKEN_CONFIGS: Map<(&Addr, &str), TokenConfig> = Map::new("tkn_cfgs");
