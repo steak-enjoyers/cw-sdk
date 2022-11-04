@@ -142,7 +142,7 @@ pub fn update_token(
     };
 
     TOKEN_CONFIGS.update(deps.storage, (&creator, &nonce), |opt| -> Result<_, ContractError> {
-        let mut token_cfg = opt.ok_or(ContractError::token_not_found(&denom))?;
+        let mut token_cfg = opt.ok_or_else(|| ContractError::token_not_found(&denom))?;
         token_cfg.admin = validate_optional_addr(deps.api, admin.as_ref())?;
         token_cfg.after_transfer_hook = validate_optional_addr(deps.api,after_transfer_hook.as_ref())?;
         Ok(token_cfg)
