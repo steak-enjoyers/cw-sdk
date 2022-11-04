@@ -1,4 +1,4 @@
-use cosmwasm_std::{Deps, Order, StdResult};
+use cosmwasm_std::{Addr, Deps, Order, StdResult};
 use cw_storage_plus::Bound;
 
 use crate::{
@@ -34,10 +34,16 @@ pub fn tokens(
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> Result<Vec<TokenResponse>, ContractError> {
-    let start = start_after
-        .map(|s| parse_denom(deps.api, &s))
-        .transpose()?
-        .map(|(creator, nonce)| Bound::exclusive((&creator, nonce.as_str())));
+    // a little hack to circumvent rust borrow check
+    let (creator, nonce): (Addr, String);
+    let start = match start_after {
+        Some(s) => {
+            (creator, nonce) = parse_denom(deps.api, &s)?;
+            Some(Bound::exclusive((&creator, nonce.as_str())))
+        },
+        None => None,
+    };
+
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
 
     TOKEN_CONFIGS
@@ -46,7 +52,7 @@ pub fn tokens(
         .map(|item| {
             let ((creator, nonce), cfg) = item?;
             Ok(TokenResponse {
-                denom: format!("{NAMESPACE}/{creator}/nonce"),
+                denom: format!("{NAMESPACE}/{creator}/{nonce}"),
                 admin: cfg.admin.map(String::from),
                 after_transfer_hook: cfg.after_transfer_hook.map(String::from),
             })

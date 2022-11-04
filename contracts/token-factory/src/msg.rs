@@ -30,9 +30,9 @@ pub struct TokenConfig {
 
 #[cw_serde]
 pub struct UpdateTokenMsg {
-    denom: String,
-    admin: Option<String>,
-    after_transfer_hook: Option<String>,
+    pub denom: String,
+    pub admin: Option<String>,
+    pub after_transfer_hook: Option<String>,
 }
 
 pub type InstantiateMsg = Config<String>;
