@@ -28,14 +28,14 @@ clap               = "3"
 cosmwasm-schema    = "1.1"
 cosmwasm-std       = { version = "1.1", features = ["cosmwasm_1_1"]}
 cosmwasm-vm        = "1.1"
-cw2                = "0.15"
+cw2                = "0.16"
 cw-bank            = { path = "./contracts/bank" }
 cw-sdk             = { path = "./sdk" }
 cw-server          = { path = "./server" }
 cw-state-machine   = { path = "./state-machine" }
-cw-storage-plus    = "0.15"
+cw-storage-plus    = "0.16"
 cw-store           = { path = "./store" }
-cw-utils           = "0.15"
+cw-utils           = "0.16"
 dialoguer          = "0.10"
 hex                = "0.4"
 home               = "0.5"
