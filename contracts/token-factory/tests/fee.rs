@@ -5,8 +5,8 @@ use cw_multi_test::{App, ContractWrapper, Executor};
 
 use cw_bank::msg::{self as bank, UpdateNamespaceMsg};
 use cw_token_factory::{
-    msg::{ExecuteMsg, NAMESPACE},
     error::ContractError,
+    msg::{ExecuteMsg, NAMESPACE},
 };
 
 const OWNER: &str = "larry";
