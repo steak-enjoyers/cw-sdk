@@ -268,14 +268,17 @@ fn assert_namespace_admin(
     namespace: &Namespace,
     sender: &Addr,
 ) -> Result<(), ContractError> {
-    if let Some(namespace_cfg) = NAMESPACE_CONFIGS.may_load(store, namespace)? {
-        if let Some(admin) = namespace_cfg.admin {
-            if *sender == admin {
-                return Ok(());
-            }
-        }
-        Err(ContractError::not_namespace_admin(namespace))
-    } else {
-        Err(ContractError::non_exist_namespace(namespace))
+    let Some(namespace_cfg) = NAMESPACE_CONFIGS.may_load(store, namespace)? else {
+        return Err(ContractError::non_exist_namespace(namespace));
+    };
+
+    let Some(admin) = namespace_cfg.admin else {
+        return Err(ContractError::not_namespace_admin(namespace));
+    };
+
+    if *sender != admin {
+        return Err(ContractError::not_namespace_admin(namespace));
     }
+
+    Ok(())
 }
