@@ -14,8 +14,7 @@ const DEFAULT_LIMIT: u32 = 10;
 const MAX_LIMIT: u32 = 30;
 
 pub fn config(deps: Deps) -> StdResult<Config<String>> {
-    let cfg = CONFIG.load(deps.storage)?;
-    Ok(Config {
+    CONFIG.load(deps.storage).map(|cfg| Config {
         owner: cfg.owner.into(),
     })
 }

@@ -20,7 +20,7 @@ library = []
 cosmwasm-schema = { workspace = true }
 cosmwasm-std    = { workspace = true }
 cw2             = { workspace = true }
-cw-bank         = { workspace = true }
+cw-bank         = { workspace = true, features = ["library"] }
 cw-sdk          = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils        = { workspace = true }

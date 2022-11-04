@@ -7,9 +7,9 @@ use cosmwasm_std::{
 use cw_sdk::helpers::{stringify_coins, stringify_option, validate_optional_addr};
 
 use crate::{
-    denom::{Denom, Namespace, NamespaceAdminExecuteMsg, NamespaceConfig},
+    denom::{Denom, Namespace, NamespaceConfig},
     error::ContractError,
-    msg::{Balance, Config, UpdateNamespaceMsg},
+    msg::{Balance, Config, HookMsg, UpdateNamespaceMsg},
     state::{
         decrease_balance, decrease_supply, increase_balance, increase_supply, BALANCES, CONFIG,
         NAMESPACE_CONFIGS,
@@ -235,7 +235,7 @@ fn transfer(
             if let Some(after_send_hook) = namespace_cfg.after_send_hook {
                 msgs.push(WasmMsg::Execute {
                     contract_addr: after_send_hook.into(),
-                    msg: to_binary(&NamespaceAdminExecuteMsg::AfterTransfer {
+                    msg: to_binary(&HookMsg::AfterTransfer {
                         from: from_addr.to_string(),
                         to: to_addr.to_string(),
                         denom: coin.denom.clone(),

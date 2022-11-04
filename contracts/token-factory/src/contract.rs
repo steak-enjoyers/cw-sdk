@@ -1,6 +1,4 @@
-use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-};
+use cosmwasm_std::{entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
 use crate::{
     error::ContractError,
@@ -15,8 +13,8 @@ pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    _env: Env,
+    _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -40,13 +38,13 @@ pub fn execute(
         ExecuteMsg::CreateToken {
             nonce,
             admin,
-            after_send_hook,
-        } => execute::create_token(deps, info, nonce, admin, after_send_hook),
+            after_transfer_hook,
+        } => execute::create_token(deps, info, nonce, admin, after_transfer_hook),
         ExecuteMsg::UpdateToken(UpdateTokenMsg {
             denom,
             admin,
-            after_send_hook,
-        }) => execute::update_token(deps, info, denom, admin),
+            after_transfer_hook,
+        }) => execute::update_token(deps, info, denom, admin, after_transfer_hook),
         ExecuteMsg::Mint {
             to,
             denom,
@@ -63,11 +61,17 @@ pub fn execute(
             denom,
             amount,
         } => execute::force_transfer(deps, info, from, to, denom, amount),
+        ExecuteMsg::AfterTransfer {
+            from,
+            to,
+            denom,
+            amount,
+        } => execute::after_transfer(deps, info, from, to, denom, amount),
     }
 }
 
 #[entry_point]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Config {} => to_binary(&query::config(deps)?),
         QueryMsg::Token {
@@ -78,4 +82,5 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             limit,
         } => to_binary(&query::tokens(deps, start_after, limit)?),
     }
+    .map_err(ContractError::from)
 }

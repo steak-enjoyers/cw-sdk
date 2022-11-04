@@ -91,6 +91,18 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
+pub enum HookMsg {
+    /// After a coin transfer, if the namespace's `after_transfer_hook` is defined, the bank
+    /// contract will send this message to that address.
+    AfterTransfer {
+        from: String,
+        to: String,
+        denom: String,
+        amount: Uint128,
+    },
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     /// Contract configuration

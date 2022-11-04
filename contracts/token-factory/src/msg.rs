@@ -24,15 +24,15 @@ pub struct TokenConfig {
     /// Set this to `None` will permanently disable any burning or minting of this token.
     pub admin: Option<Addr>,
 
-    /// Any AfterSend hook message sent by the bank contract will be forwarded to this address.
-    pub after_send_hook: Option<Addr>,
+    /// Any AfterTransfer hook message sent by the bank contract will be forwarded to this address.
+    pub after_transfer_hook: Option<Addr>,
 }
 
 #[cw_serde]
 pub struct UpdateTokenMsg {
     denom: String,
     admin: Option<String>,
-    after_send_hook: Option<String>,
+    after_transfer_hook: Option<String>,
 }
 
 pub type InstantiateMsg = Config<String>;
@@ -64,8 +64,8 @@ pub enum ExecuteMsg {
         /// However, the admin can be set to `None` later.
         admin: String,
 
-        /// See the comments on `crate::types::Token` on what this hook is.
-        after_send_hook: Option<String>,
+        /// See the comments on `TokenConfig` on what this hook is.
+        after_transfer_hook: Option<String>,
     },
 
     /// Update a token's configuration.
@@ -91,6 +91,15 @@ pub enum ExecuteMsg {
     /// Forcibly transfer tokens between two accounts.
     /// Only callable by the token's admin.
     ForceTransfer {
+        from: String,
+        to: String,
+        denom: String,
+        amount: Uint128,
+    },
+
+    /// Invoked every time a token is transferred.
+    /// Only callable by the bank contract.
+    AfterTransfer {
         from: String,
         to: String,
         denom: String,

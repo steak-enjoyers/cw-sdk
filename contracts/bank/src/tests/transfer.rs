@@ -1,8 +1,9 @@
 use cosmwasm_std::{coin, testing::mock_info, to_binary, SubMsg, Uint128, WasmMsg};
 
 use crate::{
-    denom::NamespaceAdminExecuteMsg,
-    execute, query,
+    execute,
+    msg::HookMsg,
+    query,
     tests::{assert_supply, setup_test, OWNER},
 };
 
@@ -50,7 +51,7 @@ fn send() {
         vec![
             SubMsg::new(WasmMsg::Execute {
                 contract_addr: "red-bank".into(),
-                msg: to_binary(&NamespaceAdminExecuteMsg::AfterTransfer {
+                msg: to_binary(&HookMsg::AfterTransfer {
                     from: "jake".into(),
                     to: "pumpkin".into(),
                     denom: "mars/uxmars".into(),
@@ -61,7 +62,7 @@ fn send() {
             }),
             SubMsg::new(WasmMsg::Execute {
                 contract_addr: "token-factory".into(),
-                msg: to_binary(&NamespaceAdminExecuteMsg::AfterTransfer {
+                msg: to_binary(&HookMsg::AfterTransfer {
                     from: "jake".into(),
                     to: "pumpkin".into(),
                     denom: "factory/osmo1234abcd/uastro".into(),

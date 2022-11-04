@@ -39,10 +39,8 @@ pub const MAX_LEN: usize = 128;
 #[cw_serde]
 pub struct Denom(String);
 
-impl FromStr for Denom {
-    type Err = DenomError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+impl Denom {
+    pub fn validate(s: &str) -> Result<(), DenomError> {
         if starts_with_number(s) {
             return Err(DenomError::leading_number(s));
         }
@@ -61,7 +59,24 @@ impl FromStr for Denom {
             }
         }
 
-        Ok(Self(s.to_owned()))
+        Ok(())
+    }
+
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.0.into()
+    }
+
+    #[cfg(test)]
+    pub fn unchecked(s: impl Into<String>) -> Self {
+        Self(s.into())
+    }
+}
+
+impl FromStr for Denom {
+    type Err = DenomError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::validate(s).map(|_| Self(s.to_owned()))
     }
 }
 
@@ -93,17 +108,6 @@ impl KeyDeserialize for &Denom {
 
     fn from_vec(value: Vec<u8>) -> StdResult<Self::Output> {
         String::from_utf8(value).map(Denom).map_err(StdError::from)
-    }
-}
-
-impl Denom {
-    pub fn into_bytes(self) -> Vec<u8> {
-        self.0.into()
-    }
-
-    #[cfg(test)]
-    pub fn unchecked(s: impl Into<String>) -> Self {
-        Self(s.into())
     }
 }
 

@@ -1,7 +1,7 @@
 use std::{fmt, str::FromStr};
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Attribute, StdError, StdResult, Uint128};
+use cosmwasm_std::{Addr, Attribute, StdError, StdResult};
 use cw_storage_plus::{Key, KeyDeserialize, PrimaryKey};
 
 use super::{is_alphanumeric, starts_with_number, Denom, DenomError};
@@ -17,10 +17,8 @@ pub const MAX_NAMESPACE_LEN: usize = 126;
 #[cw_serde]
 pub struct Namespace(String);
 
-impl FromStr for Namespace {
-    type Err = DenomError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+impl Namespace {
+    pub fn validate(s: &str) -> Result<(), DenomError> {
         if s.len() > MAX_NAMESPACE_LEN {
             return Err(DenomError::illegal_length(s));
         }
@@ -33,7 +31,24 @@ impl FromStr for Namespace {
             return Err(DenomError::not_alphanumeric(s));
         }
 
-        Ok(Self(s.to_owned()))
+        Ok(())
+    }
+
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.0.into()
+    }
+
+    #[cfg(test)]
+    pub fn unchecked(s: impl Into<String>) -> Self {
+        Self(s.into())
+    }
+}
+
+impl FromStr for Namespace {
+    type Err = DenomError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::validate(s).map(|_| Self(s.to_owned()))
     }
 }
 
@@ -90,17 +105,6 @@ impl KeyDeserialize for &Namespace {
     }
 }
 
-impl Namespace {
-    pub fn into_bytes(self) -> Vec<u8> {
-        self.0.into()
-    }
-
-    #[cfg(test)]
-    pub fn unchecked(s: impl Into<String>) -> Self {
-        Self(s.into())
-    }
-}
-
 /// Configuration of a namespace
 #[cw_serde]
 pub struct NamespaceConfig {
@@ -123,21 +127,8 @@ pub struct NamespaceConfig {
     pub admin: Option<Addr>,
 
     /// If set to `true`, bank contract will invoke the admin contract with the
-    /// `NamespaceAdminExecuteMsg::AfterTransfer` message (defined in this file below) following a
-    /// coin transfer.
+    /// `HookMsg::AfterTransfer` message (defined in this file below) following a coin transfer.
     pub after_send_hook: Option<Addr>,
-}
-
-/// This is the execute message that the admin contract is expected to implement if `hookable` is
-/// set to `true`.
-#[cw_serde]
-pub enum NamespaceAdminExecuteMsg {
-    AfterTransfer {
-        from: String,
-        to: String,
-        denom: String,
-        amount: Uint128,
-    },
 }
 
 #[test]
