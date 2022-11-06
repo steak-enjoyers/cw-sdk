@@ -2,13 +2,13 @@
 //! OOP-based patterns. This file basically provides a few helper functions wrapping the dialoguer
 //! functions, so that instead of
 //!
-//! ```no_run
+//! ```ignore
 //! let proceed = Confirm::new().with_prompt("broadcast tx?").interact()?;
 //! ```
 //!
 //! We simply do
 //!
-//! ```no_run
+//! ```ignore
 //! let proceed = prompt::confirm("broacast tx")?;
 //! ```
 
