@@ -1,3 +1,4 @@
+mod creating;
 mod fee;
 mod hook;
 mod instantiation;
@@ -5,13 +6,17 @@ mod instantiation;
 use cosmwasm_std::{
     coin,
     testing::{mock_dependencies, MockApi, MockQuerier, MockStorage},
-    Empty, OwnedDeps,
+    Empty, OwnedDeps, Coin,
 };
 
 use crate::{execute, msg::Config};
 
 const OWNER: &str = "larry";
 const BANK: &str = "bank";
+
+fn fee() -> Coin {
+    coin(12345, "ujuno")
+}
 
 fn setup_test() -> OwnedDeps<MockStorage, MockApi, MockQuerier, Empty> {
     let mut deps = mock_dependencies();
@@ -21,7 +26,7 @@ fn setup_test() -> OwnedDeps<MockStorage, MockApi, MockQuerier, Empty> {
         Config {
             owner: OWNER.into(),
             bank: BANK.into(),
-            token_creation_fee: Some(coin(12345, "ujuno")),
+            token_creation_fee: Some(fee()),
         },
     )
     .unwrap();

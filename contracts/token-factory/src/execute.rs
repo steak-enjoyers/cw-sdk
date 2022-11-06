@@ -110,7 +110,7 @@ pub fn create_token(
             return Err(ContractError::token_exists(&denom));
         }
         Ok(TokenConfig {
-            admin: Some(deps.api.addr_validate(&denom)?),
+            admin: Some(deps.api.addr_validate(&admin)?),
             after_transfer_hook: validate_optional_addr(deps.api, after_transfer_hook.as_ref())?,
         })
     })?;
