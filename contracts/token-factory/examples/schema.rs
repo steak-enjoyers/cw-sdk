@@ -1,11 +1,10 @@
 use cosmwasm_schema::write_api;
 
-use cw_bank::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg};
+use cw_token_factory::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
     write_api! {
         instantiate: InstantiateMsg,
-        sudo: SudoMsg,
         execute: ExecuteMsg,
         query: QueryMsg,
     }

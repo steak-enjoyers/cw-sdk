@@ -2,6 +2,7 @@ mod account;
 pub mod address;
 mod genesis;
 pub mod hash;
+pub mod helpers;
 mod msg;
 mod tx;
 mod traits;

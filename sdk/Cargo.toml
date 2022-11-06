@@ -1,9 +1,10 @@
 [package]
 name          = "cw-sdk"
-description   = "Common type definitions for CosmWasm SDK"
+description   = "Common type definitions and helper functions for CosmWasm SDK"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
+rust-version  = { workspace = true }
 license       = { workspace = true }
 homepage      = { workspace = true }
 repository    = { workspace = true }

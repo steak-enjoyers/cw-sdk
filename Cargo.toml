@@ -12,6 +12,7 @@ members = [
 version       = "0.0.0"
 authors       = ["Larry Engineer <gm@larry.engineer>", "Ethan Frey <ethanfrey@users.noreply.github.com>", "Matt Bell <mappum@gmail.com>", "Simon Warta <webmaster128@users.noreply.github.com>"]
 edition       = "2021"
+rust-version  = "1.65"
 license       = "AGPL-v3-or-later"
 homepage      = "https://larry.engineer"
 repository    = "https://github.com/steak-enjoyers/cw-sdk"
@@ -26,14 +27,18 @@ bech32             = "0.9"
 bip32              = "0.4"
 clap               = "3"
 cosmwasm-schema    = "1.1"
-cosmwasm-std       = "1.1"
+cosmwasm-std       = { version = "1.1", features = ["cosmwasm_1_1"]}
 cosmwasm-vm        = "1.1"
-cw2                = "0.15"
+cw2                = "0.16"
+cw-bank            = { path = "./contracts/bank" }
+cw-multi-test      = "0.16"
 cw-sdk             = { path = "./sdk" }
 cw-server          = { path = "./server" }
 cw-state-machine   = { path = "./state-machine" }
-cw-storage-plus    = "0.15"
+cw-storage-plus    = "0.16"
 cw-store           = { path = "./store" }
+cw-token-factory   = { path = "./contracts/token-factory" }
+cw-utils           = "0.16"
 dialoguer          = "0.10"
 hex                = "0.4"
 home               = "0.5"

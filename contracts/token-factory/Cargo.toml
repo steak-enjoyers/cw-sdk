@@ -1,6 +1,6 @@
 [package]
-name          = "cw-bank"
-description   = "Bank contract responsible for handling multi-asset coin transfers between accounts"
+name          = "cw-token-factory"
+description   = "Allows any user or contract to mint tokens with the bank contract"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -22,6 +22,13 @@ integration-test = []
 cosmwasm-schema = { workspace = true }
 cosmwasm-std    = { workspace = true }
 cw2             = { workspace = true }
+cw-bank         = { workspace = true, features = ["library"] }
 cw-sdk          = { workspace = true }
 cw-storage-plus = { workspace = true }
+cw-utils        = { workspace = true }
 thiserror       = { workspace = true }
+
+[dev-dependencies]
+cw-bank          = { workspace = true, features = ["integration-test"] }
+cw-multi-test    = { workspace = true }
+cw-token-factory = { workspace = true, features = ["integration-test"] }
