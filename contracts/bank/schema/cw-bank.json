@@ -83,7 +83,7 @@
               "null"
             ]
           },
-          "after_send_hook": {
+          "after_transfer_hook": {
             "type": [
               "string",
               "null"
@@ -270,7 +270,7 @@
               "null"
             ]
           },
-          "after_send_hook": {
+          "after_transfer_hook": {
             "type": [
               "string",
               "null"
@@ -612,7 +612,7 @@
             "null"
           ]
         },
-        "after_send_hook": {
+        "after_transfer_hook": {
           "type": [
             "string",
             "null"
@@ -644,7 +644,7 @@
                 "null"
               ]
             },
-            "after_send_hook": {
+            "after_transfer_hook": {
               "type": [
                 "string",
                 "null"
