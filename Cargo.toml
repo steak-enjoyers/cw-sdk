@@ -10,7 +10,12 @@ members = [
 
 [workspace.package]
 version       = "0.0.0"
-authors       = ["Larry Engineer <gm@larry.engineer>", "Ethan Frey <ethanfrey@users.noreply.github.com>", "Matt Bell <mappum@gmail.com>", "Simon Warta <webmaster128@users.noreply.github.com>"]
+authors       = [
+  "Larry Engineer <gm@larry.engineer>",
+  "Ethan Frey <ethanfrey@users.noreply.github.com>",
+  "Matt Bell <mappum@gmail.com>",
+  "Simon Warta <webmaster128@users.noreply.github.com>",
+]
 edition       = "2021"
 rust-version  = "1.65"
 license       = "AGPL-v3-or-later"

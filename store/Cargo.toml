@@ -11,13 +11,13 @@ repository    = { workspace = true }
 documentation = { workspace = true }
 keywords      = { workspace = true }
 
-[dependencies]
-cosmwasm-std = { workspace = true }
-cosmwasm-vm  = { workspace = true }
-merk         = { workspace = true }
-anyhow       = { workspace = true }
-
 [features]
 default = ["iterator"]
 # This enables iterator functionality, as exposed in cosmwasm-std/iterator
 iterator = ["cosmwasm-std/iterator"]
+
+[dependencies]
+anyhow       = { workspace = true }
+cosmwasm-std = { workspace = true }
+cosmwasm-vm  = { workspace = true }
+merk         = { workspace = true }
