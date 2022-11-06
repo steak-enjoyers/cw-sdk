@@ -1,4 +1,4 @@
-# cw-types
+# cw-sdk
 
 Common type definitions for [CosmWasm SDK](https://github.com/steak-enjoyers/cw-sdk)
 
