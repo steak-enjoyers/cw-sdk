@@ -1,33 +1,14 @@
-use cosmwasm_std::{coin, coins, testing::mock_info, Addr, Coin, DepsMut, Storage, Uint128};
+use cosmwasm_std::{coin, coins, testing::mock_info, Coin, DepsMut, Uint128};
 use cw_bank::denom::DenomError;
 use cw_utils::PaymentError;
 
 use crate::{
     error::ContractError,
     execute,
-    msg::{TokenConfig, TokenResponse},
+    msg::TokenResponse,
     query,
-    state::TOKEN_CONFIGS,
-    tests::{fee, setup_test},
+    tests::{fee, setup_test, DENOM, OWNER},
 };
-
-fn setup_token(store: &mut dyn Storage) -> (Addr, String, String) {
-    let creator = Addr::unchecked("larry");
-    let nonce = "uastro";
-
-    TOKEN_CONFIGS
-        .save(
-            store,
-            (&creator, nonce),
-            &TokenConfig {
-                admin: Some(Addr::unchecked("jake")),
-                after_transfer_hook: Some(Addr::unchecked("pumpkin")),
-            },
-        )
-        .unwrap();
-
-    (creator.clone(), nonce.into(), format!("factory/{creator}/{nonce}"))
-}
 
 #[test]
 fn incorrect_fee() {
@@ -88,12 +69,12 @@ fn invalid_denom() {
 fn proper_token_creation() {
     let mut deps = setup_test();
 
-    let denom = "factory/larry/uastro";
+    let denom = "factory/larry/umars";
 
     execute::create_token(
         deps.as_mut(),
         mock_info("larry", &[fee()]),
-        "uastro".into(),
+        "umars".into(),
         "jake".into(),
         Some("pumpkin".into()),
     )
@@ -114,60 +95,79 @@ fn proper_token_creation() {
 fn duplicate_denom() {
     let mut deps = setup_test();
 
-    let (creator, nonce, _) = setup_token(deps.as_mut().storage);
-
     let err = execute::create_token(
         deps.as_mut(),
-        mock_info(creator.as_str(), &[fee()]),
-        nonce.clone(),
+        mock_info("larry", &[fee()]),
+        "uastro".into(),
         "larry".into(),
         None,
     )
     .unwrap_err();
 
-    assert_eq!(err, ContractError::token_exists(format!("factory/larry/{nonce}")).into());
+    assert_eq!(err, ContractError::token_exists(DENOM).into());
 }
 
 #[test]
 fn not_owner_or_admin() {
     let mut deps = setup_test();
 
-    let (_, _, denom) = setup_token(deps.as_mut().storage);
-
     let err = execute::update_token(
         deps.as_mut(),
         mock_info("badguy", &[]),
-        denom.clone(),
+        DENOM.into(),
         None,
         None,
     )
     .unwrap_err();
 
-    assert_eq!(err, ContractError::not_token_admin(denom));
+    assert_eq!(err, ContractError::not_token_admin(DENOM));
 }
 
 #[test]
 fn proper_token_update() {
     let mut deps = setup_test();
 
-    let (_, _, denom) = setup_token(deps.as_mut().storage);
+    // admin can update token
+    {
+        execute::update_token(
+            deps.as_mut(),
+            mock_info("jake", &[]),
+            DENOM.into(),
+            None,
+            Some("some_contract".into()),
+        )
+        .unwrap();
 
-    execute::update_token(
-        deps.as_mut(),
-        mock_info("jake", &[]),
-        denom.clone(),
-        None,
-        Some("some_contract".into()),
-    )
-    .unwrap();
+        let token = query::token(deps.as_ref(), DENOM.into()).unwrap();
+        assert_eq!(
+            token,
+            TokenResponse {
+                denom: DENOM.into(),
+                admin: None,
+                after_transfer_hook: Some("some_contract".into()),
+            },
+        );
+    }
 
-    let token = query::token(deps.as_ref(), denom.clone()).unwrap();
-    assert_eq!(
-        token,
-        TokenResponse {
-            denom,
-            admin: None,
-            after_transfer_hook: Some("some_contract".into()),
-        },
-    );
+    // contract owner can update token
+    {
+        execute::update_token(
+            deps.as_mut(),
+            mock_info(OWNER, &[]),
+            DENOM.into(),
+            Some(OWNER.into()),
+            Some("another_contract".into()),
+        )
+        .unwrap();
+
+        let token = query::token(deps.as_ref(), DENOM.into()).unwrap();
+        assert_eq!(
+            token,
+            TokenResponse {
+                denom: DENOM.into(),
+                admin: Some(OWNER.into()),
+                after_transfer_hook: Some("another_contract".into()),
+            },
+        );
+    }
 }
