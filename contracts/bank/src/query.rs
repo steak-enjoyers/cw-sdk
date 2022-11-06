@@ -25,7 +25,7 @@ pub fn namespace(deps: Deps, namespace: String) -> Result<NamespaceResponse, Con
     Ok(NamespaceResponse {
         namespace,
         admin: cfg.admin.map(String::from),
-        after_send_hook: cfg.after_send_hook.map(String::from),
+        after_transfer_hook: cfg.after_transfer_hook.map(String::from),
     })
 }
 
@@ -48,7 +48,7 @@ pub fn namespaces(
             Ok(NamespaceResponse {
                 namespace: namespace.into(),
                 admin: cfg.admin.map(String::from),
-                after_send_hook: cfg.after_send_hook.map(String::from),
+                after_transfer_hook: cfg.after_transfer_hook.map(String::from),
             })
         })
         .collect()

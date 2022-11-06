@@ -41,17 +41,17 @@ fn proper_instantiation() {
             NamespaceResponse {
                 namespace: "".into(),
                 admin: Some("gov".into()),
-                after_send_hook: None,
+                after_transfer_hook: None,
             },
             NamespaceResponse {
                 namespace: "factory".into(),
                 admin: Some("token-factory".into()),
-                after_send_hook: Some("token-factory".into()),
+                after_transfer_hook: Some("token-factory".into()),
             },
             NamespaceResponse {
                 namespace: "ibc".into(),
                 admin: Some("ibc-transfer".into()),
-                after_send_hook: None,
+                after_transfer_hook: None,
             },
         ],
     );
@@ -115,17 +115,17 @@ fn duplicate_namespace() {
             UpdateNamespaceMsg {
                 namespace: "ibc".into(),
                 admin: Some("ibc-transfer".into()),
-                after_send_hook: None,
+                after_transfer_hook: None,
             },
             UpdateNamespaceMsg {
                 namespace: "factory".into(),
                 admin: Some("token-factory".into()),
-                after_send_hook: Some("token-factory".into()),
+                after_transfer_hook: Some("token-factory".into()),
             },
             UpdateNamespaceMsg {
                 namespace: "ibc".into(),
                 admin: Some("ibc-query".into()),
-                after_send_hook: None,
+                after_transfer_hook: None,
             },
         ],
     )
@@ -163,7 +163,7 @@ fn invalid_namespace() {
         vec![UpdateNamespaceMsg {
             namespace: "123abc".into(),
             admin: None,
-            after_send_hook: None,
+            after_transfer_hook: None,
         }],
     )
     .unwrap_err();

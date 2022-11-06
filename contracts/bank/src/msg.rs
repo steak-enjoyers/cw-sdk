@@ -37,7 +37,7 @@ pub struct Balance {
 pub struct UpdateNamespaceMsg {
     pub namespace: String,
     pub admin: Option<String>,
-    pub after_send_hook: Option<String>,
+    pub after_transfer_hook: Option<String>,
 }
 
 // TODO: this should be in `cw-sdk` crate

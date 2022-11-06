@@ -43,8 +43,8 @@ pub fn execute(
         ExecuteMsg::UpdateNamespace(UpdateNamespaceMsg {
             namespace,
             admin,
-            after_send_hook,
-        }) => execute::update_namespace(deps, info, namespace, admin, after_send_hook),
+            after_transfer_hook,
+        }) => execute::update_namespace(deps, info, namespace, admin, after_transfer_hook),
         ExecuteMsg::Send {
             to,
             coins,

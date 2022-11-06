@@ -37,17 +37,17 @@ fn setup_test() -> OwnedDeps<MockStorage, MockApi, MockQuerier, Empty> {
             UpdateNamespaceMsg {
                 namespace: "".into(),
                 admin: Some("gov".into()),
-                after_send_hook: None,
+                after_transfer_hook: None,
             },
             UpdateNamespaceMsg {
                 namespace: "ibc".into(),
                 admin: Some("ibc-transfer".into()),
-                after_send_hook: None,
+                after_transfer_hook: None,
             },
             UpdateNamespaceMsg {
                 namespace: "factory".into(),
                 admin: Some("token-factory".into()),
-                after_send_hook: Some("token-factory".into()),
+                after_transfer_hook: Some("token-factory".into()),
             },
         ],
     )

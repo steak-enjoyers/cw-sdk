@@ -65,7 +65,7 @@ pub fn init(
     for UpdateNamespaceMsg {
         namespace,
         admin,
-        after_send_hook,
+        after_transfer_hook,
     } in namespace_cfgs
     {
         let ns = Namespace::from_str(&namespace)?;
@@ -74,7 +74,7 @@ pub fn init(
             if namespace_cfg.is_none() {
                 Ok(NamespaceConfig {
                     admin: validate_optional_addr(deps.api, admin.as_ref())?,
-                    after_send_hook: validate_optional_addr(deps.api, after_send_hook.as_ref())?,
+                    after_transfer_hook: validate_optional_addr(deps.api, after_transfer_hook.as_ref())?,
                 })
             } else {
                 Err(ContractError::duplicate_namespace(ns.clone()))
@@ -90,7 +90,7 @@ pub fn update_namespace(
     info: MessageInfo,
     namespace: String,
     admin: Option<String>,
-    after_send_hook: Option<String>,
+    after_transfer_hook: Option<String>,
 ) -> Result<Response, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
     let ns = Namespace::from_str(&namespace)?;
@@ -105,7 +105,7 @@ pub fn update_namespace(
         &ns,
         &NamespaceConfig {
             admin: validate_optional_addr(deps.api, admin.as_ref())?,
-            after_send_hook: validate_optional_addr(deps.api, after_send_hook.as_ref())?,
+            after_transfer_hook: validate_optional_addr(deps.api, after_transfer_hook.as_ref())?,
         },
     )?;
 
@@ -113,7 +113,7 @@ pub fn update_namespace(
         .add_attribute("action", "bank/update_namespace")
         .add_attribute("namespace", namespace)
         .add_attribute("admin", stringify_option(admin))
-        .add_attribute("after_send_hook", stringify_option(after_send_hook)))
+        .add_attribute("after_transfer_hook", stringify_option(after_transfer_hook)))
 }
 
 pub fn mint(
@@ -213,7 +213,7 @@ pub fn force_transfer(
 /// Internal method: perform transfers of multiple coins.
 /// For each coin,
 /// 1. Update balances
-/// 2. If `after_send_hook` is defined for its namespace, compose a message to invoke the hook
+/// 2. If `after_transfer_hook` is defined for its namespace, compose a message to invoke the hook
 fn transfer(
     store: &mut dyn Storage,
     from_addr: &Addr,
@@ -232,9 +232,9 @@ fn transfer(
         increase_balance(store, to_addr, &d, coin.amount)?;
 
         if let Some(namespace_cfg) = NAMESPACE_CONFIGS.may_load(store, &ns)? {
-            if let Some(after_send_hook) = namespace_cfg.after_send_hook {
+            if let Some(after_transfer_hook) = namespace_cfg.after_transfer_hook {
                 msgs.push(WasmMsg::Execute {
-                    contract_addr: after_send_hook.into(),
+                    contract_addr: after_transfer_hook.into(),
                     msg: to_binary(&HookMsg::AfterTransfer {
                         from: from_addr.to_string(),
                         to: to_addr.to_string(),

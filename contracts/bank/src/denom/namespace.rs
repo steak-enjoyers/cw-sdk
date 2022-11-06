@@ -128,7 +128,7 @@ pub struct NamespaceConfig {
 
     /// If set to `true`, bank contract will invoke the admin contract with the
     /// `HookMsg::AfterTransfer` message (defined in this file below) following a coin transfer.
-    pub after_send_hook: Option<Addr>,
+    pub after_transfer_hook: Option<Addr>,
 }
 
 #[test]

@@ -91,12 +91,12 @@ impl TestSuite {
                         UpdateNamespaceMsg {
                             namespace: "".into(),
                             admin: Some(OWNER.into()),
-                            after_send_hook: None,
+                            after_transfer_hook: None,
                         },
                         UpdateNamespaceMsg {
                             namespace: "ibc".into(),
                             admin: Some(OWNER.into()),
-                            after_send_hook: None,
+                            after_transfer_hook: None,
                         },
                     ],
                 },
@@ -157,7 +157,7 @@ impl TestSuite {
             &bank::ExecuteMsg::UpdateNamespace(UpdateNamespaceMsg {
                 namespace: NAMESPACE.into(),
                 admin: Some(factory.to_string()),
-                after_send_hook: Some(factory.to_string()),
+                after_transfer_hook: Some(factory.to_string()),
             }),
             &[],
         )
