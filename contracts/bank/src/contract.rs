@@ -1,10 +1,11 @@
-use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-};
+use cosmwasm_std::{entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
-use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::{execute, query};
+use crate::{
+    error::ContractError,
+    execute,
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg, UpdateNamespaceMsg},
+    query,
+};
 
 pub const CONTRACT_NAME: &str = "crates.io:cw-bank";
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -17,7 +18,18 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    execute::init(deps, msg.balances)
+    execute::init(deps, msg.owner, msg.balances, msg.namespace_cfgs)
+}
+
+#[entry_point]
+pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
+    match msg {
+        SudoMsg::Transfer {
+            from,
+            to,
+            coins,
+        } => execute::sudo_transfer(deps, from, to, coins),
+    }
 }
 
 #[entry_point]
@@ -28,20 +40,45 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Mint {
-            to,
-            amount,
-        } => execute::mint(deps, info, to, amount),
+        ExecuteMsg::UpdateNamespace(UpdateNamespaceMsg {
+            namespace,
+            admin,
+            after_transfer_hook,
+        }) => execute::update_namespace(deps, info, namespace, admin, after_transfer_hook),
         ExecuteMsg::Send {
             to,
+            coins,
+        } => execute::send(deps, info, to, coins),
+        ExecuteMsg::Mint {
+            to,
+            denom,
             amount,
-        } => execute::send(deps, info.sender, to, amount),
+        } => execute::mint(deps, info, to, denom, amount),
+        ExecuteMsg::Burn {
+            from,
+            denom,
+            amount,
+        } => execute::burn(deps, info, from, denom, amount),
+        ExecuteMsg::ForceTransfer {
+            from,
+            to,
+            denom,
+            amount,
+        } => execute::force_transfer(deps, from, to, denom, amount),
     }
 }
 
 #[entry_point]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
+        QueryMsg::Config {} => to_binary(&query::config(deps)?),
+        QueryMsg::Namespace {
+            namespace,
+        } => to_binary(&query::namespace(deps, namespace)?),
+        QueryMsg::Namespaces {
+            start_after,
+            limit,
+        } => to_binary(&query::namespaces(deps, start_after, limit)?),
         QueryMsg::Supply {
             denom,
         } => to_binary(&query::supply(deps, denom)?),
@@ -59,4 +96,5 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             limit,
         } => to_binary(&query::balances(deps, address, start_after, limit)?),
     }
+    .map_err(ContractError::from)
 }

@@ -53,30 +53,31 @@ docker run --rm -v "$(pwd)":/code \
 # Update the `contracts` array in the script to reflect the content of your project
 [tasks.schema]
 script = """
-rm -rf schemas
-mkdir schemas
 contracts=(
-  cw-bank
+  bank
+  token-factory
 )
 
 for contract in ${contracts[@]}; do
-  cargo run --example schema -p $contract
-  mv schema/$contract.json schemas
+  cd ./contracts/$contract
+  cargo run --example schema
+  cd ../..
 done
-
-rm -rf schema
 """
 
 # Update the `crates` array in the script to reflect the content of your project
+# The order of crates should be based on their dependency relationship (can be visualized by
+# rust-analyzer.)
 [tasks.publish]
 script = """
 crates=(
-  cw-bank
-  cw-daemon
   cw-sdk
-  cw-server
-  cw-state-machine
   cw-store
+  cw-state-machine
+  cw-server
+  cw-daemon
+  cw-bank
+  cw-token-factory
 )
 
 for crate in ${crates[@]}; do
