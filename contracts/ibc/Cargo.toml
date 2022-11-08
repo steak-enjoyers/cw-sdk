@@ -1,0 +1,25 @@
+[package]
+name          = "cw-ibc"
+description   = "Implementation of the IBC core protocol (client, connection, channel) as a CosmWasm contract"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+rust-version  = { workspace = true }
+license       = { workspace = true }
+homepage      = { workspace = true }
+repository    = { workspace = true }
+documentation = { workspace = true }
+keywords      = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+library = []
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std    = { workspace = true }
+cw2             = { workspace = true }
+cw-storage-plus = { workspace = true }
+thiserror       = { workspace = true }
