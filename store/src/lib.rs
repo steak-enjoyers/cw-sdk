@@ -1,13 +1,9 @@
-mod cache;
-mod prefix;
+#![feature(btree_drain_filter)]
+
+mod helpers;
+#[cfg(feature = "iterator")]
+mod iterators;
 mod store;
 
-pub use cache::StorageTransaction;
-pub use prefix::PrefixedStorage;
-pub use store::Store;
-
-#[cfg(feature = "mock")]
-mod mock;
-
-#[cfg(feature = "mock")]
-pub use mock::MockStore;
+pub use merk::Error as MerkError;
+pub use store::{PendingStoreWrapper, Store, StoreWrapper};

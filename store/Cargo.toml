@@ -17,7 +17,7 @@ default = ["iterator"]
 iterator = ["cosmwasm-std/iterator"]
 
 [dependencies]
-anyhow       = { workspace = true }
 cosmwasm-std = { workspace = true }
-cosmwasm-vm  = { workspace = true }
+hex          = { workspace = true }
 merk         = { workspace = true }
+rocksdb      = { workspace = true }
