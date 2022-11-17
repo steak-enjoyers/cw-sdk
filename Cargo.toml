@@ -25,7 +25,6 @@ documentation = "https://github.com/steak-enjoyers/cw-sdk#README"
 keywords      = ["blockchain", "cosmos", "cosmwasm"]
 
 [workspace.dependencies]
-anyhow             = "1.0.66"
 base64             = "0.13"
 bcrypt             = "0.13"
 bech32             = "0.9"
