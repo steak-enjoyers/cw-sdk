@@ -1,6 +1,10 @@
-use std::{collections::BTreeMap, iter, path::Path};
+use std::{collections::BTreeMap, path::Path};
+#[cfg(feature = "iterator")]
+use std::iter;
 
-use cosmwasm_std::{Order, Record, Storage};
+use cosmwasm_std::Storage;
+#[cfg(feature = "iterator")]
+use cosmwasm_std::{Order, Record};
 use merk::{Merk, Op};
 
 use crate::{helpers::must_get, MerkError};
@@ -38,6 +42,8 @@ impl Store {
             .drain_filter(|_, _| true)
             .collect::<Vec<_>>();
 
+        // we know the ops are sorted by keys (as they are collected from a
+        // btreemap), so we skip the checking step
         unsafe {
             self.merk.apply_unchecked(&batch, &[])
         }
@@ -305,7 +311,10 @@ mod tests {
         ];
 
         // iterating with no bound and in ascending order
-        let items = store.wrap_mut().range(None, None, Order::Ascending).collect::<Vec<_>>();
+        let items = store
+            .wrap_mut()
+            .range(None, None, Order::Ascending)
+            .collect::<Vec<_>>();
         assert_eq!(items, kv);
 
         // iterating with bounds and in ascending order
@@ -319,7 +328,10 @@ mod tests {
         kv.reverse();
 
         // iterating with no bound and in descending order
-        let items = store.wrap_mut().range(None, None, Order::Descending).collect::<Vec<_>>();
+        let items = store
+            .wrap_mut()
+            .range(None, None, Order::Descending)
+            .collect::<Vec<_>>();
         assert_eq!(items, kv);
 
         // iterating with bounds and in descending order
