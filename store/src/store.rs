@@ -9,7 +9,7 @@ use merk::{Merk, Op};
 
 use crate::{helpers::must_get, MerkError};
 #[cfg(feature = "iterator")]
-use crate::iterators::{range_bounds, Iter, MergedIter};
+use crate::iterators::{range_bounds, MerkIter, MergedIter};
 
 pub struct Store {
     /// The Merk tree which holds the key-value data.
@@ -97,7 +97,7 @@ impl<'a> Storage for StoreWrapper<'a> {
                 return Box::new(iter::empty());
             }
         }
-        Box::new(Iter::new(&self.store.merk, start, end, order))
+        Box::new(MerkIter::new(&self.store.merk, start, end, order))
     }
 }
 
@@ -146,7 +146,7 @@ impl<'a> Storage for PendingStoreWrapper<'a> {
             }
         }
 
-        let base = Iter::new(&self.store.merk, start, end, order);
+        let base = MerkIter::new(&self.store.merk, start, end, order);
 
         let pending_raw = self.store.pending_ops.range(range_bounds(start, end));
         let pending: Box<dyn Iterator<Item = (&Vec<u8>, &Op)>> = match order {

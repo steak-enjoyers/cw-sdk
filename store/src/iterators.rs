@@ -13,7 +13,7 @@ use crate::helpers::must_get;
 ///
 /// Different from IAVL tree, the Merk tree stores raw keys as database keys.
 /// To iterate keys in the tree, we simply iterate keys in the underlying RocksDB.
-pub(crate) struct Iter<'a> {
+pub(crate) struct MerkIter<'a> {
     merk: &'a Merk,
     iter: rocksdb::DBRawIterator<'a>,
     start: Option<Vec<u8>>,
@@ -22,7 +22,7 @@ pub(crate) struct Iter<'a> {
     started: bool,
 }
 
-impl<'a> Iter<'a> {
+impl<'a> MerkIter<'a> {
     pub fn new(merk: &'a Merk, start: Option<&[u8]>, end: Option<&[u8]>, order: Order) -> Self {
         Self {
             merk,
@@ -35,7 +35,7 @@ impl<'a> Iter<'a> {
     }
 }
 
-impl<'a> Iterator for Iter<'a> {
+impl<'a> Iterator for MerkIter<'a> {
     type Item = Record;
 
     fn next(&mut self) -> Option<Self::Item> {
