@@ -31,6 +31,10 @@ impl Store {
         })
     }
 
+    pub fn root_hash(&self) -> [u8; 32] {
+        self.merk.root_hash()
+    }
+
     /// Commit the pending changes to the underlying Merk store.
     /// This also writes the changes to disk, so should only be called during
     /// ABCI "Commit" requests.

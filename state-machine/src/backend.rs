@@ -1,11 +1,17 @@
-use cosmwasm_std::{Binary, ContractResult, SystemResult};
-use cosmwasm_vm::{Backend, BackendApi, BackendError, BackendResult, GasInfo, Querier, Storage};
-use thiserror::Error;
+use std::collections::HashMap;
+
+use cosmwasm_std::{Addr, Binary, ContractResult, Order, Record, Storage, SystemResult};
+use cosmwasm_vm::{BackendError, BackendResult, GasInfo, Querier};
+use cw_store::{prefix, prefix_read, PrefixedStore, ReadonlyPrefixedStore};
+
+//--------------------------------------------------------------------------------------------------
+// API
+//--------------------------------------------------------------------------------------------------
 
 #[derive(Clone, Copy)]
-pub struct WasmApi;
+pub struct BackendApi;
 
-impl BackendApi for WasmApi {
+impl cosmwasm_vm::BackendApi for BackendApi {
     // TODO: currently we just return the utf8 bytes of the string. in the future we should
     // implement proper bech32 decoding.
     fn canonical_address(&self, human: &str) -> BackendResult<Vec<u8>> {
@@ -25,9 +31,13 @@ impl BackendApi for WasmApi {
     }
 }
 
-pub struct WasmQuerier;
+//--------------------------------------------------------------------------------------------------
+// Querier
+//--------------------------------------------------------------------------------------------------
 
-impl Querier for WasmQuerier {
+pub struct BackendQuerier;
+
+impl Querier for BackendQuerier {
     fn query_raw(
         &self,
         _request: &[u8],
@@ -37,26 +47,87 @@ impl Querier for WasmQuerier {
     }
 }
 
-#[derive(Debug, Error)]
-pub enum WasmError {
-    #[error("contract uses a feature that is not yet implemented: {feature}")]
-    Unimplemented {
-        feature: String,
-    },
+//--------------------------------------------------------------------------------------------------
+// Storage
+//--------------------------------------------------------------------------------------------------
+
+pub struct BackendStore<'a, T>
+where
+    T: Storage,
+{
+    store: T,
+    iterators: HashMap<u32, Box<dyn Iterator<Item = Record> + 'a>>,
 }
 
-impl WasmError {
-    pub fn unimplemented(feature: impl ToString) -> Self {
-        Self::Unimplemented {
-            feature: feature.to_string(),
-        }
+impl<'a, T> cosmwasm_vm::Storage for BackendStore<'a, T>
+where
+    T: Storage,
+{
+    fn get(&self, key: &[u8]) -> BackendResult<Option<Vec<u8>>> {
+        (Ok(self.store.get(key)), GasInfo::free())
+    }
+
+    fn set(&mut self, key: &[u8], value: &[u8]) -> BackendResult<()> {
+        self.store.set(key, value);
+        (Ok(()), GasInfo::free())
+    }
+
+    fn remove(&mut self, key: &[u8]) -> BackendResult<()> {
+        self.store.remove(key);
+        (Ok(()), GasInfo::free())
+    }
+
+    fn scan(
+        &mut self,
+        start: Option<&[u8]>,
+        end: Option<&[u8]>,
+        order: Order,
+    ) -> BackendResult<u32> {
+        let last_id: u32 = self
+            .iterators
+            .len()
+            .try_into()
+            .expect("[substore]: failed to cast iterator id into u32");
+
+        let new_id = last_id + 1;
+        let iter = self.store.range(start, end, order);
+
+        self.iterators.insert(new_id, iter);
+
+        (Ok(new_id), GasInfo::free())
+    }
+
+    fn next(&mut self, iterator_id: u32) -> BackendResult<Option<Record>> {
+        let Some(iter) = self.iterators.get_mut(&iterator_id) else {
+            return (Err(BackendError::iterator_does_not_exist(iterator_id)), GasInfo::free())
+        };
+
+        (Ok(iter.next()), GasInfo::free())
     }
 }
 
-pub fn create<T: Storage>(storage: T) -> Backend<WasmApi, T, WasmQuerier> {
-    Backend {
-        api: WasmApi,
-        storage,
-        querier: WasmQuerier,
+pub fn backend_store<'a>(
+    store: &'a mut dyn Storage,
+    contract_addr: &Addr,
+) -> BackendStore<'a, PrefixedStore<'a>> {
+    BackendStore {
+        store: prefix(store, contract_namespace(&contract_addr)),
+        iterators: HashMap::new(),
     }
+}
+
+pub fn backend_store_read<'a>(
+    store: &'a dyn Storage,
+    contract_addr: &Addr,
+) -> BackendStore<'a, ReadonlyPrefixedStore<'a>> {
+    BackendStore {
+        store: prefix_read(store, contract_namespace(&contract_addr)),
+        iterators: HashMap::new(),
+    }
+}
+
+fn contract_namespace(contract_addr: &Addr) -> Vec<u8> {
+    let mut namespace = b"contract".to_vec();
+    namespace.extend(contract_addr.to_string().into_bytes());
+    namespace
 }

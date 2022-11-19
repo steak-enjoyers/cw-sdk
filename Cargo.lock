@@ -804,6 +804,8 @@ dependencies = [
  "bech32",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-storage-plus",
+ "serde",
  "sha2 0.10.6",
  "thiserror",
 ]
@@ -829,6 +831,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-vm",
  "cw-sdk",
+ "cw-storage-plus",
  "cw-store",
  "hex",
  "k256",
