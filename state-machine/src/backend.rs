@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use cosmwasm_std::{Addr, Binary, ContractResult, Order, Record, Storage, SystemResult};
 use cosmwasm_vm::{BackendError, BackendResult, GasInfo, Querier};
@@ -51,15 +51,15 @@ impl Querier for BackendQuerier {
 // Storage
 //--------------------------------------------------------------------------------------------------
 
-pub struct BackendStore<'a, T>
+pub struct BackendStore<T>
 where
     T: Storage,
 {
     store: T,
-    iterators: HashMap<u32, Box<dyn Iterator<Item = Record> + 'a>>,
+    iterators: HashMap<u32, Iter>,
 }
 
-impl<'a, T> cosmwasm_vm::Storage for BackendStore<'a, T>
+impl<T> cosmwasm_vm::Storage for BackendStore<T>
 where
     T: Storage,
 {
@@ -88,9 +88,13 @@ where
             .len()
             .try_into()
             .expect("[substore]: failed to cast iterator id into u32");
-
         let new_id = last_id + 1;
-        let iter = self.store.range(start, end, order);
+
+        let items = self
+            .store
+            .range(start, end, order)
+            .collect();
+        let iter = Iter::new(items);
 
         self.iterators.insert(new_id, iter);
 
@@ -98,18 +102,39 @@ where
     }
 
     fn next(&mut self, iterator_id: u32) -> BackendResult<Option<Record>> {
-        let Some(iter) = self.iterators.get_mut(&iterator_id) else {
-            return (Err(BackendError::iterator_does_not_exist(iterator_id)), GasInfo::free())
-        };
-
-        (Ok(iter.next()), GasInfo::free())
+        if let Some(iter) = self.iterators.get_mut(&iterator_id) {
+            (Ok(iter.next()), GasInfo::free())
+        } else {
+            (Err(BackendError::iterator_does_not_exist(iterator_id)), GasInfo::free())
+        }
     }
 }
+
+struct Iter {
+    items: VecDeque<Record>,
+}
+
+impl Iter {
+    pub fn new(items: VecDeque<Record>) -> Self {
+        Self {
+            items,
+        }
+    }
+}
+
+impl Iterator for Iter {
+    type Item = Record;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.items.pop_front()
+    }
+}
+
 
 pub fn backend_store<'a>(
     store: &'a mut dyn Storage,
     contract_addr: &Addr,
-) -> BackendStore<'a, PrefixedStore<'a>> {
+) -> BackendStore<PrefixedStore<'a>> {
     BackendStore {
         store: prefix(store, contract_namespace(&contract_addr)),
         iterators: HashMap::new(),
@@ -119,7 +144,7 @@ pub fn backend_store<'a>(
 pub fn backend_store_read<'a>(
     store: &'a dyn Storage,
     contract_addr: &Addr,
-) -> BackendStore<'a, ReadonlyPrefixedStore<'a>> {
+) -> BackendStore<ReadonlyPrefixedStore<'a>> {
     BackendStore {
         store: prefix_read(store, contract_namespace(&contract_addr)),
         iterators: HashMap::new(),
