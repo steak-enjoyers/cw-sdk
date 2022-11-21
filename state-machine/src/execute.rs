@@ -30,10 +30,10 @@ pub fn store_code(
         .add_attribute("code_hash", hex::encode(sha256(wasm_byte_code))))
 }
 
-pub fn instantiate_contract<T: Storage>(
+pub fn instantiate_contract(
     // NOTE: `store` should be a `Shared` instance, because it will be dropped
     // at the end of this function
-    store: T,
+    store: impl Storage,
     env: &Env,
     info: &MessageInfo,
     code_id: u64,
