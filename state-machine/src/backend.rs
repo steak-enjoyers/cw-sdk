@@ -2,7 +2,11 @@ use std::collections::HashMap;
 
 use cosmwasm_std::{Addr, Binary, ContractResult, Order, Record, Storage, SystemResult};
 use cosmwasm_vm::{BackendError, BackendResult, GasInfo, Querier};
-use cw_store::{MemIter, PendingStoreWrapper, PrefixedStore, SharedStore, StoreWrapper};
+
+use cw_store::{
+    iterators::MemIter,
+    prefix::{concat, namespace_upper_bound, trim},
+};
 
 //--------------------------------------------------------------------------------------------------
 // API
@@ -51,23 +55,50 @@ impl Querier for BackendQuerier {
 // Storage
 //--------------------------------------------------------------------------------------------------
 
-pub struct BackendStore<T: Storage> {
+/// NOTE: cosmwasm-vm requires the backend store to be of 'static lifetime.
+/// This requirement comes from wasmer so not something we can change.
+///
+/// We obviously can't borrow a reference of the store with static lifetime,
+/// So it has to be an owned type.
+///
+/// Here we need both the `store` and `iterators` map be owned.
+pub struct ContractSubstore<T: Storage> {
     store: T,
+    namespace: Vec<u8>,
     iterators: HashMap<u32, MemIter>,
 }
 
-impl<T: Storage> cosmwasm_vm::Storage for BackendStore<T> {
+impl<T: Storage> ContractSubstore<T> {
+    pub fn new(store: T, contract_addr: &Addr) -> Self {
+        Self {
+            store,
+            namespace: contract_addr.to_string().into_bytes(),
+            iterators: HashMap::new(),
+        }
+    }
+
+    pub fn recycle(self) -> T {
+        self.store
+    }
+
+    fn key(&self, k: &[u8]) -> Vec<u8> {
+        concat(&self.namespace, k)
+    }
+}
+
+impl<T: Storage> cosmwasm_vm::Storage for ContractSubstore<T> {
     fn get(&self, key: &[u8]) -> BackendResult<Option<Vec<u8>>> {
-        (Ok(self.store.get(key)), GasInfo::free())
+        let value = self.store.get(&self.key(key));
+        (Ok(value), GasInfo::free())
     }
 
     fn set(&mut self, key: &[u8], value: &[u8]) -> BackendResult<()> {
-        self.store.set(key, value);
+        self.store.set(&self.key(key), value);
         (Ok(()), GasInfo::free())
     }
 
     fn remove(&mut self, key: &[u8]) -> BackendResult<()> {
-        self.store.remove(key);
+        self.store.remove(&self.key(key));
         (Ok(()), GasInfo::free())
     }
 
@@ -77,18 +108,31 @@ impl<T: Storage> cosmwasm_vm::Storage for BackendStore<T> {
         end: Option<&[u8]>,
         order: Order,
     ) -> BackendResult<u32> {
-        let last_id: u32 = self
+        let start = match start {
+            Some(s) => concat(&self.namespace, s),
+            None => self.namespace.to_vec(),
+        };
+        let end = match end {
+            Some(e) => concat(&self.namespace, e),
+            // end is updating last byte by one
+            None => namespace_upper_bound(&self.namespace),
+        };
+
+        let iter = MemIter::new(self
+            .store
+            .range(Some(&start), Some(&end), order)
+            .map(move |(k, v)| (trim(&self.namespace, &k), v)));
+
+        let iter_count: u32 = self
             .iterators
             .len()
             .try_into()
             .expect("[substore]: failed to cast iterator id into u32");
 
-        let new_id = last_id + 1;
-        let iter = MemIter::new(self.store.range(start, end, order));
+        let iterator_id = iter_count + 1;
+        self.iterators.insert(iterator_id, iter);
 
-        self.iterators.insert(new_id, iter);
-
-        (Ok(new_id), GasInfo::free())
+        (Ok(iterator_id), GasInfo::free())
     }
 
     fn next(&mut self, iterator_id: u32) -> BackendResult<Option<Record>> {
@@ -98,30 +142,4 @@ impl<T: Storage> cosmwasm_vm::Storage for BackendStore<T> {
             (Err(BackendError::iterator_does_not_exist(iterator_id)), GasInfo::free())
         }
     }
-}
-
-pub fn contract_substore(
-    store: &SharedStore,
-    contract_addr: &Addr,
-) -> BackendStore<PrefixedStore<PendingStoreWrapper>> {
-    BackendStore {
-        store: PrefixedStore::new(store.wrap_mut(), contract_namespace(contract_addr)),
-        iterators: HashMap::new(),
-    }
-}
-
-pub fn contract_substore_read(
-    store: &SharedStore,
-    contract_addr: &Addr,
-) -> BackendStore<PrefixedStore<StoreWrapper>> {
-    BackendStore {
-        store: PrefixedStore::new(store.wrap(), contract_namespace(contract_addr)),
-        iterators: HashMap::new(),
-    }
-}
-
-fn contract_namespace(contract_addr: &Addr) -> Vec<u8> {
-    let mut namespace = b"contract".to_vec();
-    namespace.extend(contract_addr.to_string().into_bytes());
-    namespace
 }

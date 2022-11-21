@@ -13,20 +13,20 @@ use crate::iterators::{range_bounds, MergedIter};
 ///
 /// ```rust
 /// use cosmwasm_std::{testing::MockStorage, Storage};
-/// use cw_store::CachedStore;
+/// use cw_store::Cached;
 ///
 /// let mut store = MockStorage::new();
-/// let mut cache = CachedStore::new(store);
+/// let mut cache = Cached::new(store);
 ///
 /// cache.set(b"key1", b"value1");
 /// let store = cache.flush();
 /// ```
-pub struct CachedStore<T: Storage> {
+pub struct Cached<T: Storage> {
     store: T,
     pending_ops: BTreeMap<Vec<u8>, Op>,
 }
 
-impl<T: Storage> CachedStore<T> {
+impl<T: Storage> Cached<T> {
     pub fn new(store: T) -> Self {
         Self {
             store,
@@ -34,10 +34,10 @@ impl<T: Storage> CachedStore<T> {
         }
     }
 
-    /// Consume self, flush the pending ops to the underlying store.
-    /// Return the underlying store.
+    /// Consume self, flush the pending ops to the underlying store,
+    /// return the underlying store.
     pub fn flush(mut self) -> T {
-        for (key, op) in self.pending_ops {
+        for (key, op) in self.pending_ops.drain_filter(|_, _| true) {
             match op {
                 Op::Put(value) => self.store.set(&key, &value),
                 Op::Delete => self.store.remove(&key),
@@ -45,11 +45,16 @@ impl<T: Storage> CachedStore<T> {
         }
         self.store
     }
+
+    /// Consume self, discard the pending ops, return the underlying store.
+    pub fn recycle(self) -> T {
+        self.store
+    }
 }
 
 // this block of code is basically duplicate from PendingStoreWrapper
 // it'd be better if we can avoid duplication
-impl<T: Storage> Storage for CachedStore<T> {
+impl<T: Storage> Storage for Cached<T> {
     fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
         let Some(op) = self.pending_ops.get(key) else {
             return self.store.get(key);
@@ -109,7 +114,7 @@ mod tests {
         store.set(b"key4", b"value4");
     }
 
-    fn setup_cache<T: Storage>(cache: &mut CachedStore<T>) {
+    fn setup_cache<T: Storage>(cache: &mut Cached<T>) {
         cache.set(b"key2", b"value23456");
         cache.set(b"key3333", b"value3333");
         cache.remove(b"key3");
@@ -130,14 +135,12 @@ mod tests {
         let mut store = MockStorage::default();
         setup_store(&mut store);
 
-        let mut cache = CachedStore::new(store);
+        let mut cache = Cached::new(store);
         setup_cache(&mut cache);
 
         let store = cache.flush();
 
-        let items = store
-            .range(None, None, Order::Ascending)
-            .collect::<Vec<_>>();
+        let items = store.range(None, None, Order::Ascending).collect::<Vec<_>>();
         assert_eq!(items, kv());
     }
 
@@ -147,7 +150,7 @@ mod tests {
         let mut store = MockStorage::default();
         setup_store(&mut store);
 
-        let mut cache = CachedStore::new(store);
+        let mut cache = Cached::new(store);
         setup_cache(&mut cache);
 
         let mut kv = kv();
