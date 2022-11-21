@@ -122,14 +122,13 @@ impl<T: Storage> cosmwasm_vm::Storage for ContractSubstore<T> {
             .store
             .range(Some(&start), Some(&end), order)
             .map(move |(k, v)| (trim(&self.namespace, &k), v)));
-
         let iter_count: u32 = self
             .iterators
             .len()
             .try_into()
             .expect("[substore]: failed to cast iterator id into u32");
-
         let iterator_id = iter_count + 1;
+
         self.iterators.insert(iterator_id, iter);
 
         (Ok(iterator_id), GasInfo::free())
