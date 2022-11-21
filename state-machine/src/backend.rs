@@ -1,8 +1,8 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 
 use cosmwasm_std::{Addr, Binary, ContractResult, Order, Record, Storage, SystemResult};
 use cosmwasm_vm::{BackendError, BackendResult, GasInfo, Querier};
-use cw_store::{prefix, prefix_read, PrefixedStore, ReadonlyPrefixedStore};
+use cw_store::{MemIter, PendingStoreWrapper, PrefixedStore, SharedStore, StoreWrapper};
 
 //--------------------------------------------------------------------------------------------------
 // API
@@ -51,18 +51,12 @@ impl Querier for BackendQuerier {
 // Storage
 //--------------------------------------------------------------------------------------------------
 
-pub struct BackendStore<T>
-where
-    T: Storage,
-{
+pub struct BackendStore<T: Storage> {
     store: T,
-    iterators: HashMap<u32, Iter>,
+    iterators: HashMap<u32, MemIter>,
 }
 
-impl<T> cosmwasm_vm::Storage for BackendStore<T>
-where
-    T: Storage,
-{
+impl<T: Storage> cosmwasm_vm::Storage for BackendStore<T> {
     fn get(&self, key: &[u8]) -> BackendResult<Option<Vec<u8>>> {
         (Ok(self.store.get(key)), GasInfo::free())
     }
@@ -88,13 +82,9 @@ where
             .len()
             .try_into()
             .expect("[substore]: failed to cast iterator id into u32");
-        let new_id = last_id + 1;
 
-        let items = self
-            .store
-            .range(start, end, order)
-            .collect();
-        let iter = Iter::new(items);
+        let new_id = last_id + 1;
+        let iter = MemIter::new(self.store.range(start, end, order));
 
         self.iterators.insert(new_id, iter);
 
@@ -110,43 +100,22 @@ where
     }
 }
 
-struct Iter {
-    items: VecDeque<Record>,
-}
-
-impl Iter {
-    pub fn new(items: VecDeque<Record>) -> Self {
-        Self {
-            items,
-        }
-    }
-}
-
-impl Iterator for Iter {
-    type Item = Record;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.items.pop_front()
-    }
-}
-
-
-pub fn backend_store<'a>(
-    store: &'a mut dyn Storage,
+pub fn contract_substore(
+    store: &SharedStore,
     contract_addr: &Addr,
-) -> BackendStore<PrefixedStore<'a>> {
+) -> BackendStore<PrefixedStore<PendingStoreWrapper>> {
     BackendStore {
-        store: prefix(store, contract_namespace(&contract_addr)),
+        store: PrefixedStore::new(store.wrap_mut(), contract_namespace(contract_addr)),
         iterators: HashMap::new(),
     }
 }
 
-pub fn backend_store_read<'a>(
-    store: &'a dyn Storage,
+pub fn contract_substore_read(
+    store: &SharedStore,
     contract_addr: &Addr,
-) -> BackendStore<ReadonlyPrefixedStore<'a>> {
+) -> BackendStore<PrefixedStore<StoreWrapper>> {
     BackendStore {
-        store: prefix_read(store, contract_namespace(&contract_addr)),
+        store: PrefixedStore::new(store.wrap(), contract_namespace(contract_addr)),
         iterators: HashMap::new(),
     }
 }

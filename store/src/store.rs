@@ -111,7 +111,7 @@ impl SharedStore {
 /// This struct is intended to be used in the ABCI "Query" request, so an
 /// _immutable_ reference to the `Store` is used.
 pub struct StoreWrapper {
-    pub(crate) inner: SharedStore,
+    pub(super) inner: SharedStore,
 }
 
 impl Storage for StoreWrapper {
@@ -148,7 +148,7 @@ impl Storage for StoreWrapper {
 /// To be used in the following ABCI requests:
 /// InitChain, BeginBlock, CheckTx, DeliverTx, EndBlock
 pub struct PendingStoreWrapper {
-    pub(crate) inner: SharedStore,
+    pub(super) inner: SharedStore,
 }
 
 impl Storage for PendingStoreWrapper {

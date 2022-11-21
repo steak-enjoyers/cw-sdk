@@ -9,6 +9,6 @@ mod store;
 pub use crate::cache::CachedStore;
 pub use crate::iterators::{MemIter, MergedIter, MerkIter};
 pub use crate::prefix::PrefixedStore;
-pub use crate::store::{SharedStore, Store};
+pub use crate::store::{PendingStoreWrapper, SharedStore, Store, StoreWrapper};
 
 pub use merk::Error as MerkError;

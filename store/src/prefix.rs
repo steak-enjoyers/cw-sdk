@@ -13,10 +13,10 @@ pub struct PrefixedStore<T: Storage> {
 }
 
 impl<T: Storage> PrefixedStore<T> {
-    pub fn new(store: T, prefix: &[u8]) -> Self {
+    pub fn new(store: T, prefix: Vec<u8>) -> Self {
         Self {
             store,
-            prefix: prefix.to_vec(),
+            prefix,
         }
     }
 
@@ -99,7 +99,7 @@ mod tests {
 
     #[test]
     fn prefixing() {
-        let mut prefixed = PrefixedStore::new(MockStorage::new(), b"prefix");
+        let mut prefixed = PrefixedStore::new(MockStorage::new(), b"prefix".to_vec());
         prefixed.set(b"key1", b"value1");
 
         let store = prefixed.recycle();
@@ -120,7 +120,7 @@ mod tests {
         store.set(b"prefiykey7", b"value7");
         store.set(b"zzz", b"abc");
 
-        let prefixed = PrefixedStore::new(store, b"prefix");
+        let prefixed = PrefixedStore::new(store, b"prefix".to_vec());
 
         let mut kv = vec![
             (b"key3".to_vec(), b"value3".to_vec()),

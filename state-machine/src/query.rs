@@ -1,35 +1,32 @@
-use cosmwasm_std::{testing::mock_env, Binary, Storage};
-use cosmwasm_vm::{call_query, Backend, Instance, InstanceOptions, Storage as BackendStorage};
-use cw_sdk::{
-    address, Account, AccountResponse, CodeResponse, InfoResponse, WasmRawResponse,
-    WasmSmartResponse,
-};
+use cosmwasm_std::{testing::mock_env, Binary};
+use cosmwasm_vm::{call_query, Backend, Instance, InstanceOptions, Storage};
 use cw_storage_plus::Bound;
 
+use cw_sdk::{
+    address, paginate_map, AccountResponse, CodeResponse, InfoResponse, WasmRawResponse,
+    WasmSmartResponse,
+};
+use cw_store::SharedStore;
+
 use crate::{
-    backend::{backend_store_read, BackendApi, BackendQuerier},
-    error::{Error, Result},
-    state::{ACCOUNTS, CHAIN_ID, CODES, CODE_COUNT, CONTRACT_COUNT, HEIGHT},
+    backend::{contract_substore_read, BackendApi, BackendQuerier},
+    error::Result,
+    state::{load_code_id, ACCOUNTS, CHAIN_ID, CODES, CODE_COUNT, CONTRACT_COUNT, HEIGHT},
 };
 
-use cw_sdk::paginate_map;
-
-pub fn info(store: &dyn Storage) -> Result<InfoResponse> {
-    let chain_id = CHAIN_ID.load(store)?;
-    let height = HEIGHT.load(store)?;
-    let code_count = CODE_COUNT.load(store)?;
-    let contract_count = CONTRACT_COUNT.load(store)?;
+pub fn info(store: &SharedStore) -> Result<InfoResponse> {
+    let wrapper = store.wrap();
     Ok(InfoResponse {
-        chain_id,
-        height,
-        code_count,
-        contract_count,
+        chain_id: CHAIN_ID.load(&wrapper)?,
+        height: HEIGHT.load(&wrapper)?,
+        code_count: CODE_COUNT.load(&wrapper)?,
+        contract_count: CONTRACT_COUNT.load(&wrapper)?,
     })
 }
 
-pub fn account(store: &dyn Storage, address: String) -> Result<AccountResponse> {
+pub fn account(store: &SharedStore, address: String) -> Result<AccountResponse> {
     let addr = address::validate(&address)?;
-    let opt = ACCOUNTS.may_load(store, &addr)?;
+    let opt = ACCOUNTS.may_load(&store.wrap(), &addr)?;
     Ok(AccountResponse {
         address,
         account: opt.map(|account| account.into()),
@@ -37,12 +34,12 @@ pub fn account(store: &dyn Storage, address: String) -> Result<AccountResponse> 
 }
 
 pub fn accounts(
-    store: &dyn Storage,
+    store: &SharedStore,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> Result<Vec<AccountResponse>> {
     let start = start_after.map(|address| Bound::ExclusiveRaw(address.into_bytes()));
-    paginate_map(ACCOUNTS, store, start, limit, |item| {
+    paginate_map(ACCOUNTS, &store.wrap(), start, limit, |item| {
         let (address, account) = item?;
         Ok(AccountResponse {
             address: address.into(),
@@ -51,21 +48,20 @@ pub fn accounts(
     })
 }
 
-pub fn code(store: &dyn Storage, code_id: u64) -> Result<CodeResponse> {
-    let wasm_byte_code = CODES.may_load(store, code_id)?;
+pub fn code(store: &SharedStore, code_id: u64) -> Result<CodeResponse> {
     Ok(CodeResponse {
         code_id,
-        wasm_byte_code,
+        wasm_byte_code: CODES.may_load(&store.wrap(), code_id)?,
     })
 }
 
 pub fn codes(
-    store: &dyn Storage,
+    store: &SharedStore,
     start_after: Option<u64>,
     limit: Option<u32>,
 ) -> Result<Vec<CodeResponse>> {
     let start = start_after.map(Bound::exclusive);
-    paginate_map(CODES, store, start, limit, |item| {
+    paginate_map(CODES, &store.wrap(), start, limit, |item| {
         let (code_id, bytes) = item?;
         Ok(CodeResponse {
             code_id,
@@ -74,36 +70,24 @@ pub fn codes(
     })
 }
 
-pub fn wasm_raw(store: &dyn Storage, contract: &str, key: &[u8]) -> Result<WasmRawResponse> {
+pub fn wasm_raw(store: &SharedStore, contract: &str, key: &[u8]) -> Result<WasmRawResponse> {
     let contract_addr = address::validate(contract)?;
-    let backend_store = backend_store_read(store, &contract_addr);
-    let (value, _) = backend_store.get(key);
+    let substore = contract_substore_read(store, &contract_addr);
+    let (value, _) = substore.get(key);
     Ok(WasmRawResponse {
         value: value?.map(Binary),
     })
 }
 
-pub fn wasm_smart(store: &dyn Storage, contract: &str, msg: &[u8]) -> Result<WasmSmartResponse> {
+pub fn wasm_smart(store: &SharedStore, contract: &str, msg: &[u8]) -> Result<WasmSmartResponse> {
     let contract_addr = address::validate(contract)?;
-    let backend_store = backend_store_read(store, &contract_addr);
-
-    let code_id = match ACCOUNTS.may_load(store, &contract_addr)? {
-        Some(Account::Contract {
-            code_id,
-            ..
-        }) => code_id,
-        Some(Account::Base {
-            ..
-        }) => return Err(Error::account_is_not_contract(contract_addr)),
-        None => return Err(Error::account_not_found(contract_addr)),
-    };
-    let code = CODES.load(store, code_id)?;
+    let code = load_code_id(&store.wrap(), &contract_addr)?;
 
     let mut instance = Instance::from_code(
         &code,
         Backend {
             api: BackendApi,
-            storage: backend_store,
+            storage: contract_substore_read(store, &contract_addr),
             querier: BackendQuerier,
         },
         InstanceOptions {
