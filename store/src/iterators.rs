@@ -1,5 +1,6 @@
 use std::{
     cmp::Ordering,
+    collections::VecDeque,
     iter::Peekable,
     ops::{Bound, RangeBounds},
 };
@@ -188,6 +189,37 @@ where
             // both base and pending have reached end => simply return None
             (None, None) => None,
         }
+    }
+}
+
+/// An iterator that holds a collected VecDeque of records in memory.
+///
+/// Have to do this because of an incompatibility between the Storage trait and
+/// Rust smart pointers.
+///
+/// Not very optimized as all items need to be collected in memory, but should
+/// be fine for our use case as CosmWasm contracts typically don't iterate more
+/// than a few tens or at most a few hundreds records at a time.
+///
+/// This being said, we need to think about malicious contracts intentially
+/// iterate a huge amount of data to cause memory issues.
+pub(crate) struct MemIter {
+    items: VecDeque<Record>,
+}
+
+impl MemIter {
+    pub fn new(iter: impl Iterator<Item = Record>) -> Self {
+        Self {
+            items: iter.collect(),
+        }
+    }
+}
+
+impl Iterator for MemIter {
+    type Item = Record;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.items.pop_front()
     }
 }
 

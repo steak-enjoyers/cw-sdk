@@ -1,22 +1,9 @@
-use std::collections::BTreeMap;
-#[cfg(feature = "iterator")]
-use std::iter;
+use std::{collections::BTreeMap, iter};
 
-use cosmwasm_std::Storage;
-#[cfg(feature = "iterator")]
-use cosmwasm_std::{Order, Record};
+use cosmwasm_std::{Order, Record, Storage};
 use merk::Op;
 
-#[cfg(feature = "iterator")]
 use crate::iterators::{range_bounds, MergedIter};
-
-/// A helper function for creating a cached store.
-pub fn cache(store: &dyn Storage) -> CachedStore {
-    CachedStore {
-        store,
-        pending_ops: BTreeMap::new(),
-    }
-}
 
 /// Holds an immutable reference of any storage object that implements the
 /// `Storage` trait, and a temporary, in-memory cache of uncommitted ops.
@@ -26,29 +13,43 @@ pub fn cache(store: &dyn Storage) -> CachedStore {
 ///
 /// ```rust
 /// use cosmwasm_std::{testing::MockStorage, Storage};
-/// use cw_store::cache;
+/// use cw_store::CachedStore;
 ///
 /// let mut store = MockStorage::new();
-/// let mut cache = cache(&store);
+/// let mut cache = CachedStore::new(store);
 ///
 /// cache.set(b"key1", b"value1");
-/// cache.prepare().flush(&mut store);
+/// let store = cache.flush();
 /// ```
-pub struct CachedStore<'a> {
-    store: &'a dyn Storage,
+pub struct CachedStore<T: Storage> {
+    store: T,
     pending_ops: BTreeMap<Vec<u8>, Op>,
 }
 
-impl<'a> CachedStore<'a> {
-    /// Consume self, return an array of ops ready to be flushed.
-    pub fn prepare(self) -> Ops {
-        Ops(self.pending_ops)
+impl<T: Storage> CachedStore<T> {
+    pub fn new(store: T) -> Self {
+        Self {
+            store,
+            pending_ops: BTreeMap::new(),
+        }
+    }
+
+    /// Consume self, flush the pending ops to the underlying store.
+    /// Return the underlying store.
+    pub fn flush(mut self) -> T {
+        for (key, op) in self.pending_ops {
+            match op {
+                Op::Put(value) => self.store.set(&key, &value),
+                Op::Delete => self.store.remove(&key),
+            }
+        }
+        self.store
     }
 }
 
 // this block of code is basically duplicate from PendingStoreWrapper
 // it'd be better if we can avoid duplication
-impl<'a> Storage for CachedStore<'a> {
+impl<T: Storage> Storage for CachedStore<T> {
     fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
         let Some(op) = self.pending_ops.get(key) else {
             return self.store.get(key);
@@ -67,7 +68,6 @@ impl<'a> Storage for CachedStore<'a> {
         self.pending_ops.insert(key.to_vec(), Op::Delete);
     }
 
-    #[cfg(feature = "iterator")]
     fn range<'b>(
         &'b self,
         start: Option<&[u8]>,
@@ -92,24 +92,6 @@ impl<'a> Storage for CachedStore<'a> {
     }
 }
 
-/// Represents an array of ops ready to be flushed.
-pub struct Ops(BTreeMap<Vec<u8>, Op>);
-
-impl Ops {
-    /// Commit the ops to the given store.
-    ///
-    /// We use the term "flush" instead of "commit" to differentiate with Store's
-    /// commit method, which is only invoked during ABCI Commit requests.
-    pub fn flush(self, base: &mut dyn Storage) {
-        for (key, op) in self.0 {
-            match op {
-                Op::Put(value) => base.set(&key, &value),
-                Op::Delete => base.remove(&key),
-            }
-        }
-    }
-}
-
 //--------------------------------------------------------------------------------------------------
 // Tests
 //--------------------------------------------------------------------------------------------------
@@ -127,7 +109,7 @@ mod tests {
         store.set(b"key4", b"value4");
     }
 
-    fn setup_cache(cache: &mut CachedStore) {
+    fn setup_cache<T: Storage>(cache: &mut CachedStore<T>) {
         cache.set(b"key2", b"value23456");
         cache.set(b"key3333", b"value3333");
         cache.remove(b"key3");
@@ -148,10 +130,10 @@ mod tests {
         let mut store = MockStorage::default();
         setup_store(&mut store);
 
-        let mut cache = cache(&store);
+        let mut cache = CachedStore::new(store);
         setup_cache(&mut cache);
 
-        cache.prepare().flush(&mut store);
+        let store = cache.flush();
 
         let items = store
             .range(None, None, Order::Ascending)
@@ -165,7 +147,7 @@ mod tests {
         let mut store = MockStorage::default();
         setup_store(&mut store);
 
-        let mut cache = cache(&store);
+        let mut cache = CachedStore::new(store);
         setup_cache(&mut cache);
 
         let mut kv = kv();

@@ -1,16 +1,20 @@
-use std::{collections::BTreeMap, path::Path};
-#[cfg(feature = "iterator")]
-use std::iter;
+use std::{
+    collections::BTreeMap,
+    iter,
+    path::Path,
+    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
+};
 
-use cosmwasm_std::Storage;
-#[cfg(feature = "iterator")]
-use cosmwasm_std::{Order, Record};
+use cosmwasm_std::{Order, Record, Storage};
 use merk::{Merk, Op};
 
-use crate::{helpers::must_get, MerkError};
-#[cfg(feature = "iterator")]
-use crate::iterators::{range_bounds, MerkIter, MergedIter};
+use crate::{
+    helpers::must_get,
+    iterators::{range_bounds, MemIter, MergedIter, MerkIter},
+    MerkError,
+};
 
+/// The base store object of the cw-sdk state machine.
 pub struct Store {
     /// The Merk tree which holds the key-value data.
     pub(crate) merk: Merk,
@@ -52,16 +56,50 @@ impl Store {
             self.merk.apply_unchecked(&batch, &[])
         }
     }
+}
+
+/// Wrap a storage object inside an `Arc<RwLock<T>>` so that it can be shared
+/// across multiple threads, as required by Tendermint ABCI. Additionally, as
+/// the smart pointer an owned type, it avoids some lifetime problems related to
+/// cosmwasm-vm.
+///
+/// Adapted from Basecoin:
+/// https://github.com/informalsystems/basecoin-rs/blob/c5744f4a1eac9a63ef481410e52d9fb40363b97e/src/app/store/mod.rs#L216-L218
+///
+/// Orga has a similar, but non-thread safe equivalent, using `Rc<RefCell>`:
+/// https://github.com/nomic-io/orga/blob/v4/src/store/share.rs#L20
+pub struct SharedStore(Arc<RwLock<Store>>);
+
+impl SharedStore {
+    pub fn new(store: Store) -> Self {
+        Self(Arc::new(RwLock::new(store)))
+    }
+
+    pub fn share(&self) -> Self {
+        Self(Arc::clone(&self.0))
+    }
+
+    pub fn read(&self) -> RwLockReadGuard<Store> {
+        self.0.read().unwrap_or_else(|err| {
+            panic!("{err}");
+        })
+    }
+
+    pub fn write(&self) -> RwLockWriteGuard<Store> {
+        self.0.write().unwrap_or_else(|err| {
+            panic!("{err}");
+        })
+    }
 
     pub fn wrap(&self) -> StoreWrapper {
         StoreWrapper {
-            store: self,
+            inner: self.share(),
         }
     }
 
-    pub fn wrap_mut(&mut self) -> PendingStoreWrapper {
+    pub fn wrap_mut(&self) -> PendingStoreWrapper {
         PendingStoreWrapper {
-            store: self,
+            inner: self.share(),
         }
     }
 }
@@ -72,13 +110,13 @@ impl Store {
 ///
 /// This struct is intended to be used in the ABCI "Query" request, so an
 /// _immutable_ reference to the `Store` is used.
-pub struct StoreWrapper<'a> {
-    store: &'a Store,
+pub struct StoreWrapper {
+    pub(crate) inner: SharedStore,
 }
 
-impl<'a> Storage for StoreWrapper<'a> {
+impl Storage for StoreWrapper {
     fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
-        must_get(&self.store.merk, key)
+        must_get(&self.inner.read().merk, key)
     }
 
     fn set(&mut self, _key: &[u8], _value: &[u8]) {
@@ -89,19 +127,18 @@ impl<'a> Storage for StoreWrapper<'a> {
         panic!("[cw-store]: `remove` method invoked on read-only store wrapper");
     }
 
-    #[cfg(feature = "iterator")]
-    fn range<'b>(
-        &'b self,
+    fn range<'a>(
+        &'a self,
         start: Option<&[u8]>,
         end: Option<&[u8]>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = Record> + 'b> {
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
         if let (Some(start), Some(end)) = (start, end) {
             if start > end {
                 return Box::new(iter::empty());
             }
         }
-        Box::new(MerkIter::new(&self.store.merk, start, end, order))
+        Box::new(MemIter::new(MerkIter::new(&self.inner.read().merk, start, end, order)))
     }
 }
 
@@ -110,14 +147,15 @@ impl<'a> Storage for StoreWrapper<'a> {
 ///
 /// To be used in the following ABCI requests:
 /// InitChain, BeginBlock, CheckTx, DeliverTx, EndBlock
-pub struct PendingStoreWrapper<'a> {
-    store: &'a mut Store,
+pub struct PendingStoreWrapper {
+    pub(crate) inner: SharedStore,
 }
 
-impl<'a> Storage for PendingStoreWrapper<'a> {
+impl Storage for PendingStoreWrapper {
     fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
-        let Some(op) = self.store.pending_ops.get(key) else {
-            return must_get(&self.store.merk, key);
+        let store = self.inner.read();
+        let Some(op) = store.pending_ops.get(key) else {
+            return must_get(&store.merk, key);
         };
         match op {
             Op::Put(value) => Some(value.clone()),
@@ -126,39 +164,36 @@ impl<'a> Storage for PendingStoreWrapper<'a> {
     }
 
     fn set(&mut self, key: &[u8], value: &[u8]) {
-        self.store
-            .pending_ops
-            .insert(key.to_vec(), Op::Put(value.to_vec()));
+        self.inner.write().pending_ops.insert(key.to_vec(), Op::Put(value.to_vec()));
     }
 
     fn remove(&mut self, key: &[u8]) {
-        self.store
-            .pending_ops
-            .insert(key.to_vec(), Op::Delete);
+        self.inner.write().pending_ops.insert(key.to_vec(), Op::Delete);
     }
 
-    #[cfg(feature = "iterator")]
-    fn range<'b>(
-        &'b self,
+    fn range<'a>(
+        &'a self,
         start: Option<&[u8]>,
         end: Option<&[u8]>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = Record> + 'b> {
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
         if let (Some(start), Some(end)) = (start, end) {
             if start > end {
                 return Box::new(iter::empty());
             }
         }
 
-        let base = MerkIter::new(&self.store.merk, start, end, order);
+        let store = self.inner.read();
 
-        let pending_raw = self.store.pending_ops.range(range_bounds(start, end));
+        let base = MerkIter::new(&store.merk, start, end, order);
+
+        let pending_raw = store.pending_ops.range(range_bounds(start, end));
         let pending: Box<dyn Iterator<Item = (&Vec<u8>, &Op)>> = match order {
             Order::Ascending => Box::new(pending_raw),
             Order::Descending => Box::new(pending_raw.rev()),
         };
 
-        Box::new(MergedIter::new(base, pending, order))
+        Box::new(MemIter::new(MergedIter::new(base, pending, order)))
     }
 }
 
@@ -175,12 +210,15 @@ mod tests {
     /// Open a `Store` at an autogenerated, temporary file path.
     /// Adapted from `merk::test_utils::TempMerk`:
     /// https://github.com/nomic-io/merk/blob/develop/src/test_utils/temp_merk.rs
-    fn setup_test() -> Store {
+    fn setup_test() -> SharedStore {
         let mut path = temp_dir();
-        let time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_nanos();
+        let time = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
         path.push(format!("merk-temp-{time}"));
 
-        let mut store = Store::open(path).unwrap();
+        let store = SharedStore::new(Store::open(path).unwrap());
 
         // add some key-values for testing
         let batch = &[
@@ -189,7 +227,7 @@ mod tests {
             (b"key3".to_vec(), Op::Put(b"value3".to_vec())),
             (b"key4".to_vec(), Op::Put(b"value4".to_vec())),
         ];
-        store.merk.apply(batch, &[]).unwrap();
+        store.write().merk.apply(batch, &[]).unwrap();
 
         // add some pending ops as well
         let mut wrapper = store.wrap_mut();
@@ -200,14 +238,9 @@ mod tests {
         store
     }
 
-    /// Delete a Merk database
-    fn close_test(store: Store) {
-        store.merk.destroy().expect("failed to delete db");
-    }
-
     #[test]
     fn getting() {
-        let mut store = setup_test();
+        let store = setup_test();
 
         // read values from the read-only wrapper
         let wrapper = store.wrap();
@@ -222,15 +255,13 @@ mod tests {
         assert_eq!(wrapper.get(b"key2"), Some(b"value23456".to_vec()));
         assert_eq!(wrapper.get(b"key3"), None);
         assert_eq!(wrapper.get(b"key3333"), Some(b"value3333".to_vec()));
-
-        close_test(store);
     }
 
     #[test]
     fn committing() {
-        let mut store = setup_test();
+        let store = setup_test();
 
-        store.commit().unwrap();
+        store.write().commit().unwrap();
 
         let wrapper = store.wrap();
         assert_eq!(wrapper.get(b"key1"), Some(b"value1".to_vec()));
@@ -239,9 +270,7 @@ mod tests {
         assert_eq!(wrapper.get(b"key3333"), Some(b"value3333".to_vec()));
 
         // after committing, the pending ops should have been cleared
-        assert!(store.pending_ops.is_empty());
-
-        close_test(store);
+        assert!(store.read().pending_ops.is_empty());
     }
 
     #[test]
@@ -298,14 +327,12 @@ mod tests {
             .range(Some(b"key1234"), Some(b"key4"), Order::Descending)
             .collect::<Vec<_>>();
         assert_eq!(items, &kv[1..3]);
-
-        close_test(store);
     }
 
     #[cfg(feature = "iterator")]
     #[test]
     fn iterating_pending() {
-        let mut store = setup_test();
+        let store = setup_test();
 
         let mut kv = vec![
             (b"key1".to_vec(), b"value1".to_vec()),
@@ -315,10 +342,7 @@ mod tests {
         ];
 
         // iterating with no bound and in ascending order
-        let items = store
-            .wrap_mut()
-            .range(None, None, Order::Ascending)
-            .collect::<Vec<_>>();
+        let items = store.wrap_mut().range(None, None, Order::Ascending).collect::<Vec<_>>();
         assert_eq!(items, kv);
 
         // iterating with bounds and in ascending order
@@ -332,10 +356,7 @@ mod tests {
         kv.reverse();
 
         // iterating with no bound and in descending order
-        let items = store
-            .wrap_mut()
-            .range(None, None, Order::Descending)
-            .collect::<Vec<_>>();
+        let items = store.wrap_mut().range(None, None, Order::Descending).collect::<Vec<_>>();
         assert_eq!(items, kv);
 
         // iterating with bounds and in descending order
@@ -344,7 +365,5 @@ mod tests {
             .range(Some(b"key1234"), Some(b"key4"), Order::Descending)
             .collect::<Vec<_>>();
         assert_eq!(items, &kv[1..3]);
-
-        close_test(store);
     }
 }
