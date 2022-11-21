@@ -34,16 +34,14 @@ impl<T: Storage> Cached<T> {
         }
     }
 
-    /// Consume self, flush the pending ops to the underlying store,
-    /// return the underlying store.
-    pub fn flush(mut self) -> T {
+    /// Apply the pending ops to the underlying store.
+    pub fn flush(&mut self) {
         for (key, op) in self.pending_ops.drain_filter(|_, _| true) {
             match op {
                 Op::Put(value) => self.store.set(&key, &value),
                 Op::Delete => self.store.remove(&key),
             }
         }
-        self.store
     }
 
     /// Consume self, discard the pending ops, return the underlying store.
@@ -138,9 +136,12 @@ mod tests {
         let mut cache = Cached::new(store);
         setup_cache(&mut cache);
 
-        let store = cache.flush();
+        cache.flush();
 
-        let items = store.range(None, None, Order::Ascending).collect::<Vec<_>>();
+        let items = cache
+            .recycle()
+            .range(None, None, Order::Ascending)
+            .collect::<Vec<_>>();
         assert_eq!(items, kv());
     }
 

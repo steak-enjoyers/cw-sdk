@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::{RefCell, Ref, RefMut}, rc::Rc};
 
 use cosmwasm_std::{Order, Record, Storage};
 
@@ -18,6 +18,14 @@ impl<T> Shared<T> {
 
     pub fn share(&self) -> Self {
         Self(Rc::clone(&self.0))
+    }
+
+    pub fn borrow(&self) -> Ref<T> {
+        self.0.borrow()
+    }
+
+    pub fn borrow_mut(&mut self) -> RefMut<T> {
+        self.0.borrow_mut()
     }
 }
 

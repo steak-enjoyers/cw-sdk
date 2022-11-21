@@ -77,7 +77,11 @@ pub fn wasm_raw(store: impl Storage, contract: &str, key: &[u8]) -> Result<WasmR
     })
 }
 
-pub fn wasm_smart(store: impl Storage, contract: &str, msg: &[u8]) -> Result<WasmSmartResponse> {
+pub fn wasm_smart(
+    store: impl Storage + 'static,
+    contract: &str,
+    msg: &[u8],
+) -> Result<WasmSmartResponse> {
     let contract_addr = address::validate(contract)?;
     let code = code_by_address(&store, &contract_addr)?;
 

@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Binary, ContractResult, Env, Event, MessageInfo, Response, Storage};
+use cosmwasm_std::{Addr, Binary, ContractResult, Env, Event, MessageInfo, Response, Storage, BlockInfo, TransactionInfo, ContractInfo};
 use cosmwasm_vm::{call_instantiate, Backend, Instance, InstanceOptions};
 
 use cw_sdk::{address, hash::sha256, Account};
@@ -31,8 +31,9 @@ pub fn store_code(
 }
 
 pub fn instantiate_contract(
-    store: impl Storage,
-    env: &Env,
+    store: impl Storage + 'static,
+    block: BlockInfo,
+    transaction: Option<TransactionInfo>,
     info: &MessageInfo,
     code_id: u64,
     msg: &[u8],
@@ -40,7 +41,7 @@ pub fn instantiate_contract(
     admin: Option<Addr>,
     address_generator: AddressGenerator,
 ) -> Result<ContractResult<Response>> {
-    let cache = Cached::new(store);
+    let mut cache = Cached::new(store);
 
     // update contract count
     let instance_id = CONTRACT_COUNT.update(&mut cache, |count| -> Result<_> {
@@ -52,6 +53,15 @@ pub fn instantiate_contract(
     let contract_addr = match address_generator {
         AddressGenerator::ByLabel => address::derive_from_label(&label)?,
         AddressGenerator::ByIds => address::derive_from_ids(code_id, instance_id)?,
+    };
+
+    let env = Env {
+        block,
+        transaction,
+        contract: ContractInfo {
+            // TODO: recycle the address later instead of cloning
+            address: contract_addr.clone(),
+        },
     };
 
     // load wasm binary code
@@ -71,10 +81,10 @@ pub fn instantiate_contract(
         },
         None,
     )?;
-    let result = call_instantiate(&mut instance, env, info, msg)?;
+    let result = call_instantiate(&mut instance, &env, info, msg)?;
 
     // contract execution is finished; we recycle the cached store
-    let cache = instance
+    let mut cache = instance
         .recycle()
         .expect("[cw-state-machine]: failed to recycle instance")
         .storage
@@ -86,7 +96,8 @@ pub fn instantiate_contract(
     //
     // NOTE: do not save the account if one of the same address already exists.
     if result.is_ok() {
-        let store = cache.flush();
+        cache.flush();
+        let mut store = cache.recycle();
         ACCOUNTS.update(&mut store, &contract_addr, |opt| {
             if opt.is_some() {
                 return Err(Error::account_found(&contract_addr));
@@ -100,4 +111,22 @@ pub fn instantiate_contract(
     }
 
     Ok(result)
+}
+
+pub fn execute_contract(
+    _store: impl Storage,
+    _env: &Env,
+    _info: &MessageInfo,
+    _msg: &[u8],
+) -> Result<ContractResult<Response>> {
+    todo!();
+}
+
+pub fn migrate_contract(
+    _store: impl Storage,
+    _env: &Env,
+    _code_id: u64,
+    _msg: &[u8]
+) -> Result<ContractResult<Response>> {
+    todo!();
 }

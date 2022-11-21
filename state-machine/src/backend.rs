@@ -121,7 +121,7 @@ impl<T: Storage> cosmwasm_vm::Storage for ContractSubstore<T> {
         let iter = MemIter::new(self
             .store
             .range(Some(&start), Some(&end), order)
-            .map(move |(k, v)| (trim(&self.namespace, &k), v)));
+            .map(|(k, v)| (trim(&self.namespace, &k), v)));
         let iter_count: u32 = self
             .iterators
             .len()
