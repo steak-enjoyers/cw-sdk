@@ -10,9 +10,7 @@ use cw_sdk::{
 use crate::{
     backend::{BackendApi, BackendQuerier, ContractSubstore},
     error::Result,
-    state::{
-        load_code_by_address, ACCOUNTS, BLOCK_HEIGHT, CHAIN_ID, CODES, CODE_COUNT, CONTRACT_COUNT,
-    },
+    state::{code_by_address, ACCOUNTS, BLOCK_HEIGHT, CHAIN_ID, CODES, CODE_COUNT, CONTRACT_COUNT},
 };
 
 pub fn info(store: &dyn Storage) -> Result<InfoResponse> {
@@ -81,7 +79,7 @@ pub fn wasm_raw(store: impl Storage, contract: &str, key: &[u8]) -> Result<WasmR
 
 pub fn wasm_smart(store: impl Storage, contract: &str, msg: &[u8]) -> Result<WasmSmartResponse> {
     let contract_addr = address::validate(contract)?;
-    let code = load_code_by_address(&store, &contract_addr)?;
+    let code = code_by_address(&store, &contract_addr)?;
 
     let mut instance = Instance::from_code(
         &code,
