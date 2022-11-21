@@ -31,8 +31,6 @@ pub fn store_code(
 }
 
 pub fn instantiate_contract(
-    // NOTE: `store` should be a `Shared` instance, because it will be dropped
-    // at the end of this function
     store: impl Storage,
     env: &Env,
     info: &MessageInfo,
