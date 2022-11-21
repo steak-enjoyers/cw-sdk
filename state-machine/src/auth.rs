@@ -42,7 +42,7 @@ pub fn authenticate_tx(store: &dyn Storage, tx: &Tx) -> Result<Sender> {
                 }
             }
 
-            (pubkey.clone(), sequence)
+            (pubkey, sequence)
         },
 
         // If not found, meaning it's the first time the account every sends a tx, use the pubkey

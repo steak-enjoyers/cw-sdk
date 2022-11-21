@@ -30,6 +30,7 @@ pub fn store_code(
         .add_attribute("code_hash", hex::encode(sha256(wasm_byte_code))))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn instantiate_contract(
     store: impl Storage + 'static,
     block: BlockInfo,

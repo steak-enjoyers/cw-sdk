@@ -41,7 +41,7 @@ pub const ACCOUNTS: Map<&Addr, Account<Addr>> = Map::new("accounts");
 
 /// Helper function for loading the wasm code of a given contract address.
 pub fn code_by_address(store: &dyn Storage, contract_addr: &Addr) -> Result<Binary> {
-    let code_id = match ACCOUNTS.may_load(store, &contract_addr)? {
+    let code_id = match ACCOUNTS.may_load(store, contract_addr)? {
         Some(Account::Contract {
             code_id,
             ..

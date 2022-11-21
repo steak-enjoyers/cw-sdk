@@ -10,17 +10,18 @@ pub const MAX_LIMIT: u32 = 30;
 ///
 /// Inspired by this DAO DAO library:
 /// https://github.com/DA0-DA0/dao-contracts/blob/main/packages/cw-paginate/src/lib.rs
-pub fn paginate_map<'a, K, D, V, R, E>(
+pub fn paginate_map<'a, K, D, V, R, E, F>(
     map: Map<'a, K, V>,
     store: &dyn Storage,
     start: Option<Bound<'a, K>>,
     limit: Option<u32>,
-    parse_fn: fn(StdResult<(D, V)>) -> Result<R, E>,
+    parse_fn: F,
 ) -> Result<Vec<R>, E>
 where
     K: PrimaryKey<'a> + KeyDeserialize<Output = D>,
     V: Serialize + DeserializeOwned,
     D: 'static,
+    F: FnMut(StdResult<(D, V)>) -> Result<R, E>,
 {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     map

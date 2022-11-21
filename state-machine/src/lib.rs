@@ -84,7 +84,7 @@ impl StateMachine {
             SdkMsg::StoreCode {
                 wasm_byte_code,
             } => {
-                let event = execute::store_code(&mut store, &sender_addr, &wasm_byte_code)?;
+                let event = execute::store_code(&mut store, sender_addr, &wasm_byte_code)?;
                 Ok(vec![event])
             },
             SdkMsg::Instantiate {
