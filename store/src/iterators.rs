@@ -14,7 +14,7 @@ use crate::helpers::must_get;
 ///
 /// Different from IAVL tree, the Merk tree stores raw keys as database keys.
 /// To iterate keys in the tree, we simply iterate keys in the underlying RocksDB.
-pub(crate) struct MerkIter<'a> {
+pub struct MerkIter<'a> {
     merk: &'a Merk,
     iter: rocksdb::DBRawIterator<'a>,
     start: Option<Vec<u8>>,
@@ -112,7 +112,7 @@ impl<'a> Iterator for MerkIter<'a> {
 ///
 /// Adapted from `cw_multi_test::transactions::MergeOverlay`:
 /// https://github.com/CosmWasm/cw-multi-test/blob/v0.16.0/src/transactions.rs#L179-L188
-pub(crate) struct MergedIter<'a, B, P>
+pub struct MergedIter<'a, B, P>
 where
     B: Iterator<Item = Record>,
     P: Iterator<Item = (&'a Vec<u8>, &'a Op)>,
@@ -203,7 +203,7 @@ where
 ///
 /// This being said, we need to think about malicious contracts intentially
 /// iterate a huge amount of data to cause memory issues.
-pub(crate) struct MemIter {
+pub struct MemIter {
     items: VecDeque<Record>,
 }
 
