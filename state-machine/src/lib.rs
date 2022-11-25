@@ -14,7 +14,7 @@ use cw_store::{Cached, Shared, Store};
 
 use crate::{
     error::{Error, Result},
-    state::{ACCOUNTS, BLOCK_HEIGHT},
+    state::{ACCOUNTS, BLOCK_HEIGHT, CODE_COUNT, CONTRACT_COUNT},
 };
 
 pub struct StateMachine {
@@ -39,8 +39,10 @@ impl StateMachine {
         // can be shared across the execution of multiple messages.
         let mut cache = Shared::new(Cached::new(self.store.pending_wrap()));
 
-        // Initialize block height as 0
+        // Initialize block height, code count, contract count
         BLOCK_HEIGHT.save(&mut cache, &0)?;
+        CODE_COUNT.save(&mut cache, &0)?;
+        CONTRACT_COUNT.save(&mut cache, &0)?;
 
         let deployer_addr = address::validate(&gen_state.deployer)?;
 
