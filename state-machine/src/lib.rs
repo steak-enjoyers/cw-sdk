@@ -225,9 +225,16 @@ impl StateMachine {
     }
 
     pub fn info(&self) -> Result<(i64, [u8; HASH_LENGTH])> {
-        let height = BLOCK_HEIGHT.load(&self.store.wrap())?;
+        let height = BLOCK_HEIGHT.may_load(&self.store.wrap())?;
         let app_hash = self.store.root_hash();
-        Ok((height, app_hash))
+        Ok((
+            // when initializing a new chain scratch, Tendermint sends an Info
+            // request prior to the InitChain request.
+            // at this point the height hasn't been initialized yet. therefore
+            // we do unwrap_or(0)
+            height.unwrap_or(0),
+            app_hash,
+        ))
     }
 
     pub fn query(&self, query: SdkQuery) -> Result<Binary> {
