@@ -22,10 +22,10 @@ pub struct StateMachine {
 }
 
 impl StateMachine {
-    pub fn new(store: &Store) -> Self {
+    pub fn new(store: Store) -> Self {
         // TODO: load pinned contracts and codes
         Self {
-            store: store.share(),
+            store,
         }
     }
 

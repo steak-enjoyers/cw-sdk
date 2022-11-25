@@ -29,7 +29,7 @@ impl StartCmd {
         info!("Loaded Merk store");
 
         // create a new state machine instance wrapping the store
-        let state_machine = StateMachine::new(&store);
+        let state_machine = StateMachine::new(store);
 
         // create a channel between the App and AppDriver
         let (cmd_tx, cmd_rx) = mpsc::channel();

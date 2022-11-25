@@ -1,8 +1,9 @@
 use std::{
+    cell::{RefCell, Ref, RefMut},
     collections::BTreeMap,
     iter,
     path::Path,
-    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
+    rc::Rc,
 };
 
 use cosmwasm_std::{Order, Record, Storage};
@@ -27,14 +28,15 @@ pub struct StoreBase {
     pub(crate) pending_ops: BTreeMap<Vec<u8>, Op>,
 }
 
-/// Wrap a storage object inside an `Arc<RwLock<T>>` so that it can be shared
-/// across multiple threads, as required by Tendermint ABCI. Additionally, as
-/// the smart pointer an owned type, it avoids some lifetime problems related to
-/// cosmwasm-vm.
+/// Wrap a storage object inside an `Rc<RefCell<T>>` so that it can be shared as
+/// an owned value, which is required by wasmer.
 ///
-/// Adapted from Basecoin:
+/// Adapted from Orga:
+/// https://github.com/nomic-io/orga/blob/v4/src/store/share.rs#L20
+///
+/// A similar, thread-safe (which we don't need) implementation from Basecoin:
 /// https://github.com/informalsystems/basecoin-rs/blob/c5744f4a1eac9a63ef481410e52d9fb40363b97e/src/app/store/mod.rs#L216-L218
-pub struct Store(Arc<RwLock<StoreBase>>);
+pub struct Store(Rc<RefCell<StoreBase>>);
 
 impl Store {
     pub fn open(path: impl AsRef<Path>) -> Result<Self, MerkError> {
@@ -42,44 +44,40 @@ impl Store {
             merk: Merk::open(path)?,
             pending_ops: BTreeMap::new(),
         };
-        Ok(Self(Arc::new(RwLock::new(base))))
+        Ok(Self(Rc::new(RefCell::new(base))))
     }
 
     pub fn share(&self) -> Self {
-        Self(Arc::clone(&self.0))
+        Self(Rc::clone(&self.0))
     }
 
-    fn read(&self) -> RwLockReadGuard<StoreBase> {
-        self.0.read().unwrap_or_else(|err| {
-            panic!("{err}");
-        })
+    fn borrow(&self) -> Ref<StoreBase> {
+        self.0.borrow()
     }
 
-    fn write(&self) -> RwLockWriteGuard<StoreBase> {
-        self.0.write().unwrap_or_else(|err| {
-            panic!("{err}");
-        })
+    fn borrow_mut(&self) -> RefMut<StoreBase> {
+        self.0.borrow_mut()
     }
 
     /// Derive the root hash of the blockchain state.
     pub fn root_hash(&self) -> [u8; HASH_LENGTH] {
-        self.read().merk.root_hash()
+        self.borrow().merk.root_hash()
     }
 
     /// Commit the pending changes to the underlying Merk store.
     /// This also writes the changes to disk, so should only be called during
     /// ABCI "Commit" requests.
     pub fn commit(&self) -> Result<(), MerkError> {
-        let mut lock = self.write();
+        let mut ref_mut = self.borrow_mut();
 
         // use `drain_filter` to clear the map and take ownership of all items.
         // this way we avoid having to clone the items
         // it'd be great if BTreeMap has a simple `drain_all` method
-        let batch: Vec<_> = lock.pending_ops.drain_filter(|_, _| true).collect();
+        let batch: Vec<_> = ref_mut.pending_ops.drain_filter(|_, _| true).collect();
 
         // we know the ops are sorted by keys (as they are collected from a
         // btreemap), so we skip the checking step
-        unsafe { lock.merk.apply_unchecked(&batch, &[]) }
+        unsafe { ref_mut.merk.apply_unchecked(&batch, &[]) }
     }
 
     /// Wrap the store into a StoreWrapper.
@@ -121,7 +119,7 @@ pub struct StoreWrapper {
 
 impl Storage for StoreWrapper {
     fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
-        must_get(&self.inner.read().merk, key)
+        must_get(&self.inner.borrow().merk, key)
     }
 
     fn set(&mut self, _key: &[u8], _value: &[u8]) {
@@ -143,7 +141,7 @@ impl Storage for StoreWrapper {
                 return Box::new(iter::empty());
             }
         }
-        Box::new(MemIter::new(MerkIter::new(&self.inner.read().merk, start, end, order)))
+        Box::new(MemIter::new(MerkIter::new(&self.inner.borrow().merk, start, end, order)))
     }
 }
 
@@ -158,7 +156,7 @@ pub struct PendingStoreWrapper {
 
 impl Storage for PendingStoreWrapper {
     fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
-        let store = self.inner.read();
+        let store = self.inner.borrow();
         let Some(op) = store.pending_ops.get(key) else {
             return must_get(&store.merk, key);
         };
@@ -169,11 +167,17 @@ impl Storage for PendingStoreWrapper {
     }
 
     fn set(&mut self, key: &[u8], value: &[u8]) {
-        self.inner.write().pending_ops.insert(key.to_vec(), Op::Put(value.to_vec()));
+        self.inner
+            .borrow_mut()
+            .pending_ops
+            .insert(key.to_vec(), Op::Put(value.to_vec()));
     }
 
     fn remove(&mut self, key: &[u8]) {
-        self.inner.write().pending_ops.insert(key.to_vec(), Op::Delete);
+        self.inner
+            .borrow_mut()
+            .pending_ops
+            .insert(key.to_vec(), Op::Delete);
     }
 
     fn range<'a>(
@@ -188,7 +192,7 @@ impl Storage for PendingStoreWrapper {
             }
         }
 
-        let store = self.inner.read();
+        let store = self.inner.borrow();
 
         let base = MerkIter::new(&store.merk, start, end, order);
 
@@ -232,7 +236,7 @@ mod tests {
             (b"key3".to_vec(), Op::Put(b"value3".to_vec())),
             (b"key4".to_vec(), Op::Put(b"value4".to_vec())),
         ];
-        store.write().merk.apply(batch, &[]).unwrap();
+        store.borrow_mut().merk.apply(batch, &[]).unwrap();
 
         // add some pending ops as well
         let mut wrapper = store.pending_wrap();
@@ -275,7 +279,7 @@ mod tests {
         assert_eq!(wrapper.get(b"key3333"), Some(b"value3333".to_vec()));
 
         // after committing, the pending ops should have been cleared
-        assert!(store.read().pending_ops.is_empty());
+        assert!(store.borrow().pending_ops.is_empty());
     }
 
     #[test]
