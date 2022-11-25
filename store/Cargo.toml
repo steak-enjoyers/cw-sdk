@@ -18,6 +18,7 @@ iterator = ["cosmwasm-std/iterator"]
 
 [dependencies]
 cosmwasm-std = { workspace = true }
+cw-sdk       = { workspace = true }
 hex          = { workspace = true }
 merk         = { workspace = true }
 rocksdb      = { workspace = true }

@@ -1,29 +1,39 @@
 use std::sync::mpsc::Sender;
 
-use cosmwasm_std::Event;
+use cosmwasm_std::{Binary, Event};
 
-use cw_state_machine::state::StateError;
+use cw_sdk::{hash::HASH_LENGTH, GenesisState, SdkQuery, Tx};
+use cw_state_machine::error::Result as StateMachineResult;
 
 /// The ABCI server and the driver maintains a channel between them, and communicate by sending
 /// commands. This enum defines the commands allowed to be transmitted through the channel.
 #[derive(Debug, Clone)]
 pub enum AppCommand {
+    /// Returns the last committed block height and app hash
     Info {
-        result_tx: Sender<(u64, Vec<u8>)>,
+        result_tx: Sender<StateMachineResult<(i64, [u8; HASH_LENGTH])>>,
     },
+
+    /// Provide the genesis state, returns the app hash.
     InitChain {
-        app_state_bytes: Vec<u8>,
-        result_tx: Sender<Result<Vec<u8>, StateError>>,
+        gen_state: GenesisState,
+        result_tx: Sender<StateMachineResult<[u8; HASH_LENGTH]>>,
     },
+
+    /// Provide the query message, returns the query response in binary format.
     Query {
-        query_bytes: Vec<u8>,
-        result_tx: Sender<Result<Vec<u8>, StateError>>,
+        query: SdkQuery,
+        result_tx: Sender<StateMachineResult<Binary>>,
     },
+
+    /// Provide a tx, returns the events emitted during tx execution.
     DeliverTx {
-        tx_bytes: Vec<u8>,
-        result_tx: Sender<Result<Vec<Event>, StateError>>,
+        tx: Tx,
+        result_tx: Sender<StateMachineResult<Vec<Event>>>,
     },
+
+    /// Returns the block height and app hash that was committed.
     Commit {
-        result_tx: Sender<(u64, Vec<u8>)>,
+        result_tx: Sender<StateMachineResult<(i64, [u8; HASH_LENGTH])>>,
     },
 }

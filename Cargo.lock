@@ -760,6 +760,7 @@ dependencies = [
  "cw-sdk",
  "cw-server",
  "cw-state-machine",
+ "cw-store",
  "dialoguer",
  "hex",
  "home",
@@ -815,6 +816,7 @@ name = "cw-server"
 version = "0.0.0"
 dependencies = [
  "cosmwasm-std",
+ "cw-sdk",
  "cw-state-machine",
  "serde_json",
  "tendermint-abci",
@@ -858,6 +860,7 @@ name = "cw-store"
 version = "0.0.0"
 dependencies = [
  "cosmwasm-std",
+ "cw-sdk",
  "hex",
  "merk",
  "rocksdb",

@@ -13,6 +13,7 @@ keywords      = { workspace = true }
 
 [dependencies]
 cosmwasm-std     = { workspace = true }
+cw-sdk           = { workspace = true }
 cw-state-machine = { workspace = true }
 serde_json       = { workspace = true }
 tendermint-abci  = { workspace = true }

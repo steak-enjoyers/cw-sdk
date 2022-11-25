@@ -1,6 +1,7 @@
 use std::sync::mpsc::{channel, Sender};
 
 use cosmwasm_std::{Attribute as WasmAttribute, Event as WasmEvent};
+use cw_sdk::{GenesisState, SdkQuery, Tx};
 use tendermint_proto::abci::{self, Event, EventAttribute};
 
 use crate::AppCommand;
@@ -23,14 +24,14 @@ impl tendermint_abci::Application for App {
                 result_tx,
             })
             .unwrap();
-        let (height, app_hash) = result_rx.recv().unwrap();
+        let (height, app_hash) = result_rx.recv().unwrap().unwrap();
 
         abci::ResponseInfo {
             data: env!("CARGO_PKG_NAME").into(),
             version: env!("CARGO_PKG_VERSION").into(),
             app_version: 1,
-            last_block_height: height as i64,
-            last_block_app_hash: app_hash,
+            last_block_height: height,
+            last_block_app_hash: app_hash.to_vec(),
         }
     }
 
@@ -38,16 +39,20 @@ impl tendermint_abci::Application for App {
     fn init_chain(&self, request: abci::RequestInitChain) -> abci::ResponseInitChain {
         let (result_tx, result_rx) = channel();
 
+        let gen_state: GenesisState = serde_json::from_slice(&request.app_state_bytes).unwrap_or_else(|err| {
+            panic!("failed to parse genesis state: {err}");
+        });
+
         self.cmd_tx
             .send(AppCommand::InitChain {
-                app_state_bytes: request.app_state_bytes,
+                gen_state,
                 result_tx,
             })
             .unwrap();
-        let result = result_rx.recv().unwrap();
+        let app_hash = result_rx.recv().unwrap().unwrap();
 
         abci::ResponseInitChain {
-            app_hash: result.unwrap(),
+            app_hash: app_hash.to_vec(),
             ..Default::default()
         }
     }
@@ -68,18 +73,22 @@ impl tendermint_abci::Application for App {
             &"app" => {
                 let (result_tx, result_rx) = channel();
 
+                let query: SdkQuery = serde_json::from_slice(&request.data).unwrap_or_else(|err| {
+                    panic!("failed to deserialize query message: {err}");
+                });
+
                 self.cmd_tx
                     .send(AppCommand::Query {
-                        query_bytes: request.data,
+                        query,
                         result_tx,
                     })
                     .unwrap();
                 let result = result_rx.recv().unwrap();
 
                 match result {
-                    Ok(response_bytes) => abci::ResponseQuery {
+                    Ok(response) => abci::ResponseQuery {
                         code: 0,
-                        value: response_bytes,
+                        value: response.to_vec(),
                         ..Default::default()
                     },
                     Err(error) => abci::ResponseQuery {
@@ -130,9 +139,13 @@ impl tendermint_abci::Application for App {
     fn deliver_tx(&self, request: abci::RequestDeliverTx) -> abci::ResponseDeliverTx {
         let (result_tx, result_rx) = channel();
 
+        let tx: Tx = serde_json::from_slice(&request.tx).unwrap_or_else(|err| {
+            panic!("failed to deserialize tx: {err}");
+        });
+
         self.cmd_tx
             .send(AppCommand::DeliverTx {
-                tx_bytes: request.tx,
+                tx,
                 result_tx,
             })
             .unwrap();
@@ -169,12 +182,13 @@ impl tendermint_abci::Application for App {
                 result_tx,
             })
             .unwrap();
-        let (height, app_hash) = result_rx.recv().unwrap();
+        let (height, app_hash) = result_rx.recv().unwrap().unwrap();
 
         abci::ResponseCommit {
-            data: app_hash,
-            // TODO: I don't really know what retain_height means
-            retain_height: (height - 1) as i64,
+            data: app_hash.to_vec(),
+            // TODO: I don't really know what retain_height means. I assume it
+            // means the block height that was just committed.
+            retain_height: height,
         }
     }
 }

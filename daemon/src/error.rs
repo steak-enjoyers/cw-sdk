@@ -34,6 +34,9 @@ pub enum DaemonError {
     Json(#[from] serde_json::Error),
 
     #[error(transparent)]
+    Merk(#[from] cw_store::MerkError),
+
+    #[error(transparent)]
     Tendermint(#[from] tendermint::Error),
 
     #[error(transparent)]

@@ -6,6 +6,7 @@ use std::{
 };
 
 use cosmwasm_std::{Order, Record, Storage};
+use cw_sdk::hash::HASH_LENGTH;
 use merk::{Merk, Op};
 
 use crate::{
@@ -61,7 +62,7 @@ impl Store {
     }
 
     /// Derive the root hash of the blockchain state.
-    pub fn root_hash(&self) -> [u8; 32] {
+    pub fn root_hash(&self) -> [u8; HASH_LENGTH] {
         self.read().merk.root_hash()
     }
 

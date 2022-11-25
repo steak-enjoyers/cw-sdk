@@ -1,5 +1,5 @@
 use cosmwasm_std::{Addr, Binary, ContractResult, Env, Event, MessageInfo, Response, Storage, BlockInfo, TransactionInfo, ContractInfo};
-use cosmwasm_vm::{call_instantiate, Backend, Instance, InstanceOptions};
+use cosmwasm_vm::{call_instantiate, Backend, Instance, InstanceOptions, call_execute};
 
 use cw_sdk::{address, hash::sha256, Account};
 use cw_store::Cached;
@@ -7,7 +7,7 @@ use cw_store::Cached;
 use crate::{
     backend::{BackendApi, BackendQuerier, ContractSubstore},
     error::{Error, Result},
-    state::{ACCOUNTS, CODES, CODE_COUNT, CONTRACT_COUNT},
+    state::{ACCOUNTS, CODES, CODE_COUNT, CONTRACT_COUNT, code_by_address},
     AddressGenerator,
 };
 
@@ -115,16 +115,49 @@ pub fn instantiate_contract(
 }
 
 pub fn execute_contract(
-    _store: impl Storage,
-    _env: &Env,
-    _info: &MessageInfo,
-    _msg: &[u8],
+    store: impl Storage + 'static,
+    env: &Env,
+    info: &MessageInfo,
+    msg: &[u8],
 ) -> Result<ContractResult<Response>> {
-    todo!();
+    let cache = Cached::new(store);
+
+    // load wasm binary code
+    let code = code_by_address(&cache, &env.contract.address)?;
+
+    // create the wasm instance and call the execute entry point
+    let mut instance = Instance::from_code(
+        &code,
+        Backend {
+            api: BackendApi,
+            storage: ContractSubstore::new(cache, &env.contract.address),
+            querier: BackendQuerier,
+        },
+        InstanceOptions {
+            gas_limit: u64::MAX,
+            print_debug: true,
+        },
+        None,
+    )?;
+    let result = call_execute(&mut instance, env, info, msg)?;
+
+    // contract execution is finished; we recycle the cached store
+    let mut cache = instance
+        .recycle()
+        .expect("[cw-state-machine]: failed to recycle instance")
+        .storage
+        .recycle();
+
+    // if the execution is successful, flush the state changes to the underlying store
+    if result.is_ok() {
+        cache.flush();
+    }
+
+    Ok(result)
 }
 
 pub fn migrate_contract(
-    _store: impl Storage,
+    _store: impl Storage + 'static,
     _env: &Env,
     _code_id: u64,
     _msg: &[u8]

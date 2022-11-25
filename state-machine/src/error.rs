@@ -10,6 +10,9 @@ pub enum Error {
     Vm(#[from] cosmwasm_vm::VmError),
 
     #[error(transparent)]
+    Merk(#[from] cw_store::MerkError),
+
+    #[error(transparent)]
     Address(#[from] cw_sdk::address::AddressError),
 
     #[error(transparent)]

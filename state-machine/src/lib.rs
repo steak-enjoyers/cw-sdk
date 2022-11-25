@@ -9,11 +9,13 @@ use cosmwasm_std::{
     to_binary, Addr, Binary, BlockInfo, ContractInfo, Env, Event, MessageInfo, Storage, Timestamp,
     TransactionInfo,
 };
-use cw_sdk::{address, SdkMsg, SdkQuery, Tx};
+use cw_sdk::{address, hash::HASH_LENGTH, GenesisState, SdkMsg, SdkQuery, Tx};
 use cw_store::{Cached, Shared, Store};
-use state::ACCOUNTS;
 
-use crate::error::{Error, Result};
+use crate::{
+    error::{Error, Result},
+    state::{ACCOUNTS, BLOCK_HEIGHT},
+};
 
 pub struct StateMachine {
     store: Store,
@@ -21,10 +23,50 @@ pub struct StateMachine {
 
 impl StateMachine {
     pub fn new(store: &Store) -> Self {
+        // TODO: load pinned contracts and codes
         Self {
             store: store.share(),
         }
     }
+
+    /// Decode genesis bytes and run genesis messages. Return app hash.
+    ///
+    /// TODO: Once a staking contract is created, return the validator set as well
+    pub fn init_chain(&self, gen_state: GenesisState) -> Result<[u8; HASH_LENGTH]> {
+        // make a cache of the store. only flush it if the entire init chain
+        // flow is successful.
+        // additionally, wrap the cached store in `Rc<RefCell<T>>` so that it
+        // can be shared across the execution of multiple messages.
+        let mut cache = Shared::new(Cached::new(self.store.pending_wrap()));
+
+        let deployer_addr = address::validate(&gen_state.deployer)?;
+
+        // execute messages in order.
+        // ResponseInitChain doesn't take events, so we discard the emitted events here.
+        for msg in gen_state.msgs {
+            self.handle_msg(
+                cache.share(),
+                // use mock block info for now
+                BlockInfo {
+                    height: 1,
+                    time: Timestamp::from_seconds(1),
+                    chain_id: "".into(),
+                },
+                None, // init msgs are not part of a tx, so TransactionInfo = None
+                &deployer_addr,
+                msg,
+            )?;
+        }
+
+        // init chain is successful; flush the state changes
+        cache.borrow_mut().flush();
+
+        Ok(self.store.root_hash())
+    }
+
+    // pub fn begin_block(&self) -> Result<()> {
+    //     todo!();
+    // }
 
     pub fn deliver_tx(&self, tx: Tx) -> Result<Vec<Event>> {
         // make a cache of the store. it will only be flushed if the entire tx
@@ -50,7 +92,7 @@ impl StateMachine {
             .map(|msg| {
                 self.handle_msg(
                     cache.share(),
-                    // use mock block and transaction info
+                    // use mock block and transaction info for now
                     BlockInfo {
                         height: 0,
                         time: Timestamp::from_seconds(1),
@@ -66,7 +108,7 @@ impl StateMachine {
                 Ok(())
             })?;
 
-        // tx is successful: flush the committed changes
+        // tx is successful: flush the state changes
         cache.borrow_mut().flush();
 
         Ok(events)
@@ -182,6 +224,12 @@ impl StateMachine {
         }
     }
 
+    pub fn info(&self) -> Result<(i64, [u8; HASH_LENGTH])> {
+        let height = BLOCK_HEIGHT.load(&self.store.wrap())?;
+        let app_hash = self.store.root_hash();
+        Ok((height, app_hash))
+    }
+
     pub fn query(&self, query: SdkQuery) -> Result<Binary> {
         let store = self.store.wrap();
         match query {
@@ -210,6 +258,21 @@ impl StateMachine {
             } => to_binary(&query::wasm_smart(store, &contract, &msg)?),
         }
         .map_err(Error::from)
+    }
+
+    pub fn commit(&self) -> Result<(i64, [u8; HASH_LENGTH])> {
+        let mut store = self.store.pending_wrap();
+
+        // increment committed block height
+        BLOCK_HEIGHT.update(&mut store, |height| -> Result<_> {
+            Ok(height + 1)
+        })?;
+
+        // commit pending ops to the underlying store
+        self.store.commit()?;
+
+        // return the block height and app hash that was just committed
+        self.info()
     }
 }
 
