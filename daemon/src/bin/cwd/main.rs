@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 use tracing::error;
 use tracing_subscriber::filter::LevelFilter;
 
-use cw_daemon::commands::{GenesisCmd, InitCmd, KeysCmd, QueryCmd, StartCmd, TxCmd};
+use cw_daemon::commands::{GenesisCmd, InitCmd, KeysCmd, QueryCmd, ResetCmd, StartCmd, TxCmd};
 use cw_daemon::{path, DaemonError};
 
 #[derive(Parser)]
@@ -42,6 +42,9 @@ pub enum Command {
 
     /// Sign and broadcast transactions
     Tx(TxCmd),
+
+    /// Delete the local application data
+    UnsafeResetAll(ResetCmd),
 }
 
 async fn run() -> Result<(), DaemonError> {
@@ -68,6 +71,7 @@ async fn run() -> Result<(), DaemonError> {
         Command::Query(cmd) => cmd.run(&home_dir).await,
         Command::Start(cmd) => cmd.run(&home_dir),
         Command::Tx(cmd) => cmd.run(&home_dir).await,
+        Command::UnsafeResetAll(cmd) => cmd.run(&home_dir),
     }
 }
 
