@@ -39,6 +39,9 @@ impl StateMachine {
         // can be shared across the execution of multiple messages.
         let mut cache = Shared::new(Cached::new(self.store.pending_wrap()));
 
+        // Initialize block height as 0
+        BLOCK_HEIGHT.save(&mut cache, &0)?;
+
         let deployer_addr = address::validate(&gen_state.deployer)?;
 
         // execute messages in order.
