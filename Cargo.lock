@@ -695,7 +695,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-sdk",
- "cw-storage-plus",
+ "cw-storage-plus 1.0.0",
  "cw2",
  "thiserror",
 ]
@@ -739,8 +739,8 @@ checksum = "7192aec80d0c01a0e5941392eea7e2b7e212ee74ca7f430bfdc899420c055ef6"
 dependencies = [
  "anyhow",
  "cosmwasm-std",
- "cw-storage-plus",
- "cw-utils",
+ "cw-storage-plus 0.16.0",
+ "cw-utils 0.16.0",
  "derivative",
  "itertools",
  "prost 0.9.0",
@@ -756,7 +756,7 @@ dependencies = [
  "bech32",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus",
+ "cw-storage-plus 1.0.0",
  "serde",
  "sha2 0.10.6",
  "thiserror",
@@ -784,7 +784,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-vm",
  "cw-sdk",
- "cw-storage-plus",
+ "cw-storage-plus 1.0.0",
  "cw-store",
  "hex",
  "k256",
@@ -807,6 +807,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-storage-plus"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ea7f23066698f2792fd6ede927dfe8297486537516e6f9993764986bcb89933"
+dependencies = [
+ "cosmwasm-std",
+ "k256",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "cw-store"
 version = "0.0.0"
 dependencies = [
@@ -826,9 +839,9 @@ dependencies = [
  "cw-bank",
  "cw-multi-test",
  "cw-sdk",
- "cw-storage-plus",
+ "cw-storage-plus 1.0.0",
  "cw-token-factory",
- "cw-utils",
+ "cw-utils 1.0.0",
  "cw2",
  "thiserror",
 ]
@@ -849,6 +862,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-utils"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b50d0cac456f98b4339b78e890fbe60e4dfe888c87abacc1129fc3fe34bbe20a"
+dependencies = [
+ "anyhow",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw2",
+ "k256",
+ "schemars",
+ "semver",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "cw2"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -856,7 +886,7 @@ checksum = "91398113b806f4d2a8d5f8d05684704a20ffd5968bf87e3473e1973710b884ad"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus",
+ "cw-storage-plus 0.16.0",
  "schemars",
  "serde",
 ]

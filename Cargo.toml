@@ -39,10 +39,10 @@ cw-multi-test      = "0.16"
 cw-sdk             = { path = "./sdk" }
 cw-server          = { path = "./server" }
 cw-state-machine   = { path = "./state-machine" }
-cw-storage-plus    = "0.16"
+cw-storage-plus    = "1.0"
 cw-store           = { path = "./store" }
 cw-token-factory   = { path = "./contracts/token-factory" }
-cw-utils           = "0.16"
+cw-utils           = "1.0"
 dialoguer          = "0.10"
 hex                = "0.4"
 home               = "0.5"
