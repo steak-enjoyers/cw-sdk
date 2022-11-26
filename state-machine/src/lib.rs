@@ -53,7 +53,7 @@ impl StateMachine {
                 cache.share(),
                 // use mock block info for now
                 BlockInfo {
-                    height: 1,
+                    height: 0,
                     time: Timestamp::from_seconds(1),
                     chain_id: "".into(),
                 },
@@ -151,6 +151,14 @@ impl StateMachine {
                     funds,
                 };
 
+                // during genesis, we derive contract addresses by labels
+                // post-genesis, we derive by code and instance ids
+                let address_generator = if block.height == 0 {
+                    AddressGenerator::ByLabel
+                } else {
+                    AddressGenerator::ByIds
+                };
+
                 let result = execute::instantiate_contract(
                     store,
                     block,
@@ -160,7 +168,7 @@ impl StateMachine {
                     &msg,
                     label,
                     admin_addr,
-                    AddressGenerator::ByIds,
+                    address_generator,
                 )?
                 .into_result();
 
