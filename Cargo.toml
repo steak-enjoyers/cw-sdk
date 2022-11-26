@@ -48,7 +48,7 @@ hex                = "0.4"
 home               = "0.5"
 josekit            = "0.8"
 k256               = "0.11"
-merk               = { git = "https://github.com/nomic-io/merk", rev = "a2e46ed" }
+merk               = { git = "https://github.com/nomic-io/merk", rev = "8009dff" }
 rand_core          = "0.6"
 rocksdb            = "0.18"
 schemars           = "0.8"
