@@ -842,7 +842,6 @@ dependencies = [
  "cw-multi-test",
  "cw-sdk",
  "cw-storage-plus",
- "cw-token-factory",
  "cw-utils",
  "cw2",
  "thiserror",

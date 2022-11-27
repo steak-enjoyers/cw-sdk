@@ -29,4 +29,3 @@ thiserror       = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test    = { workspace = true }
-cw-token-factory = { workspace = true, features = ["library"] }
