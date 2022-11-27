@@ -3,7 +3,7 @@ use cosmwasm_vm::{call_query, Backend, Instance, InstanceOptions, Storage as VmS
 use cw_storage_plus::Bound;
 
 use cw_sdk::{
-    address, paginate_map, AccountResponse, CodeResponse, InfoResponse, WasmRawResponse,
+    address, paginate::paginate_map, AccountResponse, CodeResponse, InfoResponse, WasmRawResponse,
     WasmSmartResponse,
 };
 
@@ -37,8 +37,7 @@ pub fn accounts(
     limit: Option<u32>,
 ) -> Result<Vec<AccountResponse>> {
     let start = start_after.map(|address| Bound::ExclusiveRaw(address.into_bytes()));
-    paginate_map(ACCOUNTS, store, start, limit, |item| {
-        let (address, account) = item?;
+    paginate_map(ACCOUNTS, store, start, limit, |address, account| {
         Ok(AccountResponse {
             address: address.into(),
             account: Some(account.into()),
@@ -59,8 +58,7 @@ pub fn codes(
     limit: Option<u32>,
 ) -> Result<Vec<CodeResponse>> {
     let start = start_after.map(Bound::exclusive);
-    paginate_map(CODES, store, start, limit, |item| {
-        let (code_id, bytes) = item?;
+    paginate_map(CODES, store, start, limit, |code_id, bytes| {
         Ok(CodeResponse {
             code_id,
             wasm_byte_code: Some(bytes),
