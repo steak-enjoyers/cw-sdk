@@ -4,6 +4,8 @@ use cosmwasm_vm::{call_instantiate, Backend, Instance, InstanceOptions, call_exe
 use cw_sdk::{address, hash::sha256, Account};
 use cw_store::Cached;
 
+use tracing::{debug, info};
+
 use crate::{
     backend::{BackendApi, BackendQuerier, ContractSubstore},
     error::{Error, Result},
@@ -24,10 +26,14 @@ pub fn store_code(
     // save code to the store
     CODES.save(store, code_id, wasm_byte_code)?;
 
+    let code_hash = hex::encode(sha256(wasm_byte_code));
+
+    info!(target: "Stored code", id = code_id, hash = code_hash);
+
     Ok(Event::new("store_code")
         .add_attribute("sender", sender_addr)
         .add_attribute("code_id", code_id.to_string())
-        .add_attribute("code_hash", hex::encode(sha256(wasm_byte_code))))
+        .add_attribute("code_hash", code_hash))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -96,19 +102,32 @@ pub fn instantiate_contract(
     // the contract account.
     //
     // NOTE: do not save the account if one of the same address already exists.
-    if result.is_ok() {
-        cache.flush();
-        let mut store = cache.recycle();
-        ACCOUNTS.update(&mut store, &contract_addr, |opt| {
-            if opt.is_some() {
-                return Err(Error::account_found(&contract_addr));
-            }
-            Ok(Account::Contract {
+    match &result {
+        ContractResult::Ok(_) => {
+            cache.flush();
+            let mut store = cache.recycle();
+
+            ACCOUNTS.update(&mut store, &contract_addr, |opt| {
+                if opt.is_some() {
+                    return Err(Error::account_found(&contract_addr));
+                }
+                Ok(Account::Contract {
+                    code_id,
+                    label: label.clone(),
+                    admin,
+                })
+            })?;
+
+            info!(
+                target: "Instantiated contract",
+                address = contract_addr.to_string(),
                 code_id,
                 label,
-                admin,
-            })
-        })?;
+            );
+        },
+        ContractResult::Err(err) => {
+            debug!(target: "Failed to instantiate contract", code_id, label, reason = err);
+        }
     }
 
     Ok(result)
@@ -149,8 +168,23 @@ pub fn execute_contract(
         .recycle();
 
     // if the execution is successful, flush the state changes to the underlying store
-    if result.is_ok() {
-        cache.flush();
+    match &result {
+        ContractResult::Ok(_) => {
+            cache.flush();
+            debug!(
+                target: "Executed contract",
+                address = env.contract.address.to_string(),
+                sender = info.sender.to_string(),
+            );
+        },
+        ContractResult::Err(err) => {
+            debug!(
+                target: "Failed to execute contract",
+                address = env.contract.address.to_string(),
+                sender = info.sender.to_string(),
+                reason = err,
+            );
+        }
     }
 
     Ok(result)
