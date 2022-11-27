@@ -4,6 +4,7 @@ use std::str::FromStr;
 
 use clap::{Args, Subcommand};
 use cosmwasm_std::{ContractResult, Binary};
+use cw_sdk::InfoResponse;
 use serde_json::Value;
 use tendermint::abci::transaction::Hash;
 use tendermint_rpc::{Client, HttpClient, Url};
@@ -33,11 +34,27 @@ pub enum QuerySubcmd {
         /// Transaction hash, in hex encoding
         txhash: String,
     },
+
+    /// Query the blockchain's global state
+    Info,
+
     /// Query an account's public key and sequence number
     Account {
         /// Account address
         address: String,
     },
+
+    /// Enumerate all accounts
+    Accounts {
+        /// Start after this address
+        #[clap(long)]
+        start_after: Option<String>,
+
+        /// The maximum number of results to be returned in this query
+        #[clap(long)]
+        limit: Option<u32>,
+    },
+
     /// Retrieve the metadata and wasm byte code corresponding to the given code id
     Code {
         /// Code id
@@ -47,6 +64,18 @@ pub enum QuerySubcmd {
         #[clap(long)]
         output: Option<PathBuf>,
     },
+
+    /// Enumerate all wasm byte codes
+    Codes {
+        /// Start after this code id
+        #[clap(long)]
+        start_after: Option<u64>,
+
+        /// The maximum number of results to be returned in this query
+        #[clap(long)]
+        limit: Option<u32>,
+    },
+
     /// Perform a wasm raw query
     WasmRaw {
         /// Contract address
@@ -54,6 +83,7 @@ pub enum QuerySubcmd {
         /// The key to be queried in the contract store, in hex encoding
         key: String,
     },
+
     /// Perform a wasm smart query
     WasmSmart {
         /// Contract address
@@ -64,7 +94,7 @@ pub enum QuerySubcmd {
 }
 
 impl QueryCmd {
-    pub async fn run(&self, home_dir: &Path) -> Result<(), DaemonError> {
+    pub async fn run(self, home_dir: &Path) -> Result<(), DaemonError> {
         if !home_dir.exists() {
             return Err(DaemonError::file_not_found(home_dir)?);
         }
@@ -74,12 +104,21 @@ impl QueryCmd {
         let url = Url::from_str(url_str)?;
         let client = HttpClient::new(url)?;
 
-        match &self.subcommand {
+        match self.subcommand {
             QuerySubcmd::Tx {
                 txhash,
             } => {
-                let hash = Hash::from_str(txhash)?;
+                let hash = Hash::from_str(&txhash)?;
                 let response = client.tx(hash, false).await?;
+                print::json(response)?;
+            },
+            QuerySubcmd::Info => {
+                let response: InfoResponse = do_abci_query(
+                    &client,
+                    SdkQuery::Info {},
+                )
+                .await?;
+
                 print::json(response)?;
             },
             QuerySubcmd::Account {
@@ -95,6 +134,20 @@ impl QueryCmd {
 
                 print::yaml(response)?;
             },
+            QuerySubcmd::Accounts {
+                start_after,
+                limit,
+            } => {
+                let response: Vec<AccountResponse> = do_abci_query(
+                    &client,
+                SdkQuery::Accounts {
+                    start_after,
+                    limit,
+                })
+                .await?;
+
+                print::json(response)?;
+            }
             QuerySubcmd::Code {
                 code_id,
                 output,
@@ -102,7 +155,7 @@ impl QueryCmd {
                 let response: CodeResponse = do_abci_query(
                     &client,
                     SdkQuery::Code {
-                        code_id: *code_id,
+                        code_id,
                     },
                 )
                 .await?;
@@ -113,13 +166,28 @@ impl QueryCmd {
                         println!("hash: {}", Binary(sha256(bytes.as_slice())));
 
                         // save the wasm byte code to file if an output path is specified
-                        if let Some(output) = output {
+                        if let Some(output) = &output {
                             fs::write(output, bytes.as_slice())?;
                             info!("wasm byte code written to {}", path::stringify(output)?);
                         }
                     },
                     None => warn!("wasm byte code not found with code id {}", code_id),
                 }
+            },
+            QuerySubcmd::Codes {
+                start_after,
+                limit,
+            } => {
+                let response: Vec<CodeResponse> = do_abci_query(
+                    &client,
+                    SdkQuery::Codes {
+                        start_after,
+                        limit,
+                    },
+                )
+                .await?;
+
+                print::json(response)?;
             },
             QuerySubcmd::WasmRaw {
                 contract,

@@ -64,7 +64,7 @@ async fn run() -> Result<(), DaemonError> {
     };
     tracing_subscriber::fmt().with_max_level(log_level).init();
 
-    match &cli.command {
+    match cli.command {
         Command::Genesis(cmd) => cmd.run(),
         Command::Init(cmd) => cmd.run(&home_dir),
         Command::Keys(cmd) => cmd.run(&home_dir),
