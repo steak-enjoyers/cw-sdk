@@ -28,7 +28,6 @@ k256               = { workspace = true }
 rand_core          = { workspace = true }
 serde              = { workspace = true }
 serde_json         = { workspace = true }
-serde_yaml         = { workspace = true }
 tendermint         = { workspace = true }
 tendermint-abci    = { workspace = true }
 tendermint-rpc     = { workspace = true, features = ["http-client"] }

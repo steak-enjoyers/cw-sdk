@@ -159,7 +159,7 @@ impl GenesisCmd {
                         });
                     }
                 }
-                print::yaml(&codes)
+                print::json(&codes)
             },
             GenesisSubcommand::ListContracts => {
                 let mut contracts = vec![];
@@ -179,7 +179,7 @@ impl GenesisCmd {
                         });
                     }
                 }
-                print::yaml(&contracts)
+                print::json(&contracts)
             },
         }
     }

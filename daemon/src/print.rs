@@ -36,13 +36,6 @@ pub fn keys(keys: &[Key]) -> Result<(), DaemonError> {
     }
 }
 
-/// Print a serializable object as YAML
-pub fn yaml(data: impl serde::Serialize) -> Result<(), DaemonError> {
-    let data_str = serde_yaml::to_string(&data)?;
-    println!("{data_str}");
-    Ok(())
-}
-
 /// Print a serializable object as pretty JSON
 pub fn json(data: impl serde::Serialize) -> Result<(), DaemonError> {
     let data_str = serde_json::to_string_pretty(&data)?;

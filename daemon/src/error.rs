@@ -51,9 +51,6 @@ pub enum DaemonError {
     #[error(transparent)]
     TomlSer(#[from] toml::ser::Error),
 
-    #[error(transparent)]
-    Yaml(#[from] serde_yaml::Error),
-
     #[error("failed to determine system home directory")]
     HomeDirFailed,
 

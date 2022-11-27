@@ -133,7 +133,7 @@ impl QueryCmd {
                 )
                 .await?;
 
-                print::yaml(response)?;
+                print::json(response)?;
             },
             QuerySubcmd::Accounts {
                 start_after,
@@ -203,7 +203,7 @@ impl QueryCmd {
                 )
                 .await?;
 
-                print::yaml(response)?;
+                print::json(response)?;
             },
             QuerySubcmd::WasmSmart {
                 contract,
