@@ -70,7 +70,7 @@ pub enum GenesisSubcommand {
 }
 
 impl GenesisCmd {
-    pub fn run(&self) -> Result<(), DaemonError> {
+    pub fn run(self) -> Result<(), DaemonError> {
         let tm_home = match &self.tendermint_home {
             None => path::default_tm_home()?,
             Some(tm_home) => tm_home.clone(),
@@ -91,12 +91,12 @@ impl GenesisCmd {
         let mut app_state: GenesisState =
             serde_json::from_value(genesis.app_state.clone()).unwrap_or_default();
 
-        match &self.subcommand {
+        match self.subcommand {
             GenesisSubcommand::SetDeployer {
                 address,
             } => {
                 // TODO: validate deployer address
-                app_state.deployer = address.clone();
+                app_state.deployer = address;
                 update_and_write(&mut genesis, &app_state, &genesis_path)
             },
             GenesisSubcommand::Store {
@@ -120,11 +120,11 @@ impl GenesisCmd {
                     return Err(DaemonError::unsupported_feature("sending funds"));
                 }
                 app_state.msgs.push(SdkMsg::Instantiate {
-                    code_id: *code_id,
-                    msg: msg.clone().into_bytes().into(),
+                    code_id,
+                    msg: msg.into_bytes().into(),
                     funds: vec![],
-                    label: label.clone(),
-                    admin: admin.clone(),
+                    label,
+                    admin,
                 });
                 update_and_write(&mut genesis, &app_state, &genesis_path)
             },
@@ -137,8 +137,8 @@ impl GenesisCmd {
                     return Err(DaemonError::unsupported_feature("sending funds"));
                 }
                 app_state.msgs.push(SdkMsg::Execute {
-                    contract: contract.clone(),
-                    msg: msg.clone().into_bytes().into(),
+                    contract,
+                    msg: msg.into_bytes().into(),
                     funds: vec![],
                 });
                 update_and_write(&mut genesis, &app_state, &genesis_path)

@@ -81,7 +81,7 @@ pub enum TxSubcmd {
 }
 
 impl TxCmd {
-    pub async fn run(&self, home_dir: &Path) -> Result<(), DaemonError> {
+    pub async fn run(self, home_dir: &Path) -> Result<(), DaemonError> {
         if !home_dir.exists() {
             return Err(DaemonError::file_not_found(home_dir)?);
         }
@@ -126,7 +126,7 @@ impl TxCmd {
             Some(sequence) => sequence,
         };
 
-        let msg = match &self.subcommand {
+        let msg = match self.subcommand {
             TxSubcmd::Store {
                 wasm_byte_code_path,
             } => {
@@ -147,11 +147,11 @@ impl TxCmd {
                     return Err(DaemonError::unsupported_feature("sending funds"));
                 }
                 SdkMsg::Instantiate {
-                    code_id: *code_id,
-                    msg: msg.clone().into_bytes().into(),
+                    code_id,
+                    msg: msg.into_bytes().into(),
                     funds: vec![],
-                    label: label.clone(),
-                    admin: admin.clone(),
+                    label,
+                    admin,
                 }
             },
             TxSubcmd::Execute {
@@ -163,8 +163,8 @@ impl TxCmd {
                     return Err(DaemonError::unsupported_feature("sending funds"));
                 }
                 SdkMsg::Execute {
-                    contract: contract.clone(),
-                    msg: msg.clone().into_bytes().into(),
+                    contract,
+                    msg: msg.into_bytes().into(),
                     funds: vec![],
                 }
             },
@@ -173,9 +173,9 @@ impl TxCmd {
                 code_id,
                 msg,
             } => SdkMsg::Migrate {
-                contract: contract.clone(),
-                code_id: *code_id,
-                msg: msg.clone().into_bytes().into(),
+                contract,
+                code_id,
+                msg: msg.into_bytes().into(),
             },
         };
 
