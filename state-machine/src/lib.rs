@@ -14,7 +14,7 @@ use cw_store::{Cached, Shared, Store};
 
 use crate::{
     error::{Error, Result},
-    state::{ACCOUNTS, BLOCK_HEIGHT, CODE_COUNT, CONTRACT_COUNT},
+    state::{ACCOUNTS, BLOCK_HEIGHT, CHAIN_ID, CODE_COUNT, CONTRACT_COUNT},
 };
 
 pub struct StateMachine {
@@ -32,14 +32,14 @@ impl StateMachine {
     /// Decode genesis bytes and run genesis messages. Return app hash.
     ///
     /// TODO: Once a staking contract is created, return the validator set as well
-    pub fn init_chain(&self, gen_state: GenesisState) -> Result<[u8; HASH_LENGTH]> {
+    pub fn init_chain(&self, chain_id: String, gen_state: GenesisState) -> Result<[u8; HASH_LENGTH]> {
         // make a cache of the store. only flush it if the entire init chain
         // flow is successful.
         // additionally, wrap the cached store in `Rc<RefCell<T>>` so that it
         // can be shared across the execution of multiple messages.
         let mut cache = Shared::new(Cached::new(self.store.pending_wrap()));
 
-        // Initialize block height, code count, contract count
+        CHAIN_ID.save(&mut cache, &chain_id)?;
         BLOCK_HEIGHT.save(&mut cache, &0)?;
         CODE_COUNT.save(&mut cache, &0)?;
         CONTRACT_COUNT.save(&mut cache, &0)?;

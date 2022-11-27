@@ -19,9 +19,10 @@ impl AppDriver {
                     result_tx,
                 } => result_tx.send(self.state_machine.info()).unwrap(),
                 AppCommand::InitChain {
+                    chain_id,
                     gen_state,
                     result_tx,
-                } => result_tx.send(self.state_machine.init_chain(gen_state)).unwrap(),
+                } => result_tx.send(self.state_machine.init_chain(chain_id, gen_state)).unwrap(),
                 AppCommand::Query {
                     query,
                     result_tx,

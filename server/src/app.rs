@@ -45,6 +45,7 @@ impl tendermint_abci::Application for App {
 
         self.cmd_tx
             .send(AppCommand::InitChain {
+                chain_id: request.chain_id,
                 gen_state,
                 result_tx,
             })

@@ -16,6 +16,7 @@ pub enum AppCommand {
 
     /// Provide the genesis state, returns the app hash.
     InitChain {
+        chain_id: String,
         gen_state: GenesisState,
         result_tx: Sender<StateMachineResult<[u8; HASH_LENGTH]>>,
     },
