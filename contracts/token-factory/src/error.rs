@@ -6,7 +6,7 @@ use thiserror::Error;
 use crate::msg::NAMESPACE;
 
 #[derive(Debug, Error)]
-#[cfg_attr(any(test, feature = "integration-test"), derive(PartialEq))]
+#[cfg_attr(any(test, feature = "library"), derive(PartialEq))]
 pub enum ContractError {
     #[error(transparent)]
     Std(#[from] StdError),
