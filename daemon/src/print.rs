@@ -1,3 +1,6 @@
+use cosmwasm_std::Addr;
+use serde::Serialize;
+
 use crate::{DaemonError, Key};
 
 /// Print a BIP-38 mnemonic phrase
@@ -17,28 +20,39 @@ pub fn mnemonic(phrase: &str) {
     }
 }
 
-/// Print a signing key
-pub fn key(key: &Key) -> Result<(), DaemonError> {
-    println!("- name: {}", key.name);
-    println!("  address: {}", key.address()?);
-    println!("  pubkey: {}", hex::encode(key.pubkey().to_bytes().as_slice()));
-    Ok(())
-}
-
-/// Print multiple signing keys, sorted alphabetically by name
-pub fn keys(keys: &[Key]) -> Result<(), DaemonError> {
-    if keys.is_empty() {
-        println!("[]");
-        Ok(())
-    } else {
-        // TODO: sort keys by name?
-        keys.iter().try_for_each(self::key)
-    }
-}
-
 /// Print a serializable object as pretty JSON
 pub fn json(data: impl serde::Serialize) -> Result<(), DaemonError> {
     let data_str = serde_json::to_string_pretty(&data)?;
     println!("{data_str}");
     Ok(())
+}
+
+/// Print a signing key
+pub fn key(key: &Key) -> Result<(), DaemonError> {
+    json(PrintableKey::try_from(key)?)
+}
+
+/// Print multiple signing keys, sorted alphabetically by name
+pub fn keys(keys: &[Key]) -> Result<(), DaemonError> {
+    json(keys.iter().map(PrintableKey::try_from).collect::<Result<Vec<_>, _>>()?)
+}
+
+#[derive(Serialize)]
+struct PrintableKey<'a> {
+    pub name: &'a str,
+    pub address: Addr,
+    /// Hex-encoded bytearray
+    pub pubkey: String,
+}
+
+impl<'a> TryFrom<&'a Key> for PrintableKey<'a> {
+    type Error = DaemonError;
+
+    fn try_from(key: &'a Key) -> Result<Self, Self::Error> {
+        Ok(Self {
+            name: &key.name,
+            address: key.address()?,
+            pubkey: hex::encode(key.pubkey().to_bytes().as_slice()),
+        })
+    }
 }

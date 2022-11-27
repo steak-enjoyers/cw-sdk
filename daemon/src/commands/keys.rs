@@ -82,12 +82,10 @@ impl KeysCmd {
                 name,
             } => {
                 let key = keyring.get(name)?;
-                println!();
                 print::key(&key)?;
             },
             KeysSubcmd::List => {
                 let keys = keyring.list()?;
-                println!();
                 print::keys(&keys)?;
             },
             KeysSubcmd::Delete {
