@@ -3,12 +3,13 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use clap::{Args, Subcommand};
-use cosmwasm_std::{ContractResult, Binary};
+use cosmwasm_std::ContractResult;
 use cw_sdk::InfoResponse;
+use serde::Serialize;
 use serde_json::Value;
 use tendermint::abci::transaction::Hash;
 use tendermint_rpc::{Client, HttpClient, Url};
-use tracing::{info, warn};
+use tracing::info;
 
 use cw_sdk::{
     hash::sha256, AccountResponse, CodeResponse, SdkQuery, WasmRawResponse, WasmSmartResponse,
@@ -160,32 +161,32 @@ impl QueryCmd {
                 )
                 .await?;
 
-                match response.wasm_byte_code {
-                    Some(bytes) => {
-                        // only print the hash, not the bytecode
-                        println!("hash: {}", Binary(sha256(bytes.as_slice())));
+                // only print the hash, not the bytecode
+                print::json(HashedCodeResponse::from(&response))?;
 
-                        // save the wasm byte code to file if an output path is specified
-                        if let Some(output) = &output {
-                            fs::write(output, bytes.as_slice())?;
-                            info!("wasm byte code written to {}", path::stringify(output)?);
-                        }
-                    },
-                    None => warn!("wasm byte code not found with code id {}", code_id),
+                // save the wasm byte code to file if an output path is specified
+                if let Some(bytes) = &response.wasm_byte_code {
+                    if let Some(output) = &output {
+                        fs::write(output, bytes.as_slice())?;
+                        info!("wasm byte code written to {}", path::stringify(output)?);
+                    }
                 }
             },
             QuerySubcmd::Codes {
                 start_after,
                 limit,
             } => {
-                let response: Vec<CodeResponse> = do_abci_query(
+                let response = do_abci_query::<_, Vec<CodeResponse>>(
                     &client,
                     SdkQuery::Codes {
                         start_after,
                         limit,
                     },
                 )
-                .await?;
+                .await?
+                .iter()
+                .map(HashedCodeResponse::from)
+                .collect::<Vec<_>>();
 
                 print::json(response)?;
             },
@@ -235,5 +236,23 @@ impl QueryCmd {
         };
 
         Ok(())
+    }
+}
+
+/// Just like `CodeResponse` but includes the byte code's hash instead of the
+/// full byte code. Used for CLI output.
+#[derive(Serialize)]
+pub struct HashedCodeResponse {
+    code_id: u64,
+    /// Hex-encoded SHA-256 hash; None if no code is found under the code id.
+    hash: Option<String>,
+}
+
+impl From<&CodeResponse> for HashedCodeResponse {
+    fn from(res: &CodeResponse) -> Self {
+        Self {
+            code_id: res.code_id,
+            hash: res.wasm_byte_code.as_ref().map(|bytes| hex::encode(sha256(&bytes))),
+        }
     }
 }
