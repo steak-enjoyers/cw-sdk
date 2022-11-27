@@ -1,26 +1,33 @@
-use cosmwasm_std::{Addr, Binary};
+use cosmwasm_std::{Addr, Storage};
 use k256::ecdsa::{signature::Verifier, Signature, VerifyingKey};
-use thiserror::Error;
 
-use cw_sdk::address::{self, AddressError};
-use cw_sdk::{Account, Tx};
+use cw_sdk::{address, Account, Tx};
 
-use crate::state::State;
+use crate::{
+    error::{Error, Result},
+    state::{ACCOUNTS, CHAIN_ID},
+};
+
+/// The response type of `authenticate_tx` function.
+pub struct Sender {
+    pub address: Addr,
+    pub account: Account<Addr>,
+}
 
 /// Authenticate the signer's address, pubkey, signature, sequence, and chain id.
 /// Return error if any one fails.
 /// Returns the sender address and account info if succeeds.
-pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<Sender, AuthError> {
+pub fn authenticate_tx(store: &dyn Storage, tx: &Tx) -> Result<Sender> {
     let sender = &tx.body.sender;
     let sender_addr = address::validate(sender)?;
 
     // find the user's account
-    let (pubkey, mut sequence) = match state.accounts.get(&sender_addr) {
+    let (pubkey, mut sequence) = match ACCOUNTS.may_load(store, &sender_addr)? {
         // If the sender account is a contract, throw error because contracts can't sign txs.
         Some(Account::Contract {
             ..
         }) => {
-            return Err(AuthError::AccountIsContract);
+            return Err(Error::account_is_contract(sender));
         }
 
         // If the account is found on chain, meaning the account has already sent at least one tx
@@ -30,23 +37,25 @@ pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<Sender, AuthError> {
             sequence,
         }) => {
             if let Some(sender_pubkey) = &tx.pubkey {
-                if pubkey != sender_pubkey {
-                    return Err(AuthError::pubkey_mismatch(sender, pubkey, sender_pubkey));
+                if pubkey != *sender_pubkey {
+                    return Err(Error::pubkey_mismatch(sender, &pubkey, sender_pubkey));
                 }
             }
 
-            (pubkey.clone(), *sequence)
+            (pubkey, sequence)
         },
 
         // If not found, meaning it's the first time the account every sends a tx, use the pubkey
         // provided by the tx and initialize sequence to be 0.
         // Note, the pubkey must match the sender address.
         None => {
-            let pubkey = tx.pubkey.as_ref().ok_or_else(|| AuthError::account_not_found(sender))?;
+            let Some(pubkey) = &tx.pubkey else {
+                return Err(Error::account_not_found(sender));
+            };
 
             let address = address::derive_from_pubkey(pubkey.as_slice())?;
             if *sender != address {
-                return Err(AuthError::address_mismatch(address, sender));
+                return Err(Error::address_mismatch(address, sender));
             }
 
             (pubkey.clone(), 0)
@@ -54,14 +63,15 @@ pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<Sender, AuthError> {
     };
 
     // the chain id must match
-    if state.chain_id != tx.body.chain_id {
-        return Err(AuthError::chain_id_mismatch(&state.chain_id, &tx.body.chain_id));
+    let chain_id = CHAIN_ID.load(store)?;
+    if chain_id != tx.body.chain_id {
+        return Err(Error::chain_id_mismatch(&chain_id, &tx.body.chain_id));
     }
 
     // the account sequence mush match
     sequence += 1;
     if sequence != tx.body.sequence {
-        return Err(AuthError::sequence_mismatch(sender, sequence, tx.body.sequence));
+        return Err(Error::sequence_mismatch(sender, sequence, tx.body.sequence));
     }
 
     // verify the signature
@@ -80,102 +90,5 @@ pub fn authenticate_tx(tx: &Tx, state: &State) -> Result<Sender, AuthError> {
                 sequence,
             },
         })
-        .map_err(AuthError::from)
-}
-
-pub struct Sender {
-    pub address: Addr,
-    pub account: Account<Addr>,
-}
-
-#[derive(Debug, Error)]
-pub enum AuthError {
-    #[error(transparent)]
-    Serde(#[from] serde_json::Error),
-
-    #[error(transparent)]
-    Ecdsa(#[from] k256::ecdsa::Error),
-
-    #[error(transparent)]
-    Address(#[from] AddressError),
-
-    #[error("sender account is a contract")]
-    AccountIsContract,
-
-    #[error("pubkey for sender {sender} is neither provided in the tx nor stored on-chain")]
-    AccountNotFound {
-        sender: String,
-    },
-
-    #[error("sender address does not match pubkey: expecting {expect}, found {found}")]
-    AddressMismatch {
-        // The sender address deduced from the provided pubkey
-        expect: String,
-        // The sender address actually provided by the tx
-        found: String,
-    },
-
-    #[error("pubkey for sender {sender} does not match: expecting {expect}, found {found}")]
-    PubkeyMismatch {
-        sender: String,
-        /// The pubkey stored on-chain; hex-encoded bytearray
-        expect: String,
-        /// The pubkey included in the tx; hex-encoded bytearray
-        found: String,
-    },
-
-    #[error("incorrect chain id: expecting {expect}, found {found}")]
-    ChainIdMismatch {
-        /// The chain id stored on-chain
-        expect: String,
-        /// The chain id provided by the tx
-        found: String,
-    },
-
-    #[error("incorrect sequence number for sender {sender}: expecting {expect}, found {found}")]
-    SequenceMismatch {
-        sender: String,
-        /// The sequence number stored on-chain plus 1
-        expect: u64,
-        /// The sequence number provided by the tx
-        found: u64,
-    },
-}
-
-impl AuthError {
-    pub fn account_not_found(sender: impl Into<String>) -> Self {
-        Self::AccountNotFound {
-            sender: sender.into(),
-        }
-    }
-
-    pub fn address_mismatch(expect: impl Into<String>, found: impl Into<String>) -> Self {
-        Self::AddressMismatch {
-            expect: expect.into(),
-            found: found.into(),
-        }
-    }
-
-    pub fn pubkey_mismatch(sender: impl Into<String>, expect: &Binary, found: &Binary) -> Self {
-        Self::PubkeyMismatch {
-            sender: sender.into(),
-            expect: hex::encode(expect.as_slice()),
-            found: hex::encode(found.as_slice()),
-        }
-    }
-
-    pub fn chain_id_mismatch(expect: impl Into<String>, found: impl Into<String>) -> Self {
-        Self::ChainIdMismatch {
-            expect: expect.into(),
-            found: found.into(),
-        }
-    }
-
-    pub fn sequence_mismatch(sender: impl Into<String>, expect: u64, found: u64) -> Self {
-        Self::SequenceMismatch {
-            sender: sender.into(),
-            expect,
-            found,
-        }
-    }
+        .map_err(Error::from)
 }

@@ -1,3 +1,4 @@
+pub mod contract;
 pub mod error;
 pub mod execute;
 pub mod helpers;
@@ -5,8 +6,8 @@ pub mod msg;
 pub mod query;
 pub mod state;
 
-#[cfg(any(feature = "integration-test", not(feature = "library")))]
-pub mod contract;
-
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod integration_tests;

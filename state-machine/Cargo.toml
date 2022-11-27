@@ -11,6 +11,9 @@ repository    = { workspace = true }
 documentation = { workspace = true }
 keywords      = { workspace = true }
 
+[features]
+iterator = []
+
 [dependencies]
 base64          = { workspace = true }
 bech32          = { workspace = true }
@@ -18,6 +21,7 @@ cosmwasm-schema = { workspace = true }
 cosmwasm-std    = { workspace = true }
 cosmwasm-vm     = { workspace = true }
 cw-sdk          = { workspace = true }
+cw-storage-plus = { workspace = true }
 cw-store        = { workspace = true }
 hex             = { workspace = true }
 k256            = { workspace = true }
@@ -26,3 +30,4 @@ serde           = { workspace = true }
 serde_json      = { workspace = true }
 sha2            = { workspace = true }
 thiserror       = { workspace = true }
+tracing         = { workspace = true }

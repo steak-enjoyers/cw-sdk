@@ -78,7 +78,7 @@ pub fn validate(input: &str) -> Result<Addr, AddressError> {
 pub fn derive_from_pubkey(pubkey_bytes: &[u8]) -> Result<Addr, AddressError> {
     let mut bytes = PUBKEY_TYPE.to_string().into_bytes();
     bytes.extend(sha256(pubkey_bytes));
-    humanize_preimage(&bytes)
+    humanize_prehash(&bytes)
 }
 
 /// Derive contract address based on a human-readable label. This is used when instantiating
@@ -94,7 +94,7 @@ pub fn derive_from_pubkey(pubkey_bytes: &[u8]) -> Result<Addr, AddressError> {
 pub fn derive_from_label(label: &str) -> Result<Addr, AddressError> {
     let mut bytes = "label".to_string().into_bytes();
     bytes.extend(label.to_string().into_bytes());
-    humanize_preimage(&bytes)
+    humanize_prehash(&bytes)
 }
 
 /// Derive contract address based on the code id and instance id. This is used when
@@ -113,13 +113,13 @@ pub fn derive_from_ids(code_id: u64, instance_id: u64) -> Result<Addr, AddressEr
     let mut bytes = "ids".to_string().into_bytes();
     bytes.extend(code_id.to_be_bytes());
     bytes.extend(instance_id.to_be_bytes());
-    humanize_preimage(&bytes)
+    humanize_prehash(&bytes)
 }
 
 /// Just a helper function for the `derive_from_*` methods.
 /// Performs the last steps of the address derivation process according to ADR-028: take the hash,
 /// truncate to the standard length, and humanize.
-fn humanize_preimage(preimage_bytes: &[u8]) -> Result<Addr, AddressError> {
+fn humanize_prehash(preimage_bytes: &[u8]) -> Result<Addr, AddressError> {
     let mut bytes = sha256(preimage_bytes);
     bytes.truncate(ADDRESS_LENGTH);
     humanize(&bytes.into())

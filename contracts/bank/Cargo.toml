@@ -16,7 +16,6 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 library = []
-integration-test = []
 
 [dependencies]
 cosmwasm-schema = { workspace = true }

@@ -1,7 +1,8 @@
 use cosmwasm_std::{coin, coins, Addr, Coin, Empty, Event, Uint128};
 use cw_bank::msg::{self as bank, UpdateNamespaceMsg};
 use cw_multi_test::{App, ContractWrapper, Executor};
-use cw_token_factory::{
+
+use crate::{
     error::ContractError,
     msg::{ExecuteMsg, NAMESPACE},
 };
@@ -109,7 +110,7 @@ impl TestSuite {
 
         // deploy token factory contract
         let factory = {
-            use cw_token_factory::{
+            use crate::{
                 contract::{execute, instantiate, query},
                 msg::InstantiateMsg,
             };

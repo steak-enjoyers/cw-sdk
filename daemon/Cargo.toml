@@ -19,6 +19,7 @@ cosmwasm-std       = { workspace = true }
 cw-sdk             = { workspace = true }
 cw-server          = { workspace = true }
 cw-state-machine   = { workspace = true }
+cw-store           = { workspace = true }
 dialoguer          = { workspace = true }
 hex                = { workspace = true }
 home               = { workspace = true }
