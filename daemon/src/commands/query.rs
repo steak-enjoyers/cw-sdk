@@ -9,7 +9,7 @@ use serde::Serialize;
 use serde_json::Value;
 use tendermint::abci::transaction::Hash;
 use tendermint_rpc::{Client, HttpClient, Url};
-use tracing::info;
+use tracing::{error, info};
 
 use cw_sdk::{
     hash::sha256, AccountResponse, CodeResponse, SdkQuery, WasmRawResponse, WasmSmartResponse,
@@ -113,6 +113,7 @@ impl QueryCmd {
                 let response = client.tx(hash, false).await?;
                 print::json(response)?;
             },
+
             QuerySubcmd::Info => {
                 let response: InfoResponse = do_abci_query(
                     &client,
@@ -122,6 +123,7 @@ impl QueryCmd {
 
                 print::json(response)?;
             },
+
             QuerySubcmd::Account {
                 address,
             } => {
@@ -135,6 +137,7 @@ impl QueryCmd {
 
                 print::json(response)?;
             },
+
             QuerySubcmd::Accounts {
                 start_after,
                 limit,
@@ -168,10 +171,11 @@ impl QueryCmd {
                 if let Some(bytes) = &response.wasm_byte_code {
                     if let Some(output) = &output {
                         fs::write(output, bytes.as_slice())?;
-                        info!("wasm byte code written to {}", path::stringify(output)?);
+                        info!("Wasm byte code written to {}", path::stringify(output)?);
                     }
                 }
             },
+
             QuerySubcmd::Codes {
                 start_after,
                 limit,
@@ -190,6 +194,7 @@ impl QueryCmd {
 
                 print::json(response)?;
             },
+
             QuerySubcmd::WasmRaw {
                 contract,
                 key,
@@ -205,6 +210,7 @@ impl QueryCmd {
 
                 print::json(response)?;
             },
+
             QuerySubcmd::WasmSmart {
                 contract,
                 msg,
@@ -226,11 +232,11 @@ impl QueryCmd {
                                 print::json(s)?;
                             },
                             Err(err) => {
-                                println!("query successful but failed to decode response: {err}");
+                                error!("Query successful but failed to decode response: {err}");
                             },
                         }
                     },
-                    ContractResult::Err(err) => println!("query failed: {err}"),
+                    ContractResult::Err(err) => error!("Query failed: {err}"),
                 }
             },
         };

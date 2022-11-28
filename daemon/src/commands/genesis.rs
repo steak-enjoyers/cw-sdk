@@ -28,11 +28,13 @@ pub enum GenesisSubcommand {
     SetDeployer {
         address: String,
     },
+
     /// Add a "store code" message to the genesis state
     Store {
         /// Path to the wasm byte code
         wasm_byte_code_path: PathBuf,
     },
+
     /// Add an "instantiate contract" message to the genesis state
     Instantiate {
         /// Code id
@@ -52,6 +54,7 @@ pub enum GenesisSubcommand {
         #[clap(long)]
         admin: Option<String>,
     },
+
     /// Add an "execute contract" message to the genesis state
     Execute {
         /// Contract address
@@ -63,8 +66,10 @@ pub enum GenesisSubcommand {
         #[clap(long)]
         funds: Option<String>,
     },
+
     /// List all codes in the genesis state
     ListCodes,
+
     /// List all contracts in the genesis state
     ListContracts,
 }
@@ -99,6 +104,7 @@ impl GenesisCmd {
                 app_state.deployer = address;
                 update_and_write(&mut genesis, &app_state, &genesis_path)
             },
+
             GenesisSubcommand::Store {
                 wasm_byte_code_path,
             } => {
@@ -109,6 +115,7 @@ impl GenesisCmd {
                 });
                 update_and_write(&mut genesis, &app_state, &genesis_path)
             },
+
             GenesisSubcommand::Instantiate {
                 code_id,
                 msg,
@@ -128,6 +135,7 @@ impl GenesisCmd {
                 });
                 update_and_write(&mut genesis, &app_state, &genesis_path)
             },
+
             GenesisSubcommand::Execute {
                 contract,
                 msg,
@@ -143,6 +151,7 @@ impl GenesisCmd {
                 });
                 update_and_write(&mut genesis, &app_state, &genesis_path)
             },
+
             GenesisSubcommand::ListCodes => {
                 let mut code_count = 0;
                 let mut codes = vec![];
@@ -161,6 +170,7 @@ impl GenesisCmd {
                 }
                 print::json(&codes)
             },
+
             GenesisSubcommand::ListContracts => {
                 let mut contracts = vec![];
                 for msg in &app_state.msgs {
@@ -194,7 +204,7 @@ fn update_and_write(
     genesis.app_state = serde_json::to_value(app_state)?;
     let genesis_str = serde_json::to_vec_pretty(&genesis)?;
     fs::write(genesis_path, genesis_str)?;
-    info!("genesis file written to {}", path::stringify(genesis_path)?);
+    info!("Genesis file written to {}", path::stringify(genesis_path)?);
     Ok(())
 }
 

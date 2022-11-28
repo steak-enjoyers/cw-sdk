@@ -39,6 +39,7 @@ pub enum TxSubcmd {
         /// Path to the wasm byte code
         wasm_byte_code_path: PathBuf,
     },
+
     /// Instantiate a new contract
     Instantiate {
         /// Code id
@@ -58,6 +59,7 @@ pub enum TxSubcmd {
         #[clap(long)]
         admin: Option<String>,
     },
+
     /// Execute a contract
     Execute {
         /// Contract address
@@ -69,6 +71,7 @@ pub enum TxSubcmd {
         #[clap(long)]
         funds: Option<String>,
     },
+
     /// Migrate an existing contract to a new code id
     Migrate {
         /// Contract address
@@ -136,6 +139,7 @@ impl TxCmd {
                     wasm_byte_code: wasm_byte_code.into(),
                 }
             },
+
             TxSubcmd::Instantiate {
                 code_id,
                 msg,
@@ -154,6 +158,7 @@ impl TxCmd {
                     admin,
                 }
             },
+
             TxSubcmd::Execute {
                 contract,
                 msg,
@@ -168,6 +173,7 @@ impl TxCmd {
                     funds: vec![],
                 }
             },
+
             TxSubcmd::Migrate {
                 contract,
                 code_id,

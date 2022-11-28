@@ -27,17 +27,20 @@ pub enum KeysSubcmd {
         #[clap(long, default_value_t = 118)]
         coin_type: u32,
     },
+
     /// Delete a given key
     #[clap(alias = "rm")]
     Delete {
         /// Name of the key to delete
         name: String,
     },
+
     /// Display details of a key
     Show {
         /// Name of the key to show
         name: String,
     },
+
     /// List all keys
     #[clap(alias = "ls")]
     List,
@@ -78,16 +81,19 @@ impl KeysCmd {
                     print::mnemonic(mnemonic.phrase());
                 }
             },
+
             KeysSubcmd::Show {
                 name,
             } => {
                 let key = keyring.get(name)?;
                 print::key(&key)?;
             },
+
             KeysSubcmd::List => {
                 let keys = keyring.list()?;
                 print::keys(&keys)?;
             },
+
             KeysSubcmd::Delete {
                 name,
             } => keyring.delete(name)?,

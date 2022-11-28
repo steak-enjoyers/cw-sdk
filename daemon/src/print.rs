@@ -34,7 +34,10 @@ pub fn key(key: &Key) -> Result<(), DaemonError> {
 
 /// Print multiple signing keys, sorted alphabetically by name
 pub fn keys(keys: &[Key]) -> Result<(), DaemonError> {
-    json(keys.iter().map(PrintableKey::try_from).collect::<Result<Vec<_>, _>>()?)
+    json(keys
+        .iter()
+        .map(PrintableKey::try_from)
+        .collect::<Result<Vec<_>, _>>()?)
 }
 
 #[derive(Serialize)]
