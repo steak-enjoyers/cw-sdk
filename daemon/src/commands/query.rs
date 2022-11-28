@@ -252,7 +252,7 @@ impl From<&CodeResponse> for HashedCodeResponse {
     fn from(res: &CodeResponse) -> Self {
         Self {
             code_id: res.code_id,
-            hash: res.wasm_byte_code.as_ref().map(|bytes| hex::encode(sha256(&bytes))),
+            hash: res.wasm_byte_code.as_ref().map(|bytes| hex::encode(sha256(bytes))),
         }
     }
 }
