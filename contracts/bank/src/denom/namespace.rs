@@ -8,12 +8,13 @@ use super::{is_alphanumeric, starts_with_number, Denom, DenomError};
 
 /// The maximum allowed length for namespaces.
 ///
-/// This is 2 characters shorter than `denom::MAX_LEN`, because the full denom is at least two
-/// characters longer than the namespace.
+/// This is 2 characters shorter than `denom::MAX_LEN`, because the full denom
+/// is at least two characters longer than the namespace.
 pub const MAX_NAMESPACE_LEN: usize = 126;
 
 /// Namespace is wrapper of `String`, representing a validated namespace,
-/// similar to how `cosmwasm_std::Addr` is a wrapper of `String` and represents a validated address.
+/// similar to how `cosmwasm_std::Addr` is a wrapper of `String` and represents
+/// a validated address.
 #[cw_serde]
 pub struct Namespace(String);
 
@@ -112,22 +113,26 @@ pub struct NamespaceConfig {
     ///
     /// - mint any amount of coins under the namespace to any account
     /// - burn any amount of coins under the namespace from any account
-    /// - force transfer any amount of coins under the namespace between any two accounts
+    /// - force transfer any amount of coins under the namespace between any two
+    ///   accounts
     ///
     /// Apparently, the admin is very powerful, and has the ability to rug.
     ///
-    /// Typically, it is expected the admin be a contract that implements logics specifying under
-    /// what circumstances the aforementioned privileged actions are to be executed. The contract is
-    /// expected to be open source and audited by its community.
+    /// Typically, it is expected the admin be a contract that implements logics
+    /// specifying under what circumstances the aforementioned privileged
+    /// actions are to be executed. The contract is expected to be open source
+    /// and audited by its community.
     ///
-    /// See the `cw-token-factory` contract in this crate for an example of admin contract
-    /// implementation.
+    /// See the `cw-token-factory` contract in this crate for an example of
+    /// admin contract implementation.
     ///
-    /// The admin can be set to `None`, in which case no one is able to mint/burn/force transfer.
+    /// The admin can be set to `None`, in which case no one is able to
+    /// mint/burn/force transfer.
     pub admin: Option<Addr>,
 
     /// If set to `true`, bank contract will invoke the admin contract with the
-    /// `HookMsg::AfterTransfer` message (defined in this file below) following a coin transfer.
+    /// `HookMsg::AfterTransfer` message (defined in this file below) following
+    /// a coin transfer.
     pub after_transfer_hook: Option<Addr>,
 }
 

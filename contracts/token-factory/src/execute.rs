@@ -132,9 +132,12 @@ pub fn update_token(
     let cfg = CONFIG.load(deps.storage)?;
 
     // Either the contract owner or the token's admin can update the config.
-    // Here, if the sender is owner, we simply parse the denom into creator address + nonce,
-    // and skip checking whether sender is the token admin.
-    // If sender is not owner, we parse the denom AND check whether sender is the token admin.
+    //
+    // Here, if the sender is owner, we simply parse the denom into creator
+    // address + nonce, and skip checking whether sender is the token admin.
+    //
+    // If sender is not owner, we parse the denom AND check whether sender is
+    // the token admin.
     let (creator, nonce) = if info.sender == cfg.owner {
         parse_denom(deps.api, &denom)?
     } else {

@@ -1,8 +1,8 @@
-//! Each coin denom consists of two components: the "namespace" and the "subdenom", separated by a
-//! forward slash (`/`).
+//! Each coin denom consists of two components: the "namespace" and the
+//! "subdenom", separated by a forward slash (`/`).
 //!
-//! The namespace can be an empty string, in which case we say this is a "top-level" denom,
-//! i.e. it is not namespaced.
+//! The namespace can be an empty string, in which case we say this is a
+//! "top-level" denom, i.e. it is not namespaced.
 //!
 //! For example, consider the following denoms:
 //!
@@ -12,12 +12,15 @@
 //! | `ibc/1234ABCD`                | `"ibc"`     | `"1234ABCD"`            |
 //! | `factory/osmo1234abcd/uastro` | `"factory"` | `"osmo1234abcd/uastro"` |
 //!
-//! This namespacing semantics allows us to efficiently manage coin minting authorizations.
-//! Specifically, each minter account is granted minting power under one or more namespaces.
+//! This namespacing semantics allows us to efficiently manage coin minting
+//! authorizations. Specifically, each minter account is granted minting power
+//! under one or more namespaces.
 //!
 //! For example,
-//! - the "ibc-transfer" contract may be granted minting power under the `"ibc"` namespace
-//! - The "token-factory" contract may be granted minting power under the `"factory"` namespace
+//! - the "ibc-transfer" contract may be granted minting power under the `"ibc"`
+//!   namespace
+//! - The "token-factory" contract may be granted minting power under the
+//!   `"factory"` namespace
 
 use std::{fmt, str::FromStr};
 
@@ -35,7 +38,8 @@ pub const MIN_LEN: usize = 3;
 pub const MAX_LEN: usize = 128;
 
 /// Denom is a wrapper of `String`, representing a validated coin denom,
-/// similar to how `cosmwasm_std::Addr` is a wrapper of `String` and represents a validated address.
+/// similar to how `cosmwasm_std::Addr` is a wrapper of `String` and represents
+/// a validated address.
 #[cw_serde]
 pub struct Denom(String);
 
@@ -112,7 +116,7 @@ impl KeyDeserialize for &Denom {
 }
 
 /// Return whether the string contains only alphanumeric characters.
-/// Note that our definition of "alphanumeric" means within the following charset: 0-9|a-z|A-Z,
+/// Our definition of "alphanumeric" means within the following charset: 0-9|a-z|A-Z,
 /// which is narrower than Unicode's definition, which Rust uses.
 fn is_alphanumeric(s: &str) -> bool {
     s.chars().all(|ch| matches!(ch, '0'..='9' | 'a'..='z' | 'A'..='Z'))

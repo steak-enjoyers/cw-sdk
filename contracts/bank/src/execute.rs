@@ -31,8 +31,8 @@ pub fn init(
     )?;
 
     // 2. Initialize balances
-    // NOTE: Must ensure that for each address, there is no duplication in coin denoms, and coin
-    // amount is non-zero.
+    // NOTE: Must ensure that for each address, there is no duplication in coin
+    // denoms, and coin amount is non-zero.
     for Balance {
         address,
         coins,
@@ -60,8 +60,8 @@ pub fn init(
     }
 
     // 2. Initialize namespaces
-    // NOTE: Must ensure that for each namespace, there is only one admin. However, an admin can
-    // administer multiple namespaces.
+    // NOTE: Must ensure that for each namespace, there is only one admin.
+    // However, an admin can administer multiple namespaces.
     for UpdateNamespaceMsg {
         namespace,
         admin,
@@ -213,7 +213,8 @@ pub fn force_transfer(
 /// Internal method: perform transfers of multiple coins.
 /// For each coin,
 /// 1. Update balances
-/// 2. If `after_transfer_hook` is defined for its namespace, compose a message to invoke the hook
+/// 2. If `after_transfer_hook` is defined for its namespace, compose a message
+///    to invoke the hook
 fn transfer(
     store: &mut dyn Storage,
     from_addr: &Addr,

@@ -5,8 +5,9 @@ use cosmwasm_std::{Binary, Event};
 use cw_sdk::{hash::HASH_LENGTH, GenesisState, SdkQuery, Tx};
 use cw_state_machine::error::Result as StateMachineResult;
 
-/// The ABCI server and the driver maintains a channel between them, and communicate by sending
-/// commands. This enum defines the commands allowed to be transmitted through the channel.
+/// The ABCI server and the driver maintains a channel between them, and
+/// communicate by sending commands.
+/// This enum defines the commands allowed to be transmitted through the channel.
 #[derive(Debug, Clone)]
 pub enum AppCommand {
     /// Returns the last committed block height and app hash

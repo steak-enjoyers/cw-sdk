@@ -24,18 +24,19 @@ pub enum SdkMsg {
 
         /// A human readable name for the contract. Must be unique.
         //
-        /// Contracts deployed during genesis will have their addresses generated deterministically
-        /// according to the label, using the same algorithm that the Go SDK generates module
-        /// account addresses.
+        /// Contracts deployed during genesis will have their addresses
+        /// generated deterministically according to the label, using the same
+        /// algorithm that the Go SDK generates module account addresses.
         ///
-        /// There are several special labels, such as `bank`, `staking`, `gov`, `ibc`, etc., that
-        /// developers need to pay special attention to. For example,
+        /// There are several special labels, such as `bank`, `staking`, `gov`,
+        /// `ibc`, etc., that developers need to pay special attention to.
         ///
+        /// For example,
         /// - the SDK invokes the "bank" contract to process gas fee payments
         /// - IBC relayers will invoke the "ibc" contract to deliver packets
         ///
-        /// For such labels, developers must make sure to deploy contracts that have compatible
-        /// execute/query/sudo methods implemented.
+        /// For such labels, developers must make sure to deploy contracts that
+        /// have compatible execute/query/sudo methods implemented.
         label: String,
 
         /// Account who is allowed to migrate the contract.
@@ -138,6 +139,7 @@ pub struct WasmRawResponse {
 #[cw_serde]
 pub struct WasmSmartResponse {
     /// Smart query result.
-    /// The querying program is responsible for decoding the binary response into the correct type.
+    /// The querying program is responsible for decoding the binary response
+    /// into the correct type.
     pub result: ContractResult<Binary>,
 }

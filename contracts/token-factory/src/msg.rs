@@ -3,7 +3,8 @@ use cosmwasm_std::{Addr, Coin, Uint128};
 
 use cw_sdk::AddressLike;
 
-/// The namespace that the token factory contract must be assigned as admin at the bank contract.
+/// The namespace that the token factory contract must be assigned as admin at
+/// the bank contract.
 pub const NAMESPACE: &str = "factory";
 
 #[cw_serde]
@@ -21,10 +22,12 @@ pub struct Config<T: AddressLike> {
 #[cw_serde]
 pub struct TokenConfig {
     /// Admin is the account who can mint and burn tokens.
-    /// Set this to `None` will permanently disable any burning or minting of this token.
+    /// Set this to `None` will permanently disable any burning or minting of
+    /// this token.
     pub admin: Option<Addr>,
 
-    /// Any AfterTransfer hook message sent by the bank contract will be forwarded to this address.
+    /// Any AfterTransfer hook message sent by the bank contract will be
+    /// forwarded to this address.
     pub after_transfer_hook: Option<Addr>,
 }
 
@@ -54,13 +57,14 @@ pub enum ExecuteMsg {
     },
 
     /// Create a new token with the given nonce.
-    /// If there is a token creation fee, the message must include sufficient amount of coins.
+    /// If there is a token creation fee, the message must include sufficient
+    /// amount of coins.
     CreateToken {
         nonce: String,
 
         /// We require that the admin must be specified during token creation.
-        /// It doesn't make sense to create a token with no admin, because then no one would be able
-        /// to ever mint it.
+        /// It doesn't make sense to create a token with no admin, because then
+        /// no one would be able to ever mint it.
         /// However, the admin can be set to `None` later.
         admin: String,
 

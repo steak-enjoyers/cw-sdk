@@ -14,8 +14,9 @@ pub struct App {
 impl tendermint_abci::Application for App {
     /// Provide information about the ABCI application.
     ///
-    /// TODO: `abci::Requestinfo` has three parameters: version, block_version, and p2p_version.
-    /// I don't know what they mean or how to handle them. For now they are just ignored.
+    /// TODO: `abci::Requestinfo` has three parameters: version, block_version,
+    /// and p2p_version. I don't know what they mean or how to handle them.
+    /// For now they are just ignored.
     fn info(&self, _request: abci::RequestInfo) -> abci::ResponseInfo {
         let (result_tx, result_rx) = channel();
 

@@ -23,15 +23,17 @@ pub fn authenticate_tx(store: &dyn Storage, tx: &Tx) -> Result<Sender> {
 
     // find the user's account
     let (pubkey, mut sequence) = match ACCOUNTS.may_load(store, &sender_addr)? {
-        // If the sender account is a contract, throw error because contracts can't sign txs.
+        // If the sender account is a contract, throw error because contracts
+        // can't sign txs.
         Some(Account::Contract {
             ..
         }) => {
             return Err(Error::account_is_contract(sender));
         }
 
-        // If the account is found on chain, meaning the account has already sent at least one tx
-        // before, its pubkey must match the one included in the tx.
+        // If the account is found on chain, meaning the account has already
+        // sent at least one tx before, its pubkey must match the one included
+        // in the tx.
         Some(Account::Base {
             pubkey,
             sequence,
@@ -45,8 +47,8 @@ pub fn authenticate_tx(store: &dyn Storage, tx: &Tx) -> Result<Sender> {
             (pubkey, sequence)
         },
 
-        // If not found, meaning it's the first time the account every sends a tx, use the pubkey
-        // provided by the tx and initialize sequence to be 0.
+        // If not found, meaning it's the first time the account every sends a
+        // tx, use the pubkey provided by the tx and initialize sequence to be 0.
         // Note, the pubkey must match the sender address.
         None => {
             let Some(pubkey) = &tx.pubkey else {

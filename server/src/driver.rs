@@ -4,8 +4,9 @@ use cw_state_machine::StateMachine;
 
 use crate::AppCommand;
 
-/// The driver is a wrapper around the actual state machine. It maintains a channel with the ABCI
-/// server, and performs actions or queries on the state machine on request for the ABCI server.
+/// The driver is a wrapper around the actual state machine.
+/// It maintains a channel with the ABCI server, and performs actions or queries
+/// on the state machine on request for the ABCI server.
 pub struct AppDriver {
     pub state_machine: StateMachine,
     pub cmd_rx: Receiver<AppCommand>,

@@ -44,7 +44,8 @@ pub struct UpdateNamespaceMsg {
 #[cw_serde]
 pub enum SudoMsg {
     /// Forcibly transfer coins between two accounts.
-    /// Callable by the state machine when handling gas fee payments and funds attached to messages.
+    /// Callable by the state machine when handling gas fee payments and funds
+    /// attached to messages.
     Transfer {
         from: String,
         to: String,
@@ -92,7 +93,8 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub enum HookMsg {
-    /// After a coin transfer, if the namespace's `after_transfer_hook` is defined, the bank
+    /// After a coin transfer, if the namespace's `after_transfer_hook` is
+    /// defined, the bank
     /// contract will send this message to that address.
     AfterTransfer {
         from: String,
