@@ -121,7 +121,7 @@ impl GenesisCmd {
                 }
                 app_state.msgs.push(SdkMsg::Instantiate {
                     code_id,
-                    msg: msg.into_bytes().into(),
+                    msg: serde_json::from_str(&msg)?,
                     funds: vec![],
                     label,
                     admin,
@@ -138,7 +138,7 @@ impl GenesisCmd {
                 }
                 app_state.msgs.push(SdkMsg::Execute {
                     contract,
-                    msg: msg.into_bytes().into(),
+                    msg: serde_json::from_str(&msg)?,
                     funds: vec![],
                 });
                 update_and_write(&mut genesis, &app_state, &genesis_path)

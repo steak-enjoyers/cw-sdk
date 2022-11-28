@@ -1,5 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Coin, ContractResult};
+use serde_json::Value;
 
 use crate::account::Account;
 
@@ -16,7 +17,7 @@ pub enum SdkMsg {
         code_id: u64,
 
         /// JSON-encoded instantiate message
-        msg: Binary,
+        msg: Value,
 
         /// Coins to be sent to the contract during instantiation
         funds: Vec<Coin>,
@@ -45,7 +46,7 @@ pub enum SdkMsg {
     /// Execute a contract
     Execute {
         contract: String,
-        msg: Binary,
+        msg: Value,
         funds: Vec<Coin>,
     },
 
@@ -53,7 +54,7 @@ pub enum SdkMsg {
     Migrate {
         contract: String,
         code_id: u64,
-        msg: Binary,
+        msg: Value,
     },
 }
 
@@ -101,7 +102,7 @@ pub enum SdkQuery {
     #[returns(WasmSmartResponse)]
     WasmSmart {
         contract: String,
-        msg: Binary,
+        msg: Value,
     },
 }
 

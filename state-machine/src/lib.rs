@@ -165,7 +165,7 @@ impl StateMachine {
                     transaction,
                     &info,
                     code_id,
-                    &msg,
+                    &serde_json::to_vec(&msg)?,
                     label,
                     admin_addr,
                     address_generator,
@@ -201,7 +201,13 @@ impl StateMachine {
                     funds,
                 };
 
-                let result = execute::execute_contract(store, &env, &info, &msg)?.into_result();
+                let result = execute::execute_contract(
+                    store,
+                    &env,
+                    &info,
+                    &serde_json::to_vec(&msg)?,
+                )?
+                .into_result();
 
                 if let Ok(res) = &result {
                     if !res.messages.is_empty() {
@@ -224,7 +230,13 @@ impl StateMachine {
                     },
                 };
 
-                let result = execute::migrate_contract(store, &env, code_id, &msg)?.into_result();
+                let result = execute::migrate_contract(
+                    store,
+                    &env,
+                    code_id,
+                    &serde_json::to_vec(&msg)?,
+                )?
+                .into_result();
 
                 if let Ok(res) = &result {
                     if !res.messages.is_empty() {
@@ -275,7 +287,7 @@ impl StateMachine {
             SdkQuery::WasmSmart {
                 contract,
                 msg,
-            } => to_binary(&query::wasm_smart(store, &contract, &msg)?),
+            } => to_binary(&query::wasm_smart(store, &contract, &serde_json::to_vec(&msg)?)?),
         }
         .map_err(Error::from)
     }

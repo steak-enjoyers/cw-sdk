@@ -148,7 +148,7 @@ impl TxCmd {
                 }
                 SdkMsg::Instantiate {
                     code_id,
-                    msg: msg.into_bytes().into(),
+                    msg: serde_json::from_str(&msg)?,
                     funds: vec![],
                     label,
                     admin,
@@ -164,7 +164,7 @@ impl TxCmd {
                 }
                 SdkMsg::Execute {
                     contract,
-                    msg: msg.into_bytes().into(),
+                    msg: serde_json::from_str(&msg)?,
                     funds: vec![],
                 }
             },
@@ -175,7 +175,7 @@ impl TxCmd {
             } => SdkMsg::Migrate {
                 contract,
                 code_id,
-                msg: msg.into_bytes().into(),
+                msg: serde_json::from_str(&msg)?,
             },
         };
 

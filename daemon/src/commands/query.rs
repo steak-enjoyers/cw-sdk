@@ -213,7 +213,7 @@ impl QueryCmd {
                     &client,
                     SdkQuery::WasmSmart {
                         contract: contract.clone(),
-                        msg: msg.clone().into_bytes().into(),
+                        msg: serde_json::from_str(&msg)?,
                     },
                 )
                 .await?;
