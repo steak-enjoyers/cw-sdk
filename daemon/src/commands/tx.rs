@@ -195,16 +195,13 @@ impl TxCmd {
         let tx = key.sign_tx(&body)?;
         let tx_bytes = serde_json::to_vec(&tx)?;
 
-        println!();
-        println!("successfully signed tx:");
-        println!("-----------------------");
+        println!("🤖 Transaction signed:");
         print::json(&tx)?;
-        println!();
 
-        if prompt::confirm("broadcast tx?")? {
+        if prompt::confirm("🤔 Broadcast?")? {
             let response = client.broadcast_tx_async(tx_bytes.into()).await?;
-            println!();
             print::json(response)?;
+            println!("🙌 Successfully broadcasted!");
         }
 
         Ok(())

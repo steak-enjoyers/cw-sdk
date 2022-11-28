@@ -40,7 +40,7 @@ impl Keyring {
         let password_hash_path = self.dir().join("password_hash");
         if password_hash_path.exists() {
             let password = prompt::password(format!(
-                "enter the password to unlock keyring `{}`",
+                "🔑 Enter the password to unlock keyring `{}`",
                 path::stringify(self.dir())?,
             ))?;
 
@@ -55,7 +55,7 @@ impl Keyring {
         } else {
             // TODO: ask the user to repeat the password?
             let password = prompt::password(format!(
-                "enter a password to encrypt the keyring `{}`",
+                "🔑 Enter a password to encrypt the keyring `{}`",
                 path::stringify(self.dir())?,
             ))?;
 
