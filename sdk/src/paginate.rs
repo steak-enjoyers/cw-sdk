@@ -35,7 +35,7 @@ where
         .collect()
 }
 
-pub fn paginate_prefixed_map<'a, K, S, D, V, R, E, F>(
+pub fn paginate_map_prefix<'a, K, S, D, V, R, E, F>(
     map: Map<'a, K, V>,
     store: &dyn Storage,
     prefix: K::Prefix,

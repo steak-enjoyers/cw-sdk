@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use cosmwasm_std::{Coin, Deps, StdResult, Uint128};
-use cw_sdk::paginate::{paginate_map, paginate_prefixed_map};
+use cw_sdk::paginate::{paginate_map, paginate_map_prefix};
 use cw_storage_plus::Bound;
 
 use crate::{
@@ -81,9 +81,9 @@ pub fn balances(
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> Result<Vec<Coin>, ContractError> {
-    let addr = deps.api.addr_validate(&address)?;
     let start = start_after.map(|denom| Bound::ExclusiveRaw(denom.into_bytes()));
-    paginate_prefixed_map(BALANCES, deps.storage, &addr, start, limit, |denom, amount| {
+    let prefix = deps.api.addr_validate(&address)?;
+    paginate_map_prefix(BALANCES, deps.storage, &prefix, start, limit, |denom, amount| {
         Ok(Coin {
             denom: denom.into(),
             amount,
