@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use clap::{Args, Subcommand};
+use colored::*;
 use tendermint_rpc::{Client, HttpClient, Url};
 
 use cw_sdk::{AccountResponse, SdkMsg, SdkQuery, TxBody, Account};
@@ -195,13 +196,13 @@ impl TxCmd {
         let tx = key.sign_tx(&body)?;
         let tx_bytes = serde_json::to_vec(&tx)?;
 
-        println!("🤖 Transaction signed:");
+        println!("{}", "🤖 Transaction signed:".bold());
         print::json(&tx)?;
 
-        if prompt::confirm("🤔 Broadcast?")? {
+        if prompt::confirm(format!("{}", "🤔 Broadcast?".bold()))? {
             let response = client.broadcast_tx_async(tx_bytes.into()).await?;
             print::json(response)?;
-            println!("🙌 Successfully broadcasted!");
+            println!("{}", "🙌 Successfully broadcasted!".bold());
         }
 
         Ok(())

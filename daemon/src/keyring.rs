@@ -4,6 +4,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use colored::Colorize;
 use josekit::{jwe, jwt};
 
 use crate::{path, prompt, DaemonError, Key};
@@ -40,7 +41,8 @@ impl Keyring {
         let password_hash_path = self.dir().join("password_hash");
         if password_hash_path.exists() {
             let password = prompt::password(format!(
-                "🔑 Enter the password to unlock keyring `{}`",
+                "{} `{}`",
+                "🔑 Enter the password to unlock keyring".bold(),
                 path::stringify(self.dir())?,
             ))?;
 
@@ -55,7 +57,8 @@ impl Keyring {
         } else {
             // TODO: ask the user to repeat the password?
             let password = prompt::password(format!(
-                "🔑 Enter a password to encrypt the keyring `{}`",
+                "{} `{}`",
+                "🔑 Enter a password to encrypt the keyring".bold(),
                 path::stringify(self.dir())?,
             ))?;
 
