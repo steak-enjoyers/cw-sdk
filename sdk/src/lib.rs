@@ -12,8 +12,8 @@ mod traits;
 pub use account::Account;
 pub use genesis::GenesisState;
 pub use msg::{
-    AccountResponse, CodeResponse, InfoResponse, SdkMsg, SdkQuery, WasmRawResponse,
-    WasmSmartResponse,
+    AccountResponse, CodeResponse, Contract, ContractResponse, InfoResponse, SdkMsg, SdkQuery,
+    WasmRawResponse, WasmSmartResponse,
 };
 pub use tx::{Tx, TxBody};
 pub use traits::AddressLike;

@@ -1,10 +1,12 @@
-use cosmwasm_std::{testing::mock_env, Binary, Storage};
+use cosmwasm_std::{testing::mock_env, Binary, Storage, Order};
 use cosmwasm_vm::{call_query, Backend, Instance, InstanceOptions, Storage as VmStorage};
 use cw_storage_plus::Bound;
 
 use cw_sdk::{
-    address, paginate::{paginate_indexed_map, paginate_map}, AccountResponse, CodeResponse, InfoResponse, WasmRawResponse,
-    WasmSmartResponse,
+    address,
+    paginate::{collect, paginate_indexed_map, paginate_map},
+    Account, AccountResponse, CodeResponse, Contract, ContractResponse, InfoResponse,
+    WasmRawResponse, WasmSmartResponse,
 };
 
 use crate::{
@@ -42,6 +44,49 @@ pub fn accounts(
             address: address.into(),
             account: Some(account.into()),
         })
+    })
+}
+
+pub fn contract(store: &dyn Storage, label: String) -> Result<ContractResponse> {
+    let opt = ACCOUNTS.idx.label.may_load(store, label.clone())?;
+    Ok(ContractResponse {
+        label,
+        contract: opt.map(|(address, account)| match account {
+            Account::Contract {
+                code_id,
+                admin,
+                ..
+            } => Contract {
+                address: address.into(),
+                code_id,
+                admin: admin.map(String::from),
+            },
+            _ => unreachable!(),
+        })
+    })
+}
+
+pub fn contracts(
+    store: &dyn Storage,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> Result<Vec<ContractResponse>> {
+    let start = start_after.map(Bound::exclusive);
+    let iter = ACCOUNTS.idx.label.range(store, start, None, Order::Ascending);
+    collect(iter, limit, |address, account| match account {
+        Account::Contract {
+            code_id,
+            admin,
+            label,
+        } => Ok(ContractResponse {
+            label,
+            contract: Some(Contract {
+                address: address.into(),
+                code_id,
+                admin: admin.map(String::from),
+            }),
+        }),
+        _ => unreachable!(),
     })
 }
 

@@ -1,9 +1,28 @@
-use cosmwasm_std::{Order, Storage, StdError};
+use cosmwasm_std::{Order, Storage, StdError, StdResult};
 use cw_storage_plus::{Bound, KeyDeserialize, Map, PrimaryKey, IndexedMap, IndexList};
 use serde::{de::DeserializeOwned, ser::Serialize};
 
 pub const DEFAULT_LIMIT: u32 = 10;
 pub const MAX_LIMIT: u32 = 30;
+
+pub fn collect<'a, D, T, R, E, F>(
+    iter: Box<dyn Iterator<Item = StdResult<(D, T)>> + 'a>,
+    limit: Option<u32>,
+    parse_fn: F,
+) -> Result<Vec<R>, E>
+where
+    F: Fn(D, T) -> Result<R, E>,
+    E: From<StdError>,
+{
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    iter
+        .take(limit)
+        .map(|item| {
+            let (k, v) = item?;
+            parse_fn(k, v)
+        })
+        .collect()
+}
 
 /// Paginate a Map<K, V> with the given `start` and `limit`, use an enslosure to
 /// convert the KV pair to a response type R, and collect to a Vec.
@@ -24,15 +43,8 @@ where
     F: Fn(K::Output, T) -> Result<R, E>,
     E: From<StdError>,
 {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    map
-        .range(store, start, None, Order::Ascending)
-        .take(limit)
-        .map(|item| {
-            let (k, v) = item?;
-            parse_fn(k, v)
-        })
-        .collect()
+    let iter = map.range(store, start, None, Order::Ascending);
+    collect(iter, limit, parse_fn)
 }
 
 pub fn paginate_map_prefix<'a, K, T, R, E, F>(
@@ -51,16 +63,8 @@ where
     F: Fn(<K::Suffix as KeyDeserialize>::Output, T) -> Result<R, E>,
     E: From<StdError>,
 {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    map
-        .prefix(prefix)
-        .range(store, start, None, Order::Ascending)
-        .take(limit)
-        .map(|item| {
-            let (k, v) = item?;
-            parse_fn(k, v)
-        })
-        .collect()
+    let iter = map.prefix(prefix).range(store, start, None, Order::Ascending);
+    collect(iter, limit, parse_fn)
 }
 
 pub fn paginate_indexed_map<'a, K, T, I, R, E, F>(
@@ -78,13 +82,6 @@ where
     F: Fn(K::Output, T) -> Result<R, E>,
     E: From<StdError>,
 {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    map
-        .range(store, start, None, Order::Ascending)
-        .take(limit)
-        .map(|item| {
-            let (k, v) = item?;
-            parse_fn(k, v)
-        })
-        .collect()
+    let iter = map.range(store, start, None, Order::Ascending);
+    collect(iter, limit, parse_fn)
 }

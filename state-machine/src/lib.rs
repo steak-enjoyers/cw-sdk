@@ -273,6 +273,13 @@ impl StateMachine {
                 start_after,
                 limit,
             } => to_binary(&query::accounts(&store, start_after, limit)?),
+            SdkQuery::Contract {
+                label
+            } => to_binary(&query::contract(&store, label)?),
+            SdkQuery::Contracts {
+                start_after,
+                limit,
+            } => to_binary(&query::contracts(&store, start_after, limit)?),
             SdkQuery::Code {
                 code_id,
             } => to_binary(&query::code(&store, code_id)?),
