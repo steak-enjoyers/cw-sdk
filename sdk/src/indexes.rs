@@ -231,6 +231,21 @@ mod tests {
         };
         ACCOUNTS.save(&mut store, &addr, &acct).unwrap();
 
+        // !!! IMPORTANT !!!
+        // if we write to the *same key* with the same index, there will not be
+        // a duplicate index error.
+        // the duplicate error is only raised when there are two *different keys*
+        // with the same index.
+        // therefore, when instantiating contracts, we must assert that a contract
+        // with the same address/label does not already exist!
+        let acct = Account::Contract {
+            code_id: 42069,
+            label: "bank".into(), // same label but different code id and admin
+            admin: Some(Addr::unchecked("jake")),
+        };
+        let res = ACCOUNTS.save(&mut store, &addr, &acct);
+        assert!(res.is_ok());
+
         // store another account with the same label, should fail
         let addr = Addr::unchecked("token-factory");
         let acct = Account::Contract {
