@@ -12,11 +12,11 @@ use tendermint_rpc::{Client, HttpClient, Url};
 use tracing::{error, info};
 
 use cw_sdk::{
-    hash::sha256, AccountResponse, CodeResponse, SdkQuery, WasmRawResponse, WasmSmartResponse,
+    hash::sha256, AccountResponse, CodeResponse, ContractResponse, SdkQuery, WasmRawResponse,
+    WasmSmartResponse,
 };
 
-use crate::query::do_abci_query;
-use crate::{path, print, ClientConfig, DaemonError};
+use crate::{path, print, query::do_abci_query, ClientConfig, DaemonError};
 
 #[derive(Args)]
 pub struct QueryCmd {
@@ -48,6 +48,23 @@ pub enum QuerySubcmd {
     /// Enumerate all accounts
     Accounts {
         /// Start after this address
+        #[clap(long)]
+        start_after: Option<String>,
+
+        /// The maximum number of results to be returned in this query
+        #[clap(long)]
+        limit: Option<u32>,
+    },
+
+    /// Query a single contract by label
+    Contract {
+        /// Contract label
+        label: String,
+    },
+
+    /// Enumerate all contracts by label
+    Contracts {
+        /// Start after this contract label
         #[clap(long)]
         start_after: Option<String>,
 
@@ -144,14 +161,46 @@ impl QueryCmd {
             } => {
                 let response: Vec<AccountResponse> = do_abci_query(
                     &client,
-                SdkQuery::Accounts {
-                    start_after,
-                    limit,
-                })
+                    SdkQuery::Accounts {
+                        start_after,
+                        limit,
+                    },
+                )
+                .await?;
+
+                print::json(response)?;
+            },
+
+            QuerySubcmd::Contract {
+                label,
+            } => {
+                let response: ContractResponse = do_abci_query(
+                    &client,
+                    SdkQuery::Contract {
+                        label,
+                    },
+                )
                 .await?;
 
                 print::json(response)?;
             }
+
+            QuerySubcmd::Contracts {
+                start_after,
+                limit,
+            } => {
+                let response: Vec<ContractResponse> = do_abci_query(
+                    &client,
+                    SdkQuery::Contracts {
+                        start_after,
+                        limit,
+                    },
+                )
+                .await?;
+
+                print::json(response)?;
+            }
+
             QuerySubcmd::Code {
                 code_id,
                 output,
