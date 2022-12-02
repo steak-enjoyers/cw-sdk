@@ -24,9 +24,8 @@ pub enum SdkMsg {
 
         /// A human readable name for the contract. Must be unique.
         //
-        /// Contracts deployed during genesis will have their addresses
-        /// generated deterministically according to the label, using the same
-        /// algorithm that the Go SDK generates module account addresses.
+        /// Contracts addresses derived deterministically from the label, using
+        /// the same algorithm that the Go SDK generates module account addresses.
         ///
         /// There are several special labels, such as `bank`, `staking`, `gov`,
         /// `ibc`, etc., that developers need to pay special attention to.
@@ -72,9 +71,22 @@ pub enum SdkQuery {
         address: String,
     },
 
-    /// Enumerate all accounts, with pagination
+    /// Enumerate all accounts by address
     #[returns(Vec<AccountResponse>)]
     Accounts {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+
+    /// Query a single contract by label
+    #[returns(ContractResponse)]
+    Contract {
+        label: String,
+    },
+
+    /// Enumerate all contracts by label
+    #[returns(Vec<ContractResponse>)]
+    Contracts {
         start_after: Option<String>,
         limit: Option<u32>,
     },
@@ -85,7 +97,7 @@ pub enum SdkQuery {
         code_id: u64,
     },
 
-    /// Enumerate all wasm byte codes
+    /// Enumerate all wasm byte codes by code id
     #[returns(Vec<CodeResponse>)]
     Codes {
         start_after: Option<u64>,
@@ -112,14 +124,27 @@ pub struct InfoResponse {
     pub chain_id: String,
     pub height: i64,
     pub code_count: u64,
-    pub contract_count: u64,
 }
 
 #[cw_serde]
 pub struct AccountResponse {
     pub address: String,
-    /// None is the account is not found
+    /// None if the account is not found
     pub account: Option<Account<String>>,
+}
+
+#[cw_serde]
+pub struct ContractResponse {
+    pub label: String,
+    /// None if the contract is not found
+    pub contract: Option<Contract>,
+}
+
+#[cw_serde]
+pub struct Contract {
+    pub address: String,
+    pub code_id: u64,
+    pub admin: Option<String>,
 }
 
 #[cw_serde]

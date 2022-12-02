@@ -1,16 +1,18 @@
-use cosmwasm_std::{testing::mock_env, Binary, Storage};
+use cosmwasm_std::{testing::mock_env, Binary, Storage, Order};
 use cosmwasm_vm::{call_query, Backend, Instance, InstanceOptions, Storage as VmStorage};
 use cw_storage_plus::Bound;
 
 use cw_sdk::{
-    address, paginate::paginate_map, AccountResponse, CodeResponse, InfoResponse, WasmRawResponse,
-    WasmSmartResponse,
+    address,
+    paginate::{collect, paginate_indexed_map, paginate_map},
+    Account, AccountResponse, CodeResponse, Contract, ContractResponse, InfoResponse,
+    WasmRawResponse, WasmSmartResponse,
 };
 
 use crate::{
     backend::{BackendApi, BackendQuerier, ContractSubstore},
     error::Result,
-    state::{code_by_address, ACCOUNTS, BLOCK_HEIGHT, CHAIN_ID, CODES, CODE_COUNT, CONTRACT_COUNT},
+    state::{code_by_address, ACCOUNTS, BLOCK_HEIGHT, CHAIN_ID, CODES, CODE_COUNT},
 };
 
 pub fn info(store: &dyn Storage) -> Result<InfoResponse> {
@@ -18,7 +20,6 @@ pub fn info(store: &dyn Storage) -> Result<InfoResponse> {
         chain_id: CHAIN_ID.load(store)?,
         height: BLOCK_HEIGHT.load(store)?,
         code_count: CODE_COUNT.load(store)?,
-        contract_count: CONTRACT_COUNT.load(store)?,
     })
 }
 
@@ -37,11 +38,54 @@ pub fn accounts(
     limit: Option<u32>,
 ) -> Result<Vec<AccountResponse>> {
     let start = start_after.map(|address| Bound::ExclusiveRaw(address.into_bytes()));
-    paginate_map(ACCOUNTS, store, start, limit, |address, account| {
+    paginate_indexed_map(ACCOUNTS, store, start, limit, |address, account| {
         Ok(AccountResponse {
             address: address.into(),
             account: Some(account.into()),
         })
+    })
+}
+
+pub fn contract(store: &dyn Storage, label: String) -> Result<ContractResponse> {
+    let opt = ACCOUNTS.idx.label.may_load(store, label.clone())?;
+    Ok(ContractResponse {
+        label,
+        contract: opt.map(|(address, account)| match account {
+            Account::Contract {
+                code_id,
+                admin,
+                ..
+            } => Contract {
+                address: address.into(),
+                code_id,
+                admin: admin.map(String::from),
+            },
+            _ => unreachable!(),
+        })
+    })
+}
+
+pub fn contracts(
+    store: &dyn Storage,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> Result<Vec<ContractResponse>> {
+    let start = start_after.map(Bound::exclusive);
+    let iter = ACCOUNTS.idx.label.range(store, start, None, Order::Ascending);
+    collect(iter, limit, |address, account| match account {
+        Account::Contract {
+            code_id,
+            admin,
+            label,
+        } => Ok(ContractResponse {
+            label,
+            contract: Some(Contract {
+                address: address.into(),
+                code_id,
+                admin: admin.map(String::from),
+            }),
+        }),
+        _ => unreachable!(),
     })
 }
 

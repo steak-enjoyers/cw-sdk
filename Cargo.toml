@@ -40,7 +40,7 @@ cw-multi-test      = "0.16"
 cw-sdk             = { path = "./sdk" }
 cw-server          = { path = "./server" }
 cw-state-machine   = { path = "./state-machine" }
-cw-storage-plus    = "0.16"
+cw-storage-plus    = { git = "https://github.com/steak-enjoyers/cw-storage-plus", rev = "a0532e7" }
 cw-store           = { path = "./store" }
 cw-token-factory   = { path = "./contracts/token-factory" }
 cw-utils           = "0.16"

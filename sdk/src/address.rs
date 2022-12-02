@@ -81,8 +81,7 @@ pub fn derive_from_pubkey(pubkey_bytes: &[u8]) -> Result<Addr, AddressError> {
     humanize_prehash(&bytes)
 }
 
-/// Derive contract address based on a human-readable label. This is used when instantiating
-/// contracts during genesis.
+/// Derive contract address based on a human-readable label.
 ///
 /// The address bytes are computed as:
 ///
@@ -94,25 +93,6 @@ pub fn derive_from_pubkey(pubkey_bytes: &[u8]) -> Result<Addr, AddressError> {
 pub fn derive_from_label(label: &str) -> Result<Addr, AddressError> {
     let mut bytes = "label".to_string().into_bytes();
     bytes.extend(label.to_string().into_bytes());
-    humanize_prehash(&bytes)
-}
-
-/// Derive contract address based on the code id and instance id. This is used when
-/// instantiating contracts post-genesis.
-///
-/// The address bytes are computed as:
-///
-/// ```plain
-/// address_bytes := sha256("ids" | code_id_be_bytes | instance_id_be_bytes)[:ACCOUNT_LENGTH]
-/// ```
-///
-/// Where `|` means bytes concatenation without using any separator, and `*_be_bytes` big endian
-/// bytes of a number. Here, both `code_id` and `instance_id` are 64-bit unsigned integers, so
-/// their lengths should be 8 bytes each.
-pub fn derive_from_ids(code_id: u64, instance_id: u64) -> Result<Addr, AddressError> {
-    let mut bytes = "ids".to_string().into_bytes();
-    bytes.extend(code_id.to_be_bytes());
-    bytes.extend(instance_id.to_be_bytes());
     humanize_prehash(&bytes)
 }
 

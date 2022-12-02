@@ -14,7 +14,7 @@ use cw_store::{Cached, Shared, Store};
 
 use crate::{
     error::{Error, Result},
-    state::{ACCOUNTS, BLOCK_HEIGHT, CHAIN_ID, CODE_COUNT, CONTRACT_COUNT},
+    state::{ACCOUNTS, BLOCK_HEIGHT, CHAIN_ID, CODE_COUNT},
 };
 
 pub struct StateMachine {
@@ -42,7 +42,6 @@ impl StateMachine {
         CHAIN_ID.save(&mut cache, &chain_id)?;
         BLOCK_HEIGHT.save(&mut cache, &0)?;
         CODE_COUNT.save(&mut cache, &0)?;
-        CONTRACT_COUNT.save(&mut cache, &0)?;
 
         let deployer_addr = address::validate(&gen_state.deployer)?;
 
@@ -151,14 +150,6 @@ impl StateMachine {
                     funds,
                 };
 
-                // during genesis, we derive contract addresses by labels
-                // post-genesis, we derive by code and instance ids
-                let address_generator = if block.height == 0 {
-                    AddressGenerator::ByLabel
-                } else {
-                    AddressGenerator::ByIds
-                };
-
                 let result = execute::instantiate_contract(
                     store,
                     block,
@@ -168,7 +159,6 @@ impl StateMachine {
                     &serde_json::to_vec(&msg)?,
                     label,
                     admin_addr,
-                    address_generator,
                 )?
                 .into_result();
 
@@ -273,6 +263,13 @@ impl StateMachine {
                 start_after,
                 limit,
             } => to_binary(&query::accounts(&store, start_after, limit)?),
+            SdkQuery::Contract {
+                label
+            } => to_binary(&query::contract(&store, label)?),
+            SdkQuery::Contracts {
+                start_after,
+                limit,
+            } => to_binary(&query::contracts(&store, start_after, limit)?),
             SdkQuery::Code {
                 code_id,
             } => to_binary(&query::code(&store, code_id)?),
@@ -306,12 +303,4 @@ impl StateMachine {
         // return the block height and app hash that was just committed
         self.info()
     }
-}
-
-/// Represents which algorithm to use to derive contract addresses during instantiation.
-pub enum AddressGenerator {
-    /// Used during chain genesis
-    ByLabel,
-    /// Used post-genesis
-    ByIds,
 }
