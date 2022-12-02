@@ -1,8 +1,10 @@
 use std::marker::PhantomData;
 
-use cosmwasm_std::{Binary, Order, StdError, StdResult, Storage};
-use cw_storage_plus::{Bound, Index, KeyDeserialize, Map, PrimaryKey};
+use cosmwasm_std::{Addr, Binary, Order, StdError, StdResult, Storage};
+use cw_storage_plus::{Bound, Index, IndexList, KeyDeserialize, Map, PrimaryKey};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+
+use crate::Account;
 
 #[derive(Serialize, Deserialize)]
 pub(crate) struct UniqueRef<T> {
@@ -104,33 +106,18 @@ where
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use cosmwasm_std::{testing::MockStorage, Addr, Order, StdError, StdResult};
-    use cw_storage_plus::{Index, IndexList, IndexedMap};
+/// The index types used to index accounts in cw-sdk
+pub struct AccountIndexes<'a> {
+    /// Index accounts by contract labels. If an account is a base account
+    /// then it is not indexed.
+    pub label: OptionalUniqueIndex<'a, String, Account<Addr>, &'a Addr>,
+}
 
-    use crate::Account;
-
-    use super::OptionalUniqueIndex;
-
-    struct AccountIndexes<'a> {
-        /// Index accounts by contract labels. If an account is a base account
-        /// then it is not indexed.
-        pub label: OptionalUniqueIndex<'a, String, Account<Addr>, &'a Addr>,
-    }
-
-    impl<'a> IndexList<Account<Addr>> for AccountIndexes<'a> {
-        fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Account<Addr>>> + '_> {
-            let v: Vec<&dyn Index<Account<Addr>>> = vec![&self.label];
-            Box::new(v.into_iter())
-        }
-    }
-
-    const ACCOUNTS: IndexedMap<&Addr, Account<Addr>, AccountIndexes> = IndexedMap::new(
-        "accounts",
-        AccountIndexes {
+impl<'a> AccountIndexes<'a> {
+    pub const fn new(label_namespace: &'a str) -> Self {
+        Self {
             label: OptionalUniqueIndex::new(
-                |account: &Account<Addr>| match account {
+                |account| match account {
                     Account::Base {
                         ..
                     } => None,
@@ -139,9 +126,29 @@ mod tests {
                         ..
                     } => Some(label.clone()),
                 },
-                "accounts__label",
+                label_namespace,
             ),
-        },
+        }
+    }
+}
+
+impl<'a> IndexList<Account<Addr>> for AccountIndexes<'a> {
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Account<Addr>>> + '_> {
+        let v: Vec<&dyn Index<Account<Addr>>> = vec![&self.label];
+        Box::new(v.into_iter())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use cosmwasm_std::testing::MockStorage;
+    use cw_storage_plus::IndexedMap;
+
+    use super::*;
+
+    const ACCOUNTS: IndexedMap<&Addr, Account<Addr>, AccountIndexes> = IndexedMap::new(
+        "accounts",
+        AccountIndexes::new("accounts_label"),
     );
 
     #[test]
