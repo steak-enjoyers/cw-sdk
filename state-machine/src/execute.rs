@@ -9,8 +9,7 @@ use tracing::{debug, info};
 use crate::{
     backend::{BackendApi, BackendQuerier, ContractSubstore},
     error::{Error, Result},
-    state::{ACCOUNTS, CODES, CODE_COUNT, CONTRACT_COUNT, code_by_address},
-    AddressGenerator,
+    state::{ACCOUNTS, CODES, CODE_COUNT, code_by_address},
 };
 
 pub fn store_code(
@@ -46,21 +45,11 @@ pub fn instantiate_contract(
     msg: &[u8],
     label: String,
     admin: Option<Addr>,
-    address_generator: AddressGenerator,
 ) -> Result<ContractResult<Response>> {
-    let mut cache = Cached::new(store);
-
-    // update contract count
-    let instance_id = CONTRACT_COUNT.update(&mut cache, |count| -> Result<_> {
-        Ok(count + 1)
-    })?;
+    let cache = Cached::new(store);
 
     // derive contract address
-    // TODO: this match block is better move into cw_sdk::address
-    let contract_addr = match address_generator {
-        AddressGenerator::ByLabel => address::derive_from_label(&label)?,
-        AddressGenerator::ByIds => address::derive_from_ids(code_id, instance_id)?,
-    };
+    let contract_addr = address::derive_from_label(&label)?;
 
     let env = Env {
         block,
@@ -100,14 +89,14 @@ pub fn instantiate_contract(
     // if the contract execution is successful, we flush the state changes
     // occurred during the instantiation call to the underlying store, and save
     // the contract account.
-    //
-    // NOTE: do not save the account if one of the same address already exists.
     match &result {
         ContractResult::Ok(_) => {
             cache.flush();
             let mut store = cache.recycle();
 
             ACCOUNTS.update(&mut store, &contract_addr, |opt| {
+                // IMPORTANT: NOTE: do not save the account if one of the same
+                // address already exists.
                 if opt.is_some() {
                     return Err(Error::account_found(&contract_addr));
                 }

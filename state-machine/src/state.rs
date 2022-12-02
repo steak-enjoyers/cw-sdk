@@ -29,9 +29,6 @@ pub const PENDING_TIME: Item<Option<u64>> = Item::new("pending_time");
 /// The total number of wasm byte codes stored on chain.
 pub const CODE_COUNT: Item<u64> = Item::new("code_count");
 
-/// The total number of contracts that have been instantiated.
-pub const CONTRACT_COUNT: Item<u64> = Item::new("contract_count");
-
 /// The wasm byte codes, indexed by code ids.
 pub const CODES: Map<u64, Binary> = Map::new("codes");
 

@@ -124,7 +124,6 @@ pub struct InfoResponse {
     pub chain_id: String,
     pub height: i64,
     pub code_count: u64,
-    pub contract_count: u64,
 }
 
 #[cw_serde]
