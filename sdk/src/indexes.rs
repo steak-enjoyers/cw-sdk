@@ -222,14 +222,13 @@ mod tests {
     fn rejecting_duplicate_indexes() {
         let mut store = MockStorage::new();
 
+        // store the account for the first time, should succeed
         let addr = Addr::unchecked("bank");
         let acct = Account::Contract {
             code_id: 234,
             label: "bank".into(),
             admin: None,
         };
-
-        // store the account for the first time, should succeed
         ACCOUNTS.save(&mut store, &addr, &acct).unwrap();
 
         // store another account with the same label, should fail
