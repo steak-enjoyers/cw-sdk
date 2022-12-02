@@ -10,18 +10,18 @@ pub const MAX_LIMIT: u32 = 30;
 ///
 /// Inspired by this DAO DAO library:
 /// https://github.com/DA0-DA0/dao-contracts/blob/main/packages/cw-paginate/src/lib.rs
-pub fn paginate_map<'a, K, D, V, R, E, F>(
-    map: Map<'a, K, V>,
+pub fn paginate_map<'a, K, T, R, E, F>(
+    map: Map<'a, K, T>,
     store: &dyn Storage,
     start: Option<Bound<'a, K>>,
     limit: Option<u32>,
     parse_fn: F,
 ) -> Result<Vec<R>, E>
 where
-    K: PrimaryKey<'a> + KeyDeserialize<Output = D>,
-    V: Serialize + DeserializeOwned,
-    D: 'static,
-    F: Fn(D, V) -> Result<R, E>,
+    K: PrimaryKey<'a> + KeyDeserialize,
+    K::Output: 'static,
+    T: Serialize + DeserializeOwned,
+    F: Fn(K::Output, T) -> Result<R, E>,
     E: From<StdError>,
 {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
@@ -29,26 +29,26 @@ where
         .range(store, start, None, Order::Ascending)
         .take(limit)
         .map(|item| {
-            let (d, v) = item?;
-            parse_fn(d, v)
+            let (k, v) = item?;
+            parse_fn(k, v)
         })
         .collect()
 }
 
-pub fn paginate_map_prefix<'a, K, S, D, V, R, E, F>(
-    map: Map<'a, K, V>,
+pub fn paginate_map_prefix<'a, K, T, R, E, F>(
+    map: Map<'a, K, T>,
     store: &dyn Storage,
     prefix: K::Prefix,
-    start: Option<Bound<'a, S>>,
+    start: Option<Bound<'a, K::Suffix>>,
     limit: Option<u32>,
     parse_fn: F,
 ) -> Result<Vec<R>, E>
 where
-    K: PrimaryKey<'a, Suffix = S>,
-    S: PrimaryKey<'a> + KeyDeserialize<Output = D>,
-    V: Serialize + DeserializeOwned,
-    D: 'static,
-    F: Fn(D, V) -> Result<R, E>,
+    K: PrimaryKey<'a>,
+    K::Suffix: PrimaryKey<'a> + KeyDeserialize,
+    <K::Suffix as KeyDeserialize>::Output: 'static,
+    T: Serialize + DeserializeOwned,
+    F: Fn(<K::Suffix as KeyDeserialize>::Output, T) -> Result<R, E>,
     E: From<StdError>,
 {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
@@ -57,8 +57,8 @@ where
         .range(store, start, None, Order::Ascending)
         .take(limit)
         .map(|item| {
-            let (d, v) = item?;
-            parse_fn(d, v)
+            let (k, v) = item?;
+            parse_fn(k, v)
         })
         .collect()
 }
