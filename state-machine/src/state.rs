@@ -1,6 +1,6 @@
 use cosmwasm_std::{Addr, Binary, Storage};
-use cw_sdk::Account;
-use cw_storage_plus::{Item, Map};
+use cw_sdk::{indexes::AccountIndexes, Account};
+use cw_storage_plus::{IndexedMap, Item, Map};
 
 use crate::error::{Error, Result};
 
@@ -37,7 +37,11 @@ pub const CODES: Map<u64, Binary> = Map::new("codes");
 
 /// Accounts, either base (i.e. externally-owned) accounts or smart contract
 /// accounts, indexed by addresses.
-pub const ACCOUNTS: Map<&Addr, Account<Addr>> = Map::new("accounts");
+/// Contracts are additionally indexed by their labels, which must be unique.
+pub const ACCOUNTS: IndexedMap<&Addr, Account<Addr>, AccountIndexes> = IndexedMap::new(
+    "accounts",
+    AccountIndexes::new("accounts__label"),
+);
 
 /// Helper function for loading the wasm code of a given contract address.
 pub fn code_by_address(store: &dyn Storage, contract_addr: &Addr) -> Result<Binary> {
