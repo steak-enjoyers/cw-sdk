@@ -3,6 +3,7 @@ pub mod address;
 mod genesis;
 pub mod hash;
 pub mod helpers;
+pub mod indexes;
 mod msg;
 pub mod paginate;
 mod tx;

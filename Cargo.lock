@@ -708,7 +708,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-sdk",
- "cw-storage-plus",
+ "cw-storage-plus 1.0.0",
  "cw2",
  "thiserror",
 ]
@@ -752,7 +752,7 @@ checksum = "2dc50fde3ad87ef4e3a3e57c73d11326333318761c7655cc8cae67c40382ac91"
 dependencies = [
  "anyhow",
  "cosmwasm-std",
- "cw-storage-plus",
+ "cw-storage-plus 0.16.0",
  "cw-utils",
  "derivative",
  "itertools",
@@ -770,7 +770,7 @@ dependencies = [
  "bech32",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus",
+ "cw-storage-plus 1.0.0",
  "serde",
  "serde_json",
  "sha2 0.10.6",
@@ -799,7 +799,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-vm",
  "cw-sdk",
- "cw-storage-plus",
+ "cw-storage-plus 1.0.0",
  "cw-store",
  "hex",
  "k256",
@@ -823,6 +823,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-storage-plus"
+version = "1.0.0"
+source = "git+https://github.com/steak-enjoyers/cw-storage-plus?rev=a0532e7#a0532e79ef018c55a4adb666ee4c913c401e5b94"
+dependencies = [
+ "cosmwasm-std",
+ "k256",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "cw-store"
 version = "0.0.0"
 dependencies = [
@@ -842,7 +854,7 @@ dependencies = [
  "cw-bank",
  "cw-multi-test",
  "cw-sdk",
- "cw-storage-plus",
+ "cw-storage-plus 1.0.0",
  "cw-utils",
  "cw2",
  "thiserror",
@@ -871,7 +883,7 @@ checksum = "91398113b806f4d2a8d5f8d05684704a20ffd5968bf87e3473e1973710b884ad"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus",
+ "cw-storage-plus 0.16.0",
  "schemars",
  "serde",
 ]
