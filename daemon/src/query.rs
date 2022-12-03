@@ -34,14 +34,14 @@ pub async fn do_abci_query<Q: Serialize, R: DeserializeOwned>(
             match String::from_utf8(result.value.clone()) {
                 Ok(response_str) => {
                     error!(
-                        target: "ABCI query is successful but the resposne is not valid JSON",
+                        target: "ABCI query is successful but the response is not valid JSON",
                         response = response_str,
                     );
                 },
                 Err(_) => {
                     let response_raw = hex::encode(&result.value);
                     error!(
-                        target: "ABCI query is successful but the resposne is not valid JSON or UTF8",
+                        target: "ABCI query is successful but the response is not valid JSON or UTF8",
                         response_raw,
                     );
                 }
