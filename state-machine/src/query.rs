@@ -47,7 +47,7 @@ pub fn accounts(
 }
 
 pub fn contract(store: &dyn Storage, label: String) -> Result<ContractResponse> {
-    let (address, account) = ACCOUNTS.idx.label.load(store, label.clone())?;
+    let (address, account) = ACCOUNTS.idx.label.load(store, label)?;
     match account {
         Account::Contract {
             code_id,
