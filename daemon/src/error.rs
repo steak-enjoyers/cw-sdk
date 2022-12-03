@@ -75,6 +75,11 @@ pub enum DaemonError {
         reason: String,
     },
 
+    #[error("ABCI query failed: {err}")]
+    QueryFailed {
+        err: String,
+    },
+
     #[error("tx sender {address} is a contract account")]
     SenderIsContract {
         address: String,
@@ -108,6 +113,12 @@ impl DaemonError {
     pub fn sender_is_contract(address: impl Into<String>) -> Self {
         Self::SenderIsContract {
             address: address.into(),
+        }
+    }
+
+    pub fn query_failed(err: impl Into<String>) -> Self {
+        Self::QueryFailed {
+            err: err.into(),
         }
     }
 

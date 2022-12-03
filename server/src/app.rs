@@ -94,6 +94,8 @@ impl tendermint_abci::Application for App {
                         ..Default::default()
                     },
                     Err(error) => abci::ResponseQuery {
+                        // TODO: we need to define error codes instead of using
+                        // `1` for all errors
                         code: 1,
                         log: error.to_string(),
                         ..Default::default()

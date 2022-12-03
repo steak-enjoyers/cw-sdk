@@ -6,14 +6,14 @@ pub mod helpers;
 pub mod indexes;
 mod msg;
 pub mod paginate;
-mod tx;
 mod traits;
+mod tx;
 
 pub use account::Account;
 pub use genesis::GenesisState;
 pub use msg::{
-    AccountResponse, CodeResponse, Contract, ContractResponse, InfoResponse, SdkMsg, SdkQuery,
+    AccountResponse, CodeResponse, ContractResponse, InfoResponse, SdkMsg, SdkQuery,
     WasmRawResponse, WasmSmartResponse,
 };
-pub use tx::{Tx, TxBody};
 pub use traits::AddressLike;
+pub use tx::{Tx, TxBody};

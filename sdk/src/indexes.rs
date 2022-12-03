@@ -40,6 +40,15 @@ where
     IK: PrimaryKey<'a>,
     T: Serialize + DeserializeOwned + Clone,
 {
+    pub fn load(&self, store: &dyn Storage, key: IK) -> StdResult<(PK::Output, T)> {
+        let UniqueRef {
+            pk,
+            value
+        } = self.idx_map.load(store, key)?;
+        let key = PK::from_slice(&pk)?;
+        Ok((key, value))
+    }
+
     pub fn may_load(&self, store: &dyn Storage, key: IK) -> StdResult<Option<(PK::Output, T)>> {
         match self.idx_map.may_load(store, key)? {
             Some(UniqueRef {

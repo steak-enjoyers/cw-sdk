@@ -129,29 +129,21 @@ pub struct InfoResponse {
 #[cw_serde]
 pub struct AccountResponse {
     pub address: String,
-    /// None if the account is not found
-    pub account: Option<Account<String>>,
+    pub account: Account<String>,
 }
 
 #[cw_serde]
 pub struct ContractResponse {
-    pub label: String,
-    /// None if the contract is not found
-    pub contract: Option<Contract>,
-}
-
-#[cw_serde]
-pub struct Contract {
     pub address: String,
     pub code_id: u64,
+    pub label: String,
     pub admin: Option<String>,
 }
 
 #[cw_serde]
 pub struct CodeResponse {
     pub code_id: u64,
-    /// None if the code is not found
-    pub wasm_byte_code: Option<Binary>,
+    pub wasm_byte_code: Binary,
 }
 
 #[cw_serde]

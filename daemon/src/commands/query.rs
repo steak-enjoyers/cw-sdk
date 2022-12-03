@@ -217,11 +217,9 @@ impl QueryCmd {
                 print::json(HashedCodeResponse::from(&response))?;
 
                 // save the wasm byte code to file if an output path is specified
-                if let Some(bytes) = &response.wasm_byte_code {
-                    if let Some(output) = &output {
-                        fs::write(output, bytes.as_slice())?;
-                        info!("Wasm byte code written to {}", path::stringify(output)?);
-                    }
+                if let Some(output) = &output {
+                    fs::write(output, response.wasm_byte_code.as_slice())?;
+                    info!("Wasm byte code written to {}", path::stringify(output)?);
                 }
             },
 
@@ -299,15 +297,14 @@ impl QueryCmd {
 #[derive(Serialize)]
 pub struct HashedCodeResponse {
     code_id: u64,
-    /// Hex-encoded SHA-256 hash; None if no code is found under the code id.
-    hash: Option<String>,
+    hash: String, // hex-encoded SHA-256 hash
 }
 
 impl From<&CodeResponse> for HashedCodeResponse {
     fn from(res: &CodeResponse) -> Self {
         Self {
             code_id: res.code_id,
-            hash: res.wasm_byte_code.as_ref().map(|bytes| hex::encode(sha256(bytes))),
+            hash: hex::encode(sha256(&res.wasm_byte_code)),
         }
     }
 }

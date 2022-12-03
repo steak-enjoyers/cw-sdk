@@ -1,15 +1,19 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
+use std::{
+    any::type_name,
+    fs,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use clap::{Args, Subcommand};
 use colored::*;
+use cosmwasm_std::Addr;
 use tendermint_rpc::{Client, HttpClient, Url};
+use tracing::warn;
 
-use cw_sdk::{AccountResponse, SdkMsg, SdkQuery, TxBody, Account};
+use cw_sdk::{Account, AccountResponse, SdkMsg, SdkQuery, TxBody};
 
-use crate::query::do_abci_query;
-use crate::{print, prompt, ClientConfig, DaemonError, Keyring};
+use crate::{print, prompt, query::do_abci_query, ClientConfig, DaemonError, Keyring};
 
 #[derive(Args)]
 pub struct TxCmd {
@@ -105,23 +109,53 @@ impl TxCmd {
         // query the sender's sequence number if not provided
         let sequence = match self.sequence {
             None => {
-                let resp = do_abci_query::<_, AccountResponse>(
+                let result = do_abci_query::<_, AccountResponse>(
                     &client,
                     SdkQuery::Account {
                         address: sender_addr.to_string(),
                     },
                 )
-                .await?;
+                .await;
 
-                let sequence = match resp.account {
-                    None => 0,
-                    Some(Account::Base {
-                        sequence,
+                let sequence = match result {
+                    // if the account exists and is a base account, we take the
+                    // sequence number
+                    Ok(AccountResponse {
+                        account: Account::Base {
+                            sequence,
+                            ..
+                        },
                         ..
                     }) => sequence,
-                    Some(Account::Contract {
+
+                    // if the account exists but is a contract, we throw error
+                    // because contracts can't sign txs
+                    Ok(AccountResponse {
+                        account: Account::Contract {
+                            ..
+                        },
                         ..
                     }) => return Err(DaemonError::sender_is_contract(&sender_addr)),
+
+                    // if query results in an error, and the error is that the
+                    // account is not found, we use zero.
+                    // the first tx ever to be submitted should have the
+                    // sequence of 1.
+                    //
+                    // TODO: instead of string matching, we should establish a
+                    // standardized list of error codes and match the code instead
+                    Err(DaemonError::QueryFailed {
+                        err,
+                    }) if err.contains(&format!("{} not found", type_name::<Account<Addr>>())) => {
+                        warn!(
+                            "Account with address {} not found on chain. Use default sequence number of 1",
+                            &sender_addr,
+                        );
+                        0
+                    },
+
+                    // for other errors, we cannot handle them here, so we throw
+                    Err(err) => return Err(err),
                 };
 
                 // needs to be 1 greater than the on-chain sequence
