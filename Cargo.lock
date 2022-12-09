@@ -712,37 +712,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-daemon"
-version = "0.0.0"
-dependencies = [
- "bcrypt",
- "bip32",
- "clap",
- "colored",
- "cosmwasm-std",
- "cw-sdk",
- "cw-server",
- "cw-state-machine",
- "cw-store",
- "dialoguer",
- "hex",
- "home",
- "josekit",
- "k256",
- "rand_core 0.6.4",
- "serde",
- "serde_json",
- "tendermint",
- "tendermint-abci",
- "tendermint-rpc",
- "thiserror",
- "tokio",
- "toml",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "cw-multi-test"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -884,6 +853,37 @@ dependencies = [
  "cw-storage-plus 0.16.0",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "cwd"
+version = "0.0.0"
+dependencies = [
+ "bcrypt",
+ "bip32",
+ "clap",
+ "colored",
+ "cosmwasm-std",
+ "cw-sdk",
+ "cw-server",
+ "cw-state-machine",
+ "cw-store",
+ "dialoguer",
+ "hex",
+ "home",
+ "josekit",
+ "k256",
+ "rand_core 0.6.4",
+ "serde",
+ "serde_json",
+ "tendermint",
+ "tendermint-abci",
+ "tendermint-rpc",
+ "thiserror",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
