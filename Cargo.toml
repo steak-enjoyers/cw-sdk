@@ -1,12 +1,5 @@
 [workspace]
-members = [
-  "bin/cwd",
-  "contracts/*",
-  "crates/sdk",
-  "crates/server",
-  "crates/state-machine",
-  "crates/store",
-]
+members = ["bin/cwd", "contracts/*", "packages/*"]
 
 [workspace.package]
 version       = "0.0.0"
@@ -37,11 +30,11 @@ cosmwasm-vm        = "1.1"
 cw2                = "0.16"
 cw-bank            = { path = "./contracts/bank" }
 cw-multi-test      = "0.16"
-cw-sdk             = { path = "./crates/sdk" }
-cw-server          = { path = "./crates/server" }
-cw-state-machine   = { path = "./crates/state-machine" }
+cw-sdk             = { path = "./packages/sdk" }
+cw-server          = { path = "./packages/server" }
+cw-state-machine   = { path = "./packages/state-machine" }
 cw-storage-plus    = { git = "https://github.com/steak-enjoyers/cw-storage-plus", rev = "a0532e7" }
-cw-store           = { path = "./crates/store" }
+cw-store           = { path = "./packages/store" }
 cw-token-factory   = { path = "./contracts/token-factory" }
 cw-utils           = "0.16"
 dialoguer          = "0.10"
