@@ -1,11 +1,26 @@
+mod commands;
+mod config;
+mod error;
+mod key;
+mod keyring;
+mod path;
+mod print;
+mod prompt;
+mod query;
+
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 use tracing::error;
 use tracing_subscriber::filter::LevelFilter;
 
-use cw_daemon::commands::{GenesisCmd, InitCmd, KeysCmd, QueryCmd, ResetCmd, StartCmd, TxCmd};
-use cw_daemon::{path, DaemonError};
+use crate::{
+    commands::{GenesisCmd, InitCmd, KeysCmd, QueryCmd, ResetCmd, StartCmd, TxCmd},
+    config::{AppConfig, ClientConfig},
+    error::DaemonError,
+    key::Key,
+    keyring::Keyring,
+};
 
 #[derive(Parser)]
 #[clap(author, version, about)]
