@@ -33,7 +33,7 @@ cw-multi-test      = "0.16"
 cw-sdk             = { path = "./packages/sdk" }
 cw-server          = { path = "./packages/server" }
 cw-state-machine   = { path = "./packages/state-machine" }
-cw-storage-plus    = { git = "https://github.com/steak-enjoyers/cw-storage-plus", rev = "a0532e7" }
+cw-storage-plus    = { git = "https://github.com/CosmWasm/cw-storage-plus", rev = "a45379e" }
 cw-store           = { path = "./packages/store" }
 cw-token-factory   = { path = "./contracts/token-factory" }
 cw-utils           = "0.16"
