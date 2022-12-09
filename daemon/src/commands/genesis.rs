@@ -12,12 +12,12 @@ use crate::{path, print, DaemonError};
 
 #[derive(Args)]
 pub struct GenesisCmd {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: GenesisSubcommand,
 
     /// Path to the Tendermint home directory, where the genesis file is located.
     /// Default to `~/.tendermint`.
-    #[clap(long)]
+    #[arg(long)]
     tendermint_home: Option<PathBuf>,
 }
 
@@ -43,15 +43,15 @@ pub enum GenesisSubcommand {
         msg: String,
 
         /// A human readable name for the contract
-        #[clap(long)]
+        #[arg(long)]
         label: String,
 
         /// Coins to be sent along the instantiate message
-        #[clap(long)]
+        #[arg(long)]
         funds: Option<String>,
 
         /// Contract admin, the account who can migrate the contract
-        #[clap(long)]
+        #[arg(long)]
         admin: Option<String>,
     },
 
@@ -63,7 +63,7 @@ pub enum GenesisSubcommand {
         msg: String,
 
         /// Coins to be sent along the execute message
-        #[clap(long)]
+        #[arg(long)]
         funds: Option<String>,
     },
 

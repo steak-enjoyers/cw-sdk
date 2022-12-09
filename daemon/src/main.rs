@@ -23,17 +23,17 @@ use crate::{
 };
 
 #[derive(Parser)]
-#[clap(author, version, about)]
+#[command(author, version, about)]
 pub struct Cli {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     pub command: Command,
 
     /// Application home directory
-    #[clap(long)]
+    #[arg(long)]
     pub home: Option<PathBuf>,
 
     /// Increase output logging verbosity to DEBUG level
-    #[clap(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
+    #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
     pub debug: bool,
 }
 
@@ -49,7 +49,7 @@ pub enum Command {
     Keys(KeysCmd),
 
     /// Query the application state
-    #[clap(alias = "q")]
+    #[command(alias = "q")]
     Query(QueryCmd),
 
     /// Start the ABCI server

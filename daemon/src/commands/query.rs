@@ -20,11 +20,11 @@ use crate::{path, print, query::do_abci_query, ClientConfig, DaemonError};
 
 #[derive(Args)]
 pub struct QueryCmd {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     pub subcommand: QuerySubcmd,
 
     /// Tendermint RPC endpoint; overrides default value in client config
-    #[clap(long)]
+    #[arg(long)]
     node: Option<String>,
 }
 
@@ -48,11 +48,11 @@ pub enum QuerySubcmd {
     /// Enumerate all accounts
     Accounts {
         /// Start after this address
-        #[clap(long)]
+        #[arg(long)]
         start_after: Option<String>,
 
         /// The maximum number of results to be returned in this query
-        #[clap(long)]
+        #[arg(long)]
         limit: Option<u32>,
     },
 
@@ -65,11 +65,11 @@ pub enum QuerySubcmd {
     /// Enumerate all contracts by label
     Contracts {
         /// Start after this contract label
-        #[clap(long)]
+        #[arg(long)]
         start_after: Option<String>,
 
         /// The maximum number of results to be returned in this query
-        #[clap(long)]
+        #[arg(long)]
         limit: Option<u32>,
     },
 
@@ -79,18 +79,18 @@ pub enum QuerySubcmd {
         code_id: u64,
 
         /// If given, then save the wasm byte code to this path
-        #[clap(long)]
+        #[arg(long)]
         output: Option<PathBuf>,
     },
 
     /// Enumerate all wasm byte codes
     Codes {
         /// Start after this code id
-        #[clap(long)]
+        #[arg(long)]
         start_after: Option<u64>,
 
         /// The maximum number of results to be returned in this query
-        #[clap(long)]
+        #[arg(long)]
         limit: Option<u32>,
     },
 

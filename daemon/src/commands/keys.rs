@@ -8,7 +8,7 @@ use crate::{print, prompt, DaemonError, Key, Keyring};
 
 #[derive(Args)]
 pub struct KeysCmd {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     pub subcommand: KeysSubcmd,
 }
 
@@ -20,16 +20,16 @@ pub enum KeysSubcmd {
         name: String,
 
         /// Provide seed phrase to recover an existing key instead of creating
-        #[clap(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
+        #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
         recover: bool,
 
         /// BIP-44 coin type for HD derivation
-        #[clap(long, default_value_t = 118)]
+        #[arg(long, default_value_t = 118)]
         coin_type: u32,
     },
 
     /// Delete a given key
-    #[clap(alias = "rm")]
+    #[command(alias = "rm")]
     Delete {
         /// Name of the key to delete
         name: String,
@@ -42,7 +42,7 @@ pub enum KeysSubcmd {
     },
 
     /// List all keys
-    #[clap(alias = "ls")]
+    #[command(alias = "ls")]
     List,
 }
 

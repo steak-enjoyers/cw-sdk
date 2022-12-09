@@ -17,23 +17,23 @@ use crate::{print, prompt, query::do_abci_query, ClientConfig, DaemonError, Keyr
 
 #[derive(Args)]
 pub struct TxCmd {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     pub subcommand: TxSubcmd,
 
     /// Name of the key which will sign the transaction
-    #[clap(long)]
+    #[arg(long)]
     from: String,
 
     /// Chain id; overrides default value in client config
-    #[clap(long)]
+    #[arg(long)]
     chain_id: Option<String>,
 
     /// Sequence number of the signing account
-    #[clap(long)]
+    #[arg(long)]
     sequence: Option<u64>,
 
     /// Tendermint RPC endpoint; overrides default value in client config
-    #[clap(long)]
+    #[arg(long)]
     node: Option<String>,
 }
 
@@ -53,15 +53,15 @@ pub enum TxSubcmd {
         msg: String,
 
         /// A human readable name for the contract
-        #[clap(long)]
+        #[arg(long)]
         label: String,
 
         /// Coins to be sent along the instantiate message
-        #[clap(long)]
+        #[arg(long)]
         funds: Option<String>,
 
         /// Contract admin, the account who can migrate the contract
-        #[clap(long)]
+        #[arg(long)]
         admin: Option<String>,
     },
 
@@ -73,7 +73,7 @@ pub enum TxSubcmd {
         msg: String,
 
         /// Coins to be sent along the execute message
-        #[clap(long)]
+        #[arg(long)]
         funds: Option<String>,
     },
 
