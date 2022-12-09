@@ -1,12 +1,5 @@
 [workspace]
-members = [
-  "contracts/*",
-  "daemon",
-  "sdk",
-  "server",
-  "state-machine",
-  "store",
-]
+members = ["cwd", "contracts/*", "packages/*"]
 
 [workspace.package]
 version       = "0.0.0"
@@ -37,11 +30,11 @@ cosmwasm-vm        = "1.1"
 cw2                = "0.16"
 cw-bank            = { path = "./contracts/bank" }
 cw-multi-test      = "0.16"
-cw-sdk             = { path = "./sdk" }
-cw-server          = { path = "./server" }
-cw-state-machine   = { path = "./state-machine" }
-cw-storage-plus    = { git = "https://github.com/steak-enjoyers/cw-storage-plus", rev = "a0532e7" }
-cw-store           = { path = "./store" }
+cw-sdk             = { path = "./packages/sdk" }
+cw-server          = { path = "./packages/server" }
+cw-state-machine   = { path = "./packages/state-machine" }
+cw-storage-plus    = { git = "https://github.com/CosmWasm/cw-storage-plus", rev = "a45379e" }
+cw-store           = { path = "./packages/store" }
 cw-token-factory   = { path = "./contracts/token-factory" }
 cw-utils           = "0.16"
 dialoguer          = "0.10"

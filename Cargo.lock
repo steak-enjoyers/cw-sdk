@@ -706,40 +706,9 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-sdk",
- "cw-storage-plus 1.0.0",
+ "cw-storage-plus 1.0.1",
  "cw2",
  "thiserror",
-]
-
-[[package]]
-name = "cw-daemon"
-version = "0.0.0"
-dependencies = [
- "bcrypt",
- "bip32",
- "clap",
- "colored",
- "cosmwasm-std",
- "cw-sdk",
- "cw-server",
- "cw-state-machine",
- "cw-store",
- "dialoguer",
- "hex",
- "home",
- "josekit",
- "k256",
- "rand_core 0.6.4",
- "serde",
- "serde_json",
- "tendermint",
- "tendermint-abci",
- "tendermint-rpc",
- "thiserror",
- "tokio",
- "toml",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -768,7 +737,7 @@ dependencies = [
  "bech32",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus 1.0.0",
+ "cw-storage-plus 1.0.1",
  "serde",
  "serde_json",
  "sha2 0.10.6",
@@ -797,7 +766,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-vm",
  "cw-sdk",
- "cw-storage-plus 1.0.0",
+ "cw-storage-plus 1.0.1",
  "cw-store",
  "hex",
  "k256",
@@ -822,14 +791,12 @@ dependencies = [
 
 [[package]]
 name = "cw-storage-plus"
-version = "1.0.0"
-source = "git+https://github.com/steak-enjoyers/cw-storage-plus?rev=a0532e7#a0532e79ef018c55a4adb666ee4c913c401e5b94"
+version = "1.0.1"
+source = "git+https://github.com/CosmWasm/cw-storage-plus?rev=a45379e#a45379ea5c30798f47f1102c2bfcd05c7fed288f"
 dependencies = [
  "cosmwasm-std",
- "k256",
  "schemars",
  "serde",
- "thiserror",
 ]
 
 [[package]]
@@ -852,7 +819,7 @@ dependencies = [
  "cw-bank",
  "cw-multi-test",
  "cw-sdk",
- "cw-storage-plus 1.0.0",
+ "cw-storage-plus 1.0.1",
  "cw-utils",
  "cw2",
  "thiserror",
@@ -884,6 +851,37 @@ dependencies = [
  "cw-storage-plus 0.16.0",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "cwd"
+version = "0.0.0"
+dependencies = [
+ "bcrypt",
+ "bip32",
+ "clap",
+ "colored",
+ "cosmwasm-std",
+ "cw-sdk",
+ "cw-server",
+ "cw-state-machine",
+ "cw-store",
+ "dialoguer",
+ "hex",
+ "home",
+ "josekit",
+ "k256",
+ "rand_core 0.6.4",
+ "serde",
+ "serde_json",
+ "tendermint",
+ "tendermint-abci",
+ "tendermint-rpc",
+ "thiserror",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

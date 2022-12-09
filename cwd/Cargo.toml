@@ -1,5 +1,5 @@
 [package]
-name          = "cw-daemon"
+name          = "cwd"
 description   = "Daemon software for the CosmWasm SDK blockchain"
 version       = { workspace = true }
 authors       = { workspace = true }
