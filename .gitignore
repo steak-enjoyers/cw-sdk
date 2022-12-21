@@ -7,8 +7,9 @@ target/
 # test data
 testdata/
 
-# editor
+# editors
 .idea/
+.vscode/
 
 # macos
 .DS_Store
