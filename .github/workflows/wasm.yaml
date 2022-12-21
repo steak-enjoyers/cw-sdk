@@ -25,7 +25,8 @@ jobs:
         with:
           command: build
           args: >
-            --locked --lib --target wasm32-unknown-unknown --workspace
+            --locked --lib --target wasm32-unknown-unknown
+            --workspace
             --exclude cwd
             --exclude cw-server
             --exclude cw-state-machine
