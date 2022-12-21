@@ -39,9 +39,9 @@ mod mock_hook_handler {
                 amount,
             } => {
                 let event = Event::new("mock_hook_handle")
-                    .add_attribute("from", from.to_string())
-                    .add_attribute("to", to.to_string())
-                    .add_attribute("coin", format!("{amount}{}", denom.to_string()));
+                    .add_attribute("from", from)
+                    .add_attribute("to", to)
+                    .add_attribute("coin", format!("{amount}{denom}"));
                 Ok(Response::new().add_event(event))
             },
         }
@@ -236,7 +236,7 @@ impl TestSuite {
             .add_attribute("_contract_addr", &self.hook_handler)
             .add_attribute("from", from.to_string())
             .add_attribute("to", to.to_string())
-            .add_attribute("coin", format!("{amount}{}", denom.to_string()))
+            .add_attribute("coin", format!("{amount}{denom}"))
     }
 }
 
@@ -299,7 +299,7 @@ fn proper_withdrawal_to_self() {
         .unwrap();
 
     // the owner should have received funds
-    suite.assert_balances(&TestSuite::owner(), vec![coin(12345, "uatom"), coin(23456, "umars")]);
+    suite.assert_balances(TestSuite::owner(), vec![coin(12345, "uatom"), coin(23456, "umars")]);
 }
 
 #[test]

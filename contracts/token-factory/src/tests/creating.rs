@@ -104,7 +104,7 @@ fn duplicate_denom() {
     )
     .unwrap_err();
 
-    assert_eq!(err, ContractError::token_exists(DENOM).into());
+    assert_eq!(err, ContractError::token_exists(DENOM));
 }
 
 #[test]
