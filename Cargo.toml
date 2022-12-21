@@ -36,7 +36,7 @@ cw-state-machine   = { path = "./packages/state-machine" }
 cw-storage-plus    = { git = "https://github.com/CosmWasm/cw-storage-plus", rev = "a45379e" }
 cw-store           = { path = "./packages/store" }
 cw-token-factory   = { path = "./contracts/token-factory" }
-cw-utils           = "0.16"
+cw-utils           = "1.0"
 dialoguer          = "0.10"
 hex                = "0.4"
 home               = "0.5"
