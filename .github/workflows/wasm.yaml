@@ -1,3 +1,9 @@
+# NOTE:
+# 1. We only want to make sure that the contract compiles; we don't need to
+#    produce release builds. Therefore we don't include the `--release` flag.
+# 2. We only want to compile contracts to the wasm target, not cwd and others.
+#    Use the `--exclude` flag to exclude them.
+# 3. Since we exlude cw-store, we can use the stable toolchain.
 on: push
 name: CosmWasm
 jobs:
@@ -10,7 +16,7 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           target: wasm32-unknown-unknown
           override: true
           profile: minimal
@@ -18,6 +24,11 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --locked --lib --release --target wasm32-unknown-unknown
+          args: >
+            --locked --lib --target wasm32-unknown-unknown --workspace
+            --exclude cwd
+            --exclude cw-server
+            --exclude cw-state-machine
+            --exclude cw-store
         env:
           RUST_BACKTRACE: 1
