@@ -1,7 +1,7 @@
 # NOTE:
-# 1. We only want to make sure that the contract compiles; we don't need to
+# 1. We only want to make sure that the contracts compile; we don't need to
 #    produce release builds. Therefore we don't include the `--release` flag.
-# 2. We only want to compile contracts to the wasm target, not cwd and others.
+# 2. We only want to compile contracts to the wasm target, not cwd or others.
 #    Use the `--exclude` flag to exclude them.
 # 3. Since we exlude cw-store, we can use the stable toolchain.
 on: push
