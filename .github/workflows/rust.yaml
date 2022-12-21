@@ -1,59 +1,59 @@
 on: push
-name: Rust CI
+name: Rust
 jobs:
   check:
-    name: check
+    name: Check
     runs-on: ubuntu-latest
     steps:
-      - name: checkout sources
+      - name: Checkout sources
         uses: actions/checkout@v2
-      - name: install nightly toolchain
+      - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
-          toolchain: nightly
+          toolchain: stable
           override: true
-      - name: check for errors
+          profile: minimal
+      - name: Check for errors
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --locked
+          args: --locked --tests
         env:
           RUST_BACKTRACE: 1
   test:
-    name: test
+    name: Test
     runs-on: ubuntu-latest
     steps:
-      - name: checkout sources
+      - name: Checkout sources
         uses: actions/checkout@v2
-      - name: install nightly toolchain
+      - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
-          toolchain: nightly
+          toolchain: stable
           override: true
-      - name: run tests
+          profile: minimal
+      - name: Run tests
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --lib --locked
+          args: --lib --locked --tests
         env:
           RUST_BACKTRACE: 1
   clippy:
-    name: clippy
+    name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - name: checkout sources
+      - name: Checkout sources
         uses: actions/checkout@v2
-      - name: install nightly toolchain
+      - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
-          toolchain: nightly
-          components: clippy
+          toolchain: stable
           override: true
-      - name: run cargo clippy
+          profile: minimal
+          components: clippy
+      - name: Run clippy
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -- -D warnings
+          args: --tests -- -D warnings
