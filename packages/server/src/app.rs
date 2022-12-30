@@ -1,4 +1,4 @@
-use std::sync::mpsc::{channel, Sender};
+use std::sync::mpsc::{channel, Receiver, Sender};
 
 use cosmwasm_std::{Attribute as WasmAttribute, BlockInfo, Event as WasmEvent, Timestamp};
 use cw_sdk::{GenesisState, SdkQuery, Tx};
@@ -11,6 +11,20 @@ pub struct App {
     pub cmd_tx: Sender<AppCommand>,
 }
 
+impl App {
+    fn execute_command<T>(&self, cmd: AppCommand, result_rx: &Receiver<T>) -> T {
+        // send command to AppDriver via the command channel
+        self.cmd_tx.send(cmd).unwrap_or_else(|err| {
+            panic!("failed to send command to AppDriver: {err}");
+        });
+
+        // receive result from AppDriver via the result channel
+        result_rx.recv().unwrap_or_else(|err| {
+            panic!("failed to receive result from AppDriver: {err}");
+        })
+    }
+}
+
 impl tendermint_abci::Application for App {
     /// Provide information about the ABCI application.
     ///
@@ -20,12 +34,16 @@ impl tendermint_abci::Application for App {
     fn info(&self, _request: abci::RequestInfo) -> abci::ResponseInfo {
         let (result_tx, result_rx) = channel();
 
-        self.cmd_tx
-            .send(AppCommand::Info {
+        let result = self.execute_command(
+            AppCommand::Info {
                 result_tx,
-            })
-            .unwrap();
-        let (height, app_hash) = result_rx.recv().unwrap().unwrap();
+            },
+            &result_rx,
+        );
+
+        let (height, app_hash) = result.unwrap_or_else(|err| {
+            panic!("ABCI Info request failed with error: {err}");
+        });
 
         abci::ResponseInfo {
             data: env!("CARGO_PKG_NAME").into(),
@@ -44,14 +62,18 @@ impl tendermint_abci::Application for App {
             panic!("failed to parse genesis state: {err}");
         });
 
-        self.cmd_tx
-            .send(AppCommand::InitChain {
+        let result = self.execute_command(
+            AppCommand::InitChain {
                 chain_id: request.chain_id,
                 gen_state,
                 result_tx,
-            })
-            .unwrap();
-        let app_hash = result_rx.recv().unwrap().unwrap();
+            },
+            &result_rx,
+        );
+
+        let app_hash = result.unwrap_or_else(|err| {
+            panic!("ABCI InitChain request failed with error: {err}");
+        });
 
         abci::ResponseInitChain {
             app_hash: app_hash.to_vec().into(),
@@ -79,13 +101,13 @@ impl tendermint_abci::Application for App {
                     panic!("failed to deserialize query message: {err}");
                 });
 
-                self.cmd_tx
-                    .send(AppCommand::Query {
+                let result = self.execute_command(
+                    AppCommand::Query {
                         query,
                         result_tx,
-                    })
-                    .unwrap();
-                let result = result_rx.recv().unwrap();
+                    },
+                    &result_rx,
+                );
 
                 match result {
                     Ok(response) => abci::ResponseQuery {
@@ -138,30 +160,36 @@ impl tendermint_abci::Application for App {
     fn begin_block(&self, request: abci::RequestBeginBlock) -> abci::ResponseBeginBlock {
         let (result_tx, result_rx) = channel();
 
-        let header = request.header.unwrap();
-
-        let protobuf_time = header.time.unwrap();
+        let header = request.header.unwrap_or_else(|| {
+            panic!("ABCI BeginBlock request failed: header is not provided");
+        });
+        let protobuf_time = header.time.unwrap_or_else(|| {
+            panic!("ABCI BeginBlock request failed: header does not contain block time");
+        });
         let time = Timestamp::from_nanos(
             u64::try_from(protobuf_time.seconds).unwrap() * 10u64.pow(9) +
             u64::try_from(protobuf_time.nanos).unwrap(),
         );
-
         let block = BlockInfo {
             height: header.height as u64,
             time,
             chain_id: header.chain_id,
         };
 
-        self.cmd_tx
-            .send(AppCommand::BeginBlock {
+        let result = self.execute_command(
+            AppCommand::BeginBlock {
                 block,
                 result_tx,
-            })
-            .unwrap();
-        let result = result_rx.recv().unwrap();
+            },
+            &result_rx,
+        );
+
+        let events = result.unwrap_or_else(|err| {
+            panic!("ABCI BeginBlock request failed with error: {err}");
+        });
 
         abci::ResponseBeginBlock {
-            events: wasm_event_to_abci(result.unwrap()),
+            events: wasm_event_to_abci(events),
         }
     }
 
@@ -173,13 +201,13 @@ impl tendermint_abci::Application for App {
             panic!("failed to deserialize tx: {err}");
         });
 
-        self.cmd_tx
-            .send(AppCommand::DeliverTx {
+        let result = self.execute_command(
+            AppCommand::DeliverTx {
                 tx,
                 result_tx,
-            })
-            .unwrap();
-        let result = result_rx.recv().unwrap();
+            },
+            &result_rx,
+        );
 
         match result {
             // TODO: what should we put in `data` and `log` fields?
@@ -207,12 +235,16 @@ impl tendermint_abci::Application for App {
     fn commit(&self) -> abci::ResponseCommit {
         let (result_tx, result_rx) = channel();
 
-        self.cmd_tx
-            .send(AppCommand::Commit {
+        let result = self.execute_command(
+            AppCommand::Commit {
                 result_tx,
-            })
-            .unwrap();
-        let (height, app_hash) = result_rx.recv().unwrap().unwrap();
+            },
+            &result_rx,
+        );
+
+        let (height, app_hash) = result.unwrap_or_else(|err| {
+            panic!("Commit failed: {err}");
+        });
 
         abci::ResponseCommit {
             data: app_hash.to_vec().into(),
