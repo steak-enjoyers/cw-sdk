@@ -5,7 +5,7 @@ use std::{
     time::{Duration, UNIX_EPOCH},
 };
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, SecondsFormat, Utc};
 use clap::{Args, Subcommand};
 use cosmwasm_std::{BlockInfo, ContractResult};
 use cw_sdk::InfoResponse;
@@ -345,7 +345,7 @@ impl From<BlockInfo> for PrettyBlockInfo {
         let datetime = DateTime::<Utc>::from(d);
         Self {
             height: block.height,
-            time: datetime.to_rfc3339(),
+            time: datetime.to_rfc3339_opts(SecondsFormat::Nanos, true),
             chain_id: block.chain_id,
         }
     }
