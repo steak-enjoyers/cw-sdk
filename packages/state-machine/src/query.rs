@@ -1,4 +1,4 @@
-use cosmwasm_std::{testing::mock_env, Binary, Order, Storage};
+use cosmwasm_std::{Binary, ContractInfo, Env, Order, Storage};
 use cosmwasm_vm::{call_query, Backend, Instance, InstanceOptions, Storage as VmStorage};
 use cw_storage_plus::Bound;
 
@@ -12,13 +12,12 @@ use cw_sdk::{
 use crate::{
     backend::{BackendApi, BackendQuerier, ContractSubstore},
     error::Result,
-    state::{code_by_address, ACCOUNTS, BLOCK_HEIGHT, CHAIN_ID, CODES, CODE_COUNT},
+    state::{code_by_address, ACCOUNTS, BLOCK, CODES, CODE_COUNT},
 };
 
 pub fn info(store: &dyn Storage) -> Result<InfoResponse> {
     Ok(InfoResponse {
-        chain_id: CHAIN_ID.load(store)?,
-        height: BLOCK_HEIGHT.load(store)?,
+        last_committed_block: BLOCK.load(store)?,
         code_count: CODE_COUNT.load(store)?,
     })
 }
@@ -121,7 +120,25 @@ pub fn wasm_smart(
     msg: &[u8],
 ) -> Result<WasmSmartResponse> {
     let contract_addr = address::validate(contract)?;
+
+    // load contract binary code
     let code = code_by_address(&store, &contract_addr)?;
+
+    // load block info and prepare env
+    //
+    // NOTE:
+    // - when executing msgs during DeliverTx, we use the pending store (created
+    //   by the Store::pending_wrap method) and the pending block
+    // - when querying during Query, we use the commited store (created by the
+    //   Store::wrap method) and the last committed block
+    let block = BLOCK.load(&store)?;
+    let env = Env {
+        block,
+        transaction: None,
+        contract: ContractInfo {
+            address: contract_addr.clone(), // TODO: preferrably avoid the clone here
+        },
+    };
 
     let mut instance = Instance::from_code(
         &code,
@@ -137,7 +154,7 @@ pub fn wasm_smart(
         None,
     )?;
 
-    let result = call_query(&mut instance, &mock_env(), msg)?;
+    let result = call_query(&mut instance, &env, msg)?;
 
     Ok(WasmSmartResponse {
         result,

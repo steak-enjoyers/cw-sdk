@@ -1,6 +1,6 @@
 use std::sync::mpsc::{channel, Sender};
 
-use cosmwasm_std::{Attribute as WasmAttribute, Event as WasmEvent};
+use cosmwasm_std::{Attribute as WasmAttribute, BlockInfo, Event as WasmEvent, Timestamp};
 use cw_sdk::{GenesisState, SdkQuery, Tx};
 use tendermint_proto::abci::{self, Event, EventAttribute};
 
@@ -135,8 +135,34 @@ impl tendermint_abci::Application for App {
     }
 
     /// Signals the beginning of a new block, prior to any `DeliverTx` calls.
-    fn begin_block(&self, _request: abci::RequestBeginBlock) -> abci::ResponseBeginBlock {
-        Default::default()
+    fn begin_block(&self, request: abci::RequestBeginBlock) -> abci::ResponseBeginBlock {
+        let (result_tx, result_rx) = channel();
+
+        let header = request.header.unwrap();
+
+        let protobuf_time = header.time.unwrap();
+        let time = Timestamp::from_nanos(
+            u64::try_from(protobuf_time.seconds).unwrap() * 10u64.pow(9) +
+            u64::try_from(protobuf_time.nanos).unwrap(),
+        );
+
+        let block = BlockInfo {
+            height: header.height as u64,
+            time: time,
+            chain_id: header.chain_id,
+        };
+
+        self.cmd_tx
+            .send(AppCommand::BeginBlock {
+                block,
+                result_tx,
+            })
+            .unwrap();
+        let result = result_rx.recv().unwrap();
+
+        abci::ResponseBeginBlock {
+            events: wasm_event_to_abci(result.unwrap()),
+        }
     }
 
     /// Apply a transaction to the application's state.

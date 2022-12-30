@@ -1,30 +1,11 @@
-use cosmwasm_std::{Addr, Binary, Storage};
+use cosmwasm_std::{Addr, Binary, Storage, BlockInfo};
 use cw_sdk::{indexes::AccountIndexes, Account};
 use cw_storage_plus::{IndexedMap, Item, Map};
 
 use crate::error::{Error, Result};
 
-/// The chain's identifier. Used to prevent tx replay attacks.
-/// Must be in the format `{name}-{revision_number}` per IBC specs.
-pub const CHAIN_ID: Item<String> = Item::new("chain_id");
-
-/// Height of the last committed block.
-///
-/// It makes more sense to use u64 rather than i64, as block heights shouldn't
-/// be negative. However Tendermint ABCI uses i64 for some reason, so we just
-/// follow their standard.
-pub const BLOCK_HEIGHT: Item<i64> = Item::new("block_height");
-
-/// Time of the last committed block.
-pub const BLOCK_TIME: Item<u64> = Item::new("block_time");
-
-/// Height of the current pending block.
-/// Set to (last committed height + 1) during the "BeginBlock" ABCI request.
-pub const PENDING_HEIGHT: Item<Option<i64>> = Item::new("pending_height");
-
-/// Time of the current pending block.
-/// Updated by the "BeginBlock" ABCI request.
-pub const PENDING_TIME: Item<Option<u64>> = Item::new("pending_time");
+/// Info of the last committed block.
+pub const BLOCK: Item<BlockInfo> = Item::new("block");
 
 /// The total number of wasm byte codes stored on chain.
 pub const CODE_COUNT: Item<u64> = Item::new("code_count");

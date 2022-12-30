@@ -13,7 +13,7 @@ pub struct AppDriver {
 }
 
 impl AppDriver {
-    pub fn run(&self) {
+    pub fn run(&mut self) {
         loop {
             match self.cmd_rx.recv().unwrap() {
                 AppCommand::Info {
@@ -28,6 +28,10 @@ impl AppDriver {
                     query,
                     result_tx,
                 } => result_tx.send(self.state_machine.query(query)).unwrap(),
+                AppCommand::BeginBlock {
+                    block,
+                    result_tx,
+                } => result_tx.send(self.state_machine.begin_block(block)).unwrap(),
                 AppCommand::DeliverTx {
                     tx,
                     result_tx,

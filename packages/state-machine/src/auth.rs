@@ -1,11 +1,11 @@
-use cosmwasm_std::{Addr, Storage};
+use cosmwasm_std::{Addr, BlockInfo, Storage};
 use k256::ecdsa::{signature::Verifier, Signature, VerifyingKey};
 
 use cw_sdk::{address, Account, Tx};
 
 use crate::{
     error::{Error, Result},
-    state::{ACCOUNTS, CHAIN_ID},
+    state::ACCOUNTS,
 };
 
 /// The response type of `authenticate_tx` function.
@@ -17,7 +17,7 @@ pub struct Sender {
 /// Authenticate the signer's address, pubkey, signature, sequence, and chain id.
 /// Return error if any one fails.
 /// Returns the sender address and account info if succeeds.
-pub fn authenticate_tx(store: &dyn Storage, tx: &Tx) -> Result<Sender> {
+pub fn authenticate_tx(store: &dyn Storage, pending_block: &BlockInfo, tx: &Tx) -> Result<Sender> {
     let sender = &tx.body.sender;
     let sender_addr = address::validate(sender)?;
 
@@ -65,9 +65,8 @@ pub fn authenticate_tx(store: &dyn Storage, tx: &Tx) -> Result<Sender> {
     };
 
     // the chain id must match
-    let chain_id = CHAIN_ID.load(store)?;
-    if chain_id != tx.body.chain_id {
-        return Err(Error::chain_id_mismatch(&chain_id, &tx.body.chain_id));
+    if pending_block.chain_id != tx.body.chain_id {
+        return Err(Error::chain_id_mismatch(&pending_block.chain_id, &tx.body.chain_id));
     }
 
     // the account sequence mush match
