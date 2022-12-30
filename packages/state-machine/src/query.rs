@@ -17,8 +17,8 @@ use crate::{
 
 pub fn info(store: &dyn Storage) -> Result<InfoResponse> {
     Ok(InfoResponse {
-        code_count: CODE_COUNT.load(store)?,
         last_committed_block: BLOCK.load(store)?,
+        code_count: CODE_COUNT.load(store)?,
     })
 }
 

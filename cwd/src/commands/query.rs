@@ -316,15 +316,15 @@ impl From<&CodeResponse> for HashedCodeResponse {
 /// Like InfoResponse but BlockInfo is substituted with PrettyBlockInfo.
 #[derive(Serialize)]
 pub struct PrettyInfoResponse {
-    code_count: u64,
     last_committed_block: PrettyBlockInfo,
+    code_count: u64,
 }
 
 impl From<InfoResponse> for PrettyInfoResponse {
     fn from(res: InfoResponse) -> Self {
         Self {
-            code_count: res.code_count,
             last_committed_block: res.last_committed_block.into(),
+            code_count: res.code_count,
         }
     }
 }

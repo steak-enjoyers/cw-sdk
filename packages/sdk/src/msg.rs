@@ -121,8 +121,8 @@ pub enum SdkQuery {
 
 #[cw_serde]
 pub struct InfoResponse {
-    pub code_count: u64,
     pub last_committed_block: BlockInfo,
+    pub code_count: u64,
 }
 
 #[cw_serde]
