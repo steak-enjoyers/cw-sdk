@@ -1,9 +1,13 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    str::FromStr,
+    time::{Duration, UNIX_EPOCH},
+};
 
+use chrono::{DateTime, Utc};
 use clap::{Args, Subcommand};
-use cosmwasm_std::ContractResult;
+use cosmwasm_std::{BlockInfo, ContractResult};
 use cw_sdk::InfoResponse;
 use serde::Serialize;
 use serde_json::Value;
@@ -138,7 +142,7 @@ impl QueryCmd {
                 )
                 .await?;
 
-                print::json(response)?;
+                print::json(PrettyInfoResponse::from(response))?;
             },
 
             QuerySubcmd::Account {
@@ -305,6 +309,44 @@ impl From<&CodeResponse> for HashedCodeResponse {
         Self {
             code_id: res.code_id,
             hash: hex::encode(sha256(&res.wasm_byte_code)),
+        }
+    }
+}
+
+/// Like InfoResponse but BlockInfo is substituted with PrettyBlockInfo.
+#[derive(Serialize)]
+pub struct PrettyInfoResponse {
+    code_count: u64,
+    last_committed_block: PrettyBlockInfo,
+}
+
+impl From<InfoResponse> for PrettyInfoResponse {
+    fn from(res: InfoResponse) -> Self {
+        Self {
+            code_count: res.code_count,
+            last_committed_block: res.last_committed_block.into(),
+        }
+    }
+}
+
+/// The `time` field of BlockTime is serialized into just a number (the UNIX
+/// timestamp in nanoseconds) which is not very readable.
+/// Here we convert it to a human-readable string according to RFC 3339 standard.
+#[derive(Serialize)]
+pub struct PrettyBlockInfo {
+    height: u64,
+    time: String,
+    chain_id: String,
+}
+
+impl From<BlockInfo> for PrettyBlockInfo {
+    fn from(block: BlockInfo) -> Self {
+        let d = UNIX_EPOCH + Duration::from_nanos(block.time.nanos());
+        let datetime = DateTime::<Utc>::from(d);
+        Self {
+            height: block.height,
+            time: datetime.to_rfc3339(),
+            chain_id: block.chain_id,
         }
     }
 }
