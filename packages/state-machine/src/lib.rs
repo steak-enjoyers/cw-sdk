@@ -117,12 +117,7 @@ impl StateMachine {
             .map(|msg| {
                 self.handle_msg(
                     cache.share(),
-                    // use mock block and transaction info for now
-                    BlockInfo {
-                        height: 0,
-                        time: Timestamp::from_seconds(1),
-                        chain_id: "".into(),
-                    },
+                    self.pending_block.clone().unwrap(),
                     None,
                     &sender.address,
                     msg,
