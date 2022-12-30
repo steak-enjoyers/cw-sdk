@@ -12,14 +12,13 @@ use cw_sdk::{
 use crate::{
     backend::{BackendApi, BackendQuerier, ContractSubstore},
     error::Result,
-    state::{code_by_address, ACCOUNTS, BLOCK_HEIGHT, CHAIN_ID, CODES, CODE_COUNT},
+    state::{code_by_address, ACCOUNTS, BLOCK, CODES, CODE_COUNT},
 };
 
 pub fn info(store: &dyn Storage) -> Result<InfoResponse> {
     Ok(InfoResponse {
-        chain_id: CHAIN_ID.load(store)?,
-        height: BLOCK_HEIGHT.load(store)?,
         code_count: CODE_COUNT.load(store)?,
+        last_committed_block: BLOCK.load(store)?,
     })
 }
 

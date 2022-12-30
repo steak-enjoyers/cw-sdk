@@ -36,7 +36,7 @@ impl StartCmd {
         let app = App {
             cmd_tx,
         };
-        let driver = AppDriver {
+        let mut driver = AppDriver {
             state_machine,
             cmd_rx,
         };

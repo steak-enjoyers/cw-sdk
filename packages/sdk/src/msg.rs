@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Binary, Coin, ContractResult};
+use cosmwasm_std::{Binary, BlockInfo, Coin, ContractResult};
 use serde_json::Value;
 
 use crate::account::Account;
@@ -121,9 +121,8 @@ pub enum SdkQuery {
 
 #[cw_serde]
 pub struct InfoResponse {
-    pub chain_id: String,
-    pub height: i64,
     pub code_count: u64,
+    pub last_committed_block: BlockInfo,
 }
 
 #[cw_serde]

@@ -13,7 +13,7 @@ pub struct AppDriver {
 }
 
 impl AppDriver {
-    pub fn run(&self) {
+    pub fn run(&mut self) {
         loop {
             match self.cmd_rx.recv().unwrap() {
                 AppCommand::Info {
