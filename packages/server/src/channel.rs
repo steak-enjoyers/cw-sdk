@@ -1,6 +1,6 @@
 use std::sync::mpsc::Sender;
 
-use cosmwasm_std::{Binary, Event};
+use cosmwasm_std::{Binary, BlockInfo, Event};
 
 use cw_sdk::{hash::HASH_LENGTH, GenesisState, SdkQuery, Tx};
 use cw_state_machine::error::Result as StateMachineResult;
@@ -26,6 +26,13 @@ pub enum AppCommand {
     Query {
         query: SdkQuery,
         result_tx: Sender<StateMachineResult<Binary>>,
+    },
+
+    /// Provide chain id, block height and time, return events emitted during
+    /// the begin block process.
+    BeginBlock {
+        block: BlockInfo,
+        result_tx: Sender<StateMachineResult<Vec<Event>>>,
     },
 
     /// Provide a tx, returns the events emitted during tx execution.

@@ -85,9 +85,13 @@ impl StateMachine {
         Ok(self.store.root_hash())
     }
 
-    // pub fn begin_block(&self) -> Result<()> {
-    //     todo!();
-    // }
+    pub fn begin_block(&mut self, block: BlockInfo) -> Result<Vec<Event>> {
+        // current we just update pending block and do nothing else
+        // TODO: read cosmos-sdk code and see what to do here
+        self.pending_block = Some(block);
+
+        Ok(vec![])
+    }
 
     pub fn deliver_tx(&self, tx: Tx) -> Result<Vec<Event>> {
         // make a cache of the store. it will only be flushed if the entire tx
