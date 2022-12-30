@@ -148,7 +148,7 @@ impl tendermint_abci::Application for App {
 
         let block = BlockInfo {
             height: header.height as u64,
-            time: time,
+            time,
             chain_id: header.chain_id,
         };
 
