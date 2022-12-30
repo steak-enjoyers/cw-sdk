@@ -11,7 +11,7 @@ use cosmwasm_std::{BlockInfo, ContractResult};
 use cw_sdk::InfoResponse;
 use serde::Serialize;
 use serde_json::Value;
-use tendermint::abci::transaction::Hash;
+use tendermint::Hash;
 use tendermint_rpc::{Client, HttpClient, Url};
 use tracing::{error, info};
 

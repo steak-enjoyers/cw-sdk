@@ -32,7 +32,7 @@ impl tendermint_abci::Application for App {
             version: env!("CARGO_PKG_VERSION").into(),
             app_version: 1,
             last_block_height: height,
-            last_block_app_hash: app_hash.to_vec(),
+            last_block_app_hash: app_hash.to_vec().into(),
         }
     }
 
@@ -54,7 +54,7 @@ impl tendermint_abci::Application for App {
         let app_hash = result_rx.recv().unwrap().unwrap();
 
         abci::ResponseInitChain {
-            app_hash: app_hash.to_vec(),
+            app_hash: app_hash.to_vec().into(),
             ..Default::default()
         }
     }
@@ -90,7 +90,7 @@ impl tendermint_abci::Application for App {
                 match result {
                     Ok(response) => abci::ResponseQuery {
                         code: 0,
-                        value: response.to_vec(),
+                        value: response.to_vec().into(),
                         ..Default::default()
                     },
                     Err(error) => abci::ResponseQuery {
@@ -215,7 +215,7 @@ impl tendermint_abci::Application for App {
         let (height, app_hash) = result_rx.recv().unwrap().unwrap();
 
         abci::ResponseCommit {
-            data: app_hash.to_vec(),
+            data: app_hash.to_vec().into(),
             // TODO: I don't really know what retain_height means. I assume it
             // means the block height that was just committed.
             retain_height: height,
@@ -228,8 +228,8 @@ fn wasm_attrs_to_abci(wasm_attrs: Vec<WasmAttribute>) -> Vec<EventAttribute> {
     wasm_attrs
         .into_iter()
         .map(|attr| EventAttribute {
-            key: attr.key.into_bytes(),
-            value: attr.value.into_bytes(),
+            key: attr.key.into_bytes().into(),
+            value: attr.value.into_bytes().into(),
             // Not sure what "index" means, but Go SDK returns `true` for all attributes,
             // so I'll do the same here =)
             index: true,

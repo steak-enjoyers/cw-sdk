@@ -1,7 +1,4 @@
-use std::str::FromStr;
-
 use serde::{de::DeserializeOwned, Serialize};
-use tendermint::abci::Path;
 use tendermint_rpc::{Client, HttpClient};
 use tracing::error;
 
@@ -16,13 +13,12 @@ pub async fn do_abci_query<Q: Serialize, R: DeserializeOwned>(
 
     // do query
     // must use "app" path
-    let app_path = Path::from_str("app")?;
     let result = client
-        .abci_query(Some(app_path), query_bytes, None, false)
+        .abci_query(Some("app".into()), query_bytes, None, false)
         .await?;
 
     if result.code.is_err() {
-        return Err(DaemonError::query_failed(result.log.value()));
+        return Err(DaemonError::query_failed(result.log));
     }
 
     // deserialize the response

@@ -234,7 +234,7 @@ impl TxCmd {
         print::json(&tx)?;
 
         if prompt::confirm(format!("{}", "🤔 Broadcast?".bold()))? {
-            let response = client.broadcast_tx_async(tx_bytes.into()).await?;
+            let response = client.broadcast_tx_async(tx_bytes).await?;
             print::json(response)?;
             println!("{}", "🙌 Successfully broadcasted!".bold());
         }
