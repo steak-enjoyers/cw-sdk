@@ -24,6 +24,9 @@ pub enum Error {
     #[error("contract emitted error: {0}")]
     Contract(String),
 
+    #[error("contract labels must not start with the prefix `cw1`")]
+    IllegalLabel,
+
     #[error("an account already exists with the address {address}")]
     AccountFound {
         address: String,

@@ -9,7 +9,7 @@ use cosmwasm_std::{
     to_binary, Addr, Binary, BlockInfo, ContractInfo, Env, Event, MessageInfo, Storage, Timestamp,
     TransactionInfo,
 };
-use cw_sdk::{address, hash::HASH_LENGTH, GenesisState, SdkMsg, SdkQuery, Tx};
+use cw_sdk::{address, hash::HASH_LENGTH, label::resolve_raw_address, GenesisState, SdkMsg, SdkQuery, Tx};
 use cw_store::{Cached, Shared, Store};
 
 use crate::{
@@ -156,7 +156,7 @@ impl StateMachine {
                 label,
                 admin,
             } => {
-                let admin_addr = admin.map(|admin| address::validate(&admin)).transpose()?;
+                let admin_addr = admin.map(|admin| resolve_raw_address(&admin)).transpose()?;
 
                 if !funds.is_empty() {
                     return Err(Error::FundsUnsupported);
@@ -195,7 +195,7 @@ impl StateMachine {
                     block,
                     transaction,
                     contract: ContractInfo {
-                        address: address::validate(&contract)?,
+                        address: resolve_raw_address(&contract)?,
                     },
                 };
 
@@ -232,7 +232,7 @@ impl StateMachine {
                     block,
                     transaction,
                     contract: ContractInfo {
-                        address: address::validate(&contract)?,
+                        address: resolve_raw_address(&contract)?,
                     },
                 };
 

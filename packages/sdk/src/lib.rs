@@ -4,6 +4,7 @@ mod genesis;
 pub mod hash;
 pub mod helpers;
 pub mod indexes;
+pub mod label;
 mod msg;
 pub mod paginate;
 mod traits;
