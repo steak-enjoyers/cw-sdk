@@ -48,7 +48,19 @@ pub fn instantiate_contract(
 ) -> Result<ContractResult<Response>> {
     let cache = Cached::new(store);
 
-    // derive contract address
+    // validate the label
+    //
+    // the label must not start with the prefix `cw1`, so that it is not
+    // confused with contract addresses
+    //
+    // we also want to ensure uniqueness: this is done later when updating the
+    // Accounts map: if two contracts share the same label, they must also have
+    // the same address, which will result in a Error::AccountFound.
+    if label.starts_with(&format!("{}1", address::ADDRESS_PREFIX)) {
+        return Err(Error::IllegalLabel);
+    }
+
+    // now we know the label is valid, derive contract address from it
     let contract_addr = address::derive_from_label(&label)?;
 
     let env = Env {
