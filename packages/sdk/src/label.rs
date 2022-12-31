@@ -8,11 +8,27 @@
 //! - do not start with the prefix `cw1`: so that they can not be confused with
 //!   addresses.
 //!
-//! When a user or a contract provides the state machine a "raw address string",
-//! e.g. when executing a contract from the CLI, or emitting a wasm execute
-//! message in the response of a contract call, this raw address string may
-//! either be the actual address, or the label. The state machine is responsible
-//! to resolve it and returns a verified address (as `cosmwasm_std::Addr`).
+//! Here we define the concept of "raw address string", which is a string that
+//! is either:
+//!
+//! - a contract address, or
+//! - a contract label
+//!
+//! We know it's an address if it starts with `cw1`, or a label otherwise.
+//!
+//! For the convenience of users and developers, the state machine accepts raw
+//! address strings instead of only addresses in many instances, for example:
+//!
+//! - when executing a contract (a user using the CLI, or a contract emitting
+//!   a submessage in the response) the contract address may be provided as a
+//!   raw address string;
+//! - similarly, when querying a contract (a user using the CLI, or a contract
+//!   using deps.querier);
+//! - when instantiating a new contract, the admin may be a raw address string
+//!   in SdkMsg::Instantiate.
+//!
+//! In these case, the state machine is responsible for resolving the raw
+//! address, returning the real underlying address as a cosmwasm_std::Addr.
 
 use cosmwasm_std::Addr;
 
