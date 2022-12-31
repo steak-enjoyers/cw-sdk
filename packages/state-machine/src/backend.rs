@@ -3,10 +3,15 @@ use std::collections::HashMap;
 use cosmwasm_std::{Addr, Binary, ContractResult, Order, Record, Storage, SystemResult};
 use cosmwasm_vm::{BackendError, BackendResult, GasInfo, Querier};
 
+use cw_sdk::address;
 use cw_store::{
     iterators::MemIter,
     prefix::{concat, namespace_upper_bound, trim},
 };
+
+fn into_backend_err(err: impl std::error::Error) -> BackendError {
+    BackendError::user_err(err.to_string())
+}
 
 //--------------------------------------------------------------------------------------------------
 // API
@@ -16,23 +21,17 @@ use cw_store::{
 pub struct BackendApi;
 
 impl cosmwasm_vm::BackendApi for BackendApi {
-    // TODO: currently we just return the utf8 bytes of the string. in the
-    // future we should implement proper bech32 decoding.
     fn canonical_address(&self, human: &str) -> BackendResult<Vec<u8>> {
-        let bytes = human.as_bytes().to_owned();
-        (Ok(bytes), GasInfo::free())
+        let bytes = address::canonicalize(human)
+            .map(|addr| addr.to_vec())
+            .map_err(into_backend_err);
+        (bytes, GasInfo::free())
     }
 
-    // TODO: currently we just return the utf8 bytes of the string. in the
-    // future we should implement proper bech32 decoding.
-    //
-    // a question here is, if this function is supposed to be stateless, how do
-    // we know which bech32 prefix to use? for Go SDK the prefix is hardcoded in
-    // the daemon, but for cw-sdk we don't want to hardcode any chain-specific
-    // params.
     fn human_address(&self, canonical: &[u8]) -> BackendResult<String> {
-        let human = String::from_utf8(canonical.to_owned())
-            .map_err(|_| BackendError::user_err("invalid utf8"));
+        let human = address::humanize(&canonical.into())
+            .map(String::from)
+            .map_err(into_backend_err);
         (human, GasInfo::free())
     }
 }
