@@ -24,10 +24,10 @@ use crate::address::{derive_from_label, validate, AddressError, ADDRESS_PREFIX};
 /// If the raw address string starts with the prefix `cw1`, we assume it is the
 /// actual address; otherwise we assume it is a label and derive the address
 /// from it.
-pub fn resolve_raw_address(addr_raw: String) -> Result<Addr, AddressError> {
+pub fn resolve_raw_address(addr_raw: &str) -> Result<Addr, AddressError> {
     if addr_raw.starts_with(&format!("{ADDRESS_PREFIX}1")) {
-        validate(&addr_raw)
+        validate(addr_raw)
     } else {
-        derive_from_label(&addr_raw)
+        derive_from_label(addr_raw)
     }
 }
