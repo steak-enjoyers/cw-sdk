@@ -1,60 +1,12 @@
 use std::collections::HashMap;
 
-use cosmwasm_std::{Addr, Binary, ContractResult, Order, Record, Storage, SystemResult};
-use cosmwasm_vm::{BackendError, BackendResult, GasInfo, Querier};
+use cosmwasm_std::{Addr, Order, Record, Storage};
+use cosmwasm_vm::{BackendError, BackendResult, GasInfo};
 
-use cw_sdk::address;
 use cw_store::{
     iterators::MemIter,
     prefix::{concat, namespace_upper_bound, trim},
 };
-
-fn into_backend_err(err: impl std::error::Error) -> BackendError {
-    BackendError::user_err(err.to_string())
-}
-
-//--------------------------------------------------------------------------------------------------
-// API
-//--------------------------------------------------------------------------------------------------
-
-#[derive(Clone, Copy)]
-pub struct BackendApi;
-
-impl cosmwasm_vm::BackendApi for BackendApi {
-    fn canonical_address(&self, human: &str) -> BackendResult<Vec<u8>> {
-        let bytes = address::canonicalize(human)
-            .map(|addr| addr.to_vec())
-            .map_err(into_backend_err);
-        (bytes, GasInfo::free())
-    }
-
-    fn human_address(&self, canonical: &[u8]) -> BackendResult<String> {
-        let human = address::humanize(&canonical.into())
-            .map(String::from)
-            .map_err(into_backend_err);
-        (human, GasInfo::free())
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-// Querier
-//--------------------------------------------------------------------------------------------------
-
-pub struct BackendQuerier;
-
-impl Querier for BackendQuerier {
-    fn query_raw(
-        &self,
-        _request: &[u8],
-        _gas_limit: u64,
-    ) -> BackendResult<SystemResult<ContractResult<Binary>>> {
-        (Err(BackendError::user_err("`querier.query_raw` is not yet implemented")), GasInfo::free())
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-// Storage
-//--------------------------------------------------------------------------------------------------
 
 /// NOTE: cosmwasm-vm requires the backend store to be of 'static lifetime.
 /// This requirement comes from wasmer so not something we can change.
