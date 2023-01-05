@@ -5,6 +5,7 @@ default_to_workspace = false
 skip_core_tasks = true
 
 [tasks.fmt]
+toolchain = "nightly"
 command = "cargo"
 args = ["fmt", "--all", "--check"]
 
