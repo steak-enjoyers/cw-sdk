@@ -1,25 +1,24 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    str::FromStr,
     time::{Duration, UNIX_EPOCH},
 };
 
 use chrono::{DateTime, SecondsFormat, Utc};
 use clap::{Args, Subcommand};
 use cosmwasm_std::{BlockInfo, ContractResult};
-use cw_sdk::InfoResponse;
+use cw_sdk::{
+    hash::sha256, AccountResponse, CodeResponse, ContractResponse, InfoResponse, SdkQuery,
+    WasmRawResponse, WasmSmartResponse,
+};
 use serde::Serialize;
 use serde_json::Value;
-use tendermint_rpc::{HttpClient, Url};
 use tracing::{error, info};
 
-use cw_sdk::{
-    hash::sha256, AccountResponse, CodeResponse, ContractResponse, SdkQuery, WasmRawResponse,
-    WasmSmartResponse,
+use crate::{
+    client::{create_http_client, do_abci_query},
+    path, print, ClientConfig, DaemonError,
 };
-
-use crate::{path, print, query::do_abci_query, ClientConfig, DaemonError};
 
 #[derive(Args)]
 pub struct QueryCmd {
@@ -110,22 +109,12 @@ pub enum QuerySubcmd {
 
 impl QueryCmd {
     pub async fn run(self, home_dir: &Path) -> Result<(), DaemonError> {
-        if !home_dir.exists() {
-            return Err(DaemonError::file_not_found(home_dir)?);
-        }
-
         let client_cfg = ClientConfig::load(home_dir)?;
-        let url_str = self.node.as_ref().unwrap_or(&client_cfg.node);
-        let url = Url::from_str(url_str)?;
-        let client = HttpClient::new(url)?;
+        let client = create_http_client(self.node.as_ref(), &client_cfg)?;
 
         match self.subcommand {
             QuerySubcmd::Info => {
-                let response: InfoResponse = do_abci_query(
-                    &client,
-                    SdkQuery::Info {},
-                )
-                .await?;
+                let response: InfoResponse = do_abci_query(&client, SdkQuery::Info {}).await?;
 
                 print::json(PrettyInfoResponse::from(response))?;
             },
@@ -172,7 +161,7 @@ impl QueryCmd {
                 .await?;
 
                 print::json(response)?;
-            }
+            },
 
             QuerySubcmd::Contracts {
                 start_after,
@@ -188,7 +177,7 @@ impl QueryCmd {
                 .await?;
 
                 print::json(response)?;
-            }
+            },
 
             QuerySubcmd::Code {
                 code_id,

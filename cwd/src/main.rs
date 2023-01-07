@@ -1,3 +1,4 @@
+mod client;
 mod commands;
 mod config;
 mod error;
@@ -6,7 +7,6 @@ mod keyring;
 mod path;
 mod print;
 mod prompt;
-mod query;
 
 use std::path::PathBuf;
 

@@ -1,8 +1,19 @@
+use std::str::FromStr;
+
 use serde::{de::DeserializeOwned, Serialize};
-use tendermint_rpc::{Client, HttpClient};
+use tendermint_rpc::{Client, HttpClient, Url};
 use tracing::error;
 
-use crate::DaemonError;
+use crate::{ClientConfig, DaemonError};
+
+pub fn create_http_client(
+    node: Option<&String>,
+    client_cfg: &ClientConfig,
+) -> Result<HttpClient, DaemonError> {
+    let url_str = node.unwrap_or(&client_cfg.node);
+    let url = Url::from_str(url_str)?;
+    HttpClient::new(url).map_err(Into::into)
+}
 
 pub async fn do_abci_query<Q: Serialize, R: DeserializeOwned>(
     client: &HttpClient,
@@ -13,9 +24,7 @@ pub async fn do_abci_query<Q: Serialize, R: DeserializeOwned>(
 
     // do query
     // must use "app" path
-    let result = client
-        .abci_query(Some("app".into()), query_bytes, None, false)
-        .await?;
+    let result = client.abci_query(Some("app".into()), query_bytes, None, false).await?;
 
     if result.code.is_err() {
         return Err(DaemonError::query_failed(result.log));
@@ -40,9 +49,9 @@ pub async fn do_abci_query<Q: Serialize, R: DeserializeOwned>(
                         target: "ABCI query is successful but the response is not valid JSON or UTF8",
                         response_raw,
                     );
-                }
+                },
             }
             Err(err.into())
-        }
+        },
     }
 }

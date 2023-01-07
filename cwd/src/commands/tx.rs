@@ -2,18 +2,19 @@ use std::{
     any::type_name,
     fs,
     path::{Path, PathBuf},
-    str::FromStr,
 };
 
 use clap::{Args, Subcommand};
 use colored::*;
 use cosmwasm_std::Addr;
-use tendermint_rpc::{Client, HttpClient, Url};
+use cw_sdk::{Account, AccountResponse, SdkMsg, SdkQuery, TxBody};
+use tendermint_rpc::Client;
 use tracing::warn;
 
-use cw_sdk::{Account, AccountResponse, SdkMsg, SdkQuery, TxBody};
-
-use crate::{print, prompt, query::do_abci_query, ClientConfig, DaemonError, Keyring};
+use crate::{
+    client::{create_http_client, do_abci_query},
+    print, prompt, ClientConfig, DaemonError, Keyring,
+};
 
 #[derive(Args)]
 pub struct TxCmd {
@@ -90,21 +91,17 @@ pub enum TxSubcmd {
 
 impl TxCmd {
     pub async fn run(self, home_dir: &Path) -> Result<(), DaemonError> {
-        if !home_dir.exists() {
-            return Err(DaemonError::file_not_found(home_dir)?);
-        }
-
-        let client_cfg = ClientConfig::load(home_dir)?;
-
-        let chain_id = self.chain_id.as_ref().unwrap_or(&client_cfg.chain_id);
-
-        let url_str = self.node.as_ref().unwrap_or(&client_cfg.node);
-        let url = Url::from_str(url_str)?;
-        let client = HttpClient::new(url)?;
-
+        // load sender key
         let keyring = Keyring::new(home_dir.join("keys"))?;
         let key = keyring.get(&self.from)?;
         let sender_addr = key.address()?;
+
+        // create tendermint client
+        let client_cfg = ClientConfig::load(home_dir)?;
+        let client = create_http_client(self.node.as_ref(), &client_cfg)?;
+
+        // find chain id
+        let chain_id = self.chain_id.as_ref().unwrap_or(&client_cfg.chain_id);
 
         // query the sender's sequence number if not provided
         let sequence = match self.sequence {

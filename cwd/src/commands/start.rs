@@ -16,10 +16,6 @@ pub struct StartCmd;
 
 impl StartCmd {
     pub fn run(&self, home_dir: &Path) -> Result<(), DaemonError> {
-        if !home_dir.exists() {
-            return Err(DaemonError::file_not_found(home_dir)?);
-        }
-
         // load config from disk
         let app_cfg = AppConfig::load(home_dir)?;
         info!("Loaded application config");

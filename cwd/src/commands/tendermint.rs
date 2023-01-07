@@ -2,9 +2,9 @@ use std::{path::Path, str::FromStr};
 
 use clap::{Args, Subcommand};
 use tendermint::Hash;
-use tendermint_rpc::{Client, HttpClient, Url};
+use tendermint_rpc::Client;
 
-use crate::{print, ClientConfig, DaemonError};
+use crate::{client::create_http_client, print, ClientConfig, DaemonError};
 
 #[derive(Args)]
 pub struct TendermintCmd {
@@ -51,14 +51,8 @@ pub enum TendermintSubcmd {
 
 impl TendermintCmd {
     pub async fn run(self, home_dir: &Path) -> Result<(), DaemonError> {
-        if !home_dir.exists() {
-            return Err(DaemonError::file_not_found(home_dir)?);
-        }
-
         let client_cfg = ClientConfig::load(home_dir)?;
-        let url_str = self.node.as_ref().unwrap_or(&client_cfg.node);
-        let url = Url::from_str(url_str)?;
-        let client = HttpClient::new(url)?;
+        let client = create_http_client(self.node.as_ref(), &client_cfg)?;
 
         match self.subcommand {
             TendermintSubcmd::Status => {
