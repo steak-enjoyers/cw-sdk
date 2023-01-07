@@ -15,7 +15,9 @@ use tracing::error;
 use tracing_subscriber::filter::LevelFilter;
 
 use crate::{
-    commands::{DebugCmd, GenesisCmd, InitCmd, KeysCmd, QueryCmd, ResetCmd, StartCmd, TxCmd},
+    commands::{
+        DebugCmd, GenesisCmd, InitCmd, KeysCmd, QueryCmd, ResetCmd, StartCmd, TendermintCmd, TxCmd,
+    },
     config::{AppConfig, ClientConfig},
     error::DaemonError,
     key::Key,
@@ -58,6 +60,9 @@ pub enum Command {
     /// Start the ABCI server
     Start(StartCmd),
 
+    /// Query Tendermint RPC
+    Tendermint(TendermintCmd),
+
     /// Sign and broadcast transactions
     Tx(TxCmd),
 
@@ -89,6 +94,7 @@ async fn run() -> Result<(), DaemonError> {
         Command::Keys(cmd) => cmd.run(&home_dir),
         Command::Query(cmd) => cmd.run(&home_dir).await,
         Command::Start(cmd) => cmd.run(&home_dir),
+        Command::Tendermint(cmd) => cmd.run(&home_dir).await,
         Command::Tx(cmd) => cmd.run(&home_dir).await,
         Command::UnsafeResetAll(cmd) => cmd.run(&home_dir),
     }

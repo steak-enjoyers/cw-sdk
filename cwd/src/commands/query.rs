@@ -11,8 +11,7 @@ use cosmwasm_std::{BlockInfo, ContractResult};
 use cw_sdk::InfoResponse;
 use serde::Serialize;
 use serde_json::Value;
-use tendermint::Hash;
-use tendermint_rpc::{Client, HttpClient, Url};
+use tendermint_rpc::{HttpClient, Url};
 use tracing::{error, info};
 
 use cw_sdk::{
@@ -34,13 +33,7 @@ pub struct QueryCmd {
 
 #[derive(Subcommand)]
 pub enum QuerySubcmd {
-    /// Query a transaction by hash
-    Tx {
-        /// Transaction hash, in hex encoding
-        txhash: String,
-    },
-
-    /// Query the blockchain's global state
+    /// Query the application's global state
     Info,
 
     /// Query an account's public key and sequence number
@@ -127,14 +120,6 @@ impl QueryCmd {
         let client = HttpClient::new(url)?;
 
         match self.subcommand {
-            QuerySubcmd::Tx {
-                txhash,
-            } => {
-                let hash = Hash::from_str(&txhash)?;
-                let response = client.tx(hash, false).await?;
-                print::json(response)?;
-            },
-
             QuerySubcmd::Info => {
                 let response: InfoResponse = do_abci_query(
                     &client,
