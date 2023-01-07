@@ -1,3 +1,4 @@
+mod debug;
 mod genesis;
 mod init;
 mod keys;
@@ -6,10 +7,7 @@ mod reset;
 mod start;
 mod tx;
 
-pub use genesis::GenesisCmd;
-pub use init::InitCmd;
-pub use keys::KeysCmd;
-pub use query::QueryCmd;
-pub use reset::ResetCmd;
-pub use start::StartCmd;
-pub use tx::TxCmd;
+pub use self::{
+    debug::DebugCmd, genesis::GenesisCmd, init::InitCmd, keys::KeysCmd, query::QueryCmd,
+    reset::ResetCmd, start::StartCmd, tx::TxCmd,
+};

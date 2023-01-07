@@ -15,7 +15,7 @@ use tracing::error;
 use tracing_subscriber::filter::LevelFilter;
 
 use crate::{
-    commands::{GenesisCmd, InitCmd, KeysCmd, QueryCmd, ResetCmd, StartCmd, TxCmd},
+    commands::{DebugCmd, GenesisCmd, InitCmd, KeysCmd, QueryCmd, ResetCmd, StartCmd, TxCmd},
     config::{AppConfig, ClientConfig},
     error::DaemonError,
     key::Key,
@@ -39,6 +39,9 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
+    /// Helper command useful for developers
+    Debug(DebugCmd),
+
     /// Utilities for preparing the genesis state
     Genesis(GenesisCmd),
 
@@ -80,6 +83,7 @@ async fn run() -> Result<(), DaemonError> {
     tracing_subscriber::fmt().with_max_level(log_level).init();
 
     match cli.command {
+        Command::Debug(cmd) => cmd.run(),
         Command::Genesis(cmd) => cmd.run(),
         Command::Init(cmd) => cmd.run(&home_dir),
         Command::Keys(cmd) => cmd.run(&home_dir),
