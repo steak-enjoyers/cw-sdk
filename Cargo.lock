@@ -746,6 +746,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-optional-indexes"
+version = "0.1.0"
+source = "git+https://github.com/steak-enjoyers/cw-plus-plus?rev=be0ba1a#be0ba1a69086533fc5ae070a7dcabd70433c305b"
+dependencies = [
+ "cosmwasm-std",
+ "cw-storage-plus 1.0.1 (git+https://github.com/CosmWasm/cw-storage-plus?rev=a45379e)",
+ "serde",
+]
+
+[[package]]
 name = "cw-paginate"
 version = "0.1.0"
 source = "git+https://github.com/steak-enjoyers/cw-plus-plus?rev=be0ba1a#be0ba1a69086533fc5ae070a7dcabd70433c305b"
@@ -791,6 +801,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-vm",
+ "cw-optional-indexes",
  "cw-paginate",
  "cw-sdk",
  "cw-storage-plus 1.0.1 (git+https://github.com/CosmWasm/cw-storage-plus?rev=a45379e)",
