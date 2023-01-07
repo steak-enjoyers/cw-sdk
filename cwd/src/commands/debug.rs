@@ -32,7 +32,7 @@ impl DebugCmd {
             DebugSubcmd::DeriveBaseAddress {
                 pubkey,
             } => {
-                let pubkey_bytes = hex::decode(&pubkey)?;
+                let pubkey_bytes = hex::decode(pubkey)?;
                 let addr = address::derive_from_pubkey(&pubkey_bytes)?;
                 println!("{addr}");
             },
