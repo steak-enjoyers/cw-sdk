@@ -705,11 +705,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-address-like"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db6866b08031757398406299b2279d88d82c2e5370f5afe53bcb273694d293bd"
+dependencies = [
+ "cosmwasm-std",
+]
+
+[[package]]
 name = "cw-bank"
 version = "0.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-address-like",
  "cw-sdk",
  "cw-storage-plus 1.0.1 (git+https://github.com/CosmWasm/cw-storage-plus?rev=a45379e)",
  "cw2",
@@ -742,6 +752,7 @@ dependencies = [
  "bech32",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-address-like",
  "cw-storage-plus 1.0.1 (git+https://github.com/CosmWasm/cw-storage-plus?rev=a45379e)",
  "serde",
  "serde_json",
@@ -821,6 +832,7 @@ version = "0.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-address-like",
  "cw-bank",
  "cw-multi-test",
  "cw-sdk",

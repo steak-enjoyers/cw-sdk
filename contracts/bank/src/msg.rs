@@ -1,7 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};
-
-use cw_sdk::AddressLike;
+use cw_address_like::AddressLike;
 
 #[cw_serde]
 pub struct Config<T: AddressLike> {

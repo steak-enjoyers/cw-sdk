@@ -7,7 +7,6 @@ pub mod indexes;
 pub mod label;
 mod msg;
 pub mod paginate;
-mod traits;
 mod tx;
 
 pub use account::Account;
@@ -16,5 +15,4 @@ pub use msg::{
     AccountResponse, CodeResponse, ContractResponse, InfoResponse, SdkMsg, SdkQuery,
     WasmRawResponse, WasmSmartResponse,
 };
-pub use traits::AddressLike;
 pub use tx::{Tx, TxBody};

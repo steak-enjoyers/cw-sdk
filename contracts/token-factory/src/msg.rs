@@ -1,7 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Coin, Uint128};
-
-use cw_sdk::AddressLike;
+use cw_address_like::AddressLike;
 
 /// The namespace that the token factory contract must be assigned as admin at
 /// the bank contract.

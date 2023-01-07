@@ -1,7 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary};
-
-use crate::AddressLike;
+use cw_address_like::AddressLike;
 
 /// The account type to be stored on-chain.
 #[cw_serde]
