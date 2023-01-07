@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use cosmwasm_std::{Coin, Deps, StdResult, Uint128};
-use cw_sdk::paginate::{paginate_map, paginate_map_prefix};
+use cw_paginate::{paginate_map, paginate_map_prefix};
 use cw_storage_plus::Bound;
 
 use crate::{

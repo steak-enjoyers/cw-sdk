@@ -22,6 +22,7 @@ cosmwasm-schema = { workspace = true }
 cosmwasm-std    = { workspace = true }
 cw2             = { workspace = true }
 cw-address-like = { workspace = true }
+cw-paginate     = { workspace = true }
 cw-sdk          = { workspace = true }
 cw-storage-plus = { workspace = true }
 thiserror       = { workspace = true }

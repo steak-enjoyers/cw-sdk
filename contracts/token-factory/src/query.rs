@@ -1,5 +1,5 @@
 use cosmwasm_std::{Addr, Deps, StdResult};
-use cw_sdk::paginate::paginate_map;
+use cw_paginate::paginate_map;
 use cw_storage_plus::Bound;
 
 use crate::{

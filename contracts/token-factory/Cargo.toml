@@ -23,6 +23,7 @@ cosmwasm-std    = { workspace = true }
 cw2             = { workspace = true }
 cw-address-like = { workspace = true }
 cw-bank         = { workspace = true, features = ["library"] }
+cw-paginate     = { workspace = true }
 cw-sdk          = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils        = { workspace = true }

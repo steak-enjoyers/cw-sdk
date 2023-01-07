@@ -20,6 +20,7 @@ bech32          = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cosmwasm-std    = { workspace = true }
 cosmwasm-vm     = { workspace = true }
+cw-paginate     = { workspace = true }
 cw-sdk          = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-store        = { workspace = true }

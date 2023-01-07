@@ -6,7 +6,6 @@ pub mod helpers;
 pub mod indexes;
 pub mod label;
 mod msg;
-pub mod paginate;
 mod tx;
 
 pub use account::Account;

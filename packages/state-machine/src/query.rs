@@ -1,10 +1,10 @@
 use cosmwasm_std::{Binary, ContractInfo, Env, Order, Storage};
 use cosmwasm_vm::{call_query, Backend, Instance, InstanceOptions, Storage as VmStorage};
+use cw_paginate::{collect, paginate_indexed_map, paginate_map};
 use cw_storage_plus::Bound;
 
 use cw_sdk::{
     label::resolve_raw_address,
-    paginate::{collect, paginate_indexed_map, paginate_map},
     Account, AccountResponse, CodeResponse, ContractResponse, InfoResponse, WasmRawResponse,
     WasmSmartResponse,
 };
